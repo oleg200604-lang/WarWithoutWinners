@@ -16,7 +16,7 @@ public class BatalionManagerScr : MonoBehaviour
     {
         Vector3 mousePosition = Input.mousePosition;
 
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
+        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition) ;
     }
 }
 [System.Serializable]
