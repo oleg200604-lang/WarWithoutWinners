@@ -3,11 +3,18 @@ using UnityEngine;
 
 public class BattalionScr : MonoBehaviour
 {
+    public bool isRun;
     public string name;
     public BatalionManagerScr batalionManager;
     public Personnel personnel;
-    public Command[] command;
+    public Command[] command = new Command[3];
     public int teamID;
+    private void Awake()
+{
+    command[0] = new MoveCommand();
+    command[1] = new MoveCommand();
+    command[2] = new MoveCommand();
+}
     private void Start()
     {
         name = "Infantry " + Random.Range(0,100).ToString();
@@ -31,13 +38,27 @@ public class BattalionScr : MonoBehaviour
             print(name);
         }
     }
+    private void Update()
+    {
+        if (isRun == true)
+        {
+            if (command[0] is MoveCommand move)
+            {
+                
+                transform.position = new Vector3(move.pos.x, move.pos.y, 0);
+                print(move.pos);
+                isRun = false;
+            }
+        }
+    }
 }
 
 [System.Serializable]
-public class Command
+public class MoveCommand : Command
 {
     public CommandType commandType;
-    
+
+    public Vector3 pos;
 }
 [System.Serializable]
 public class Personnel
@@ -52,4 +73,20 @@ public class Personnel
 public enum CommandType
 {
     None, Move
+}
+
+public interface Command
+{
+
+}
+[System.Serializable]
+public class Battalion
+{
+    public BattalionType type;
+    public float damage;
+    public float Speed;
+}
+public enum BattalionType
+{
+
 }
