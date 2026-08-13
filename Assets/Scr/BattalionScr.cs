@@ -42,12 +42,15 @@ public class BattalionScr : MonoBehaviour
     {
         if (isRun == true)
         {
-            if (command[0] is MoveCommand move)
+            for (int i = 0; i < command.Length; i++)
             {
-                
-                transform.position = new Vector3(move.pos.x, move.pos.y, 0);
-                print(move.pos);
-                isRun = false;
+                if (command[i] is MoveCommand move)
+                {
+
+                    transform.position = new Vector3(move.pos.x, move.pos.y, 0);
+                    print(move.pos);
+                    isRun = false;
+                }
             }
         }
     }
