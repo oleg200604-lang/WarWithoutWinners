@@ -1,23 +1,26 @@
+using NUnit.Framework;
 using System.Collections.Generic;
 using UnityEngine;
+
 public class BattleManagerScr : MonoBehaviour
 {
     public List<BatalionManagerScr> battalionManagers;
-    public int turnId;
-
-    public void CheckAllReady()
+    public bool isActive;
+    public void IsSrtart()
     {
-        for (int i = 0; i < battalionManagers.Count; i++)
+        int x=0;
+        for (int i = 0; i< battalionManagers.Count; i++)
         {
-            if (!battalionManagers[i].isRedy)
-                return; // хоч один не готовий — хід не починається
-        }
-
-        turnId++;
-
-        for (int i = 0; i < battalionManagers.Count; i++)
-        {
-            battalionManagers[i].isRedy = false; // готуємо до наступного ходу
+            if (battalionManagers[i].isRedy == true)
+            {
+                x++;
+                if (x-1 == i)
+                {
+                    isActive = true;
+                }
+            }
+            print(x + "=" + i);
         }
     }
+
 }

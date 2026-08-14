@@ -26,17 +26,9 @@ public class BattalionScr : MonoBehaviour
         command[2] = new MoveCommand();
     }
 
-    private int lastExecutedTurn = -1;
-
     private void Start()
     {
         nameBattalion = "Infantry " + Random.Range(0, 100).ToString();
-
-        // Якщо почати з lastExecutedTurn = -1 без цього — перший-ліпший
-        // Update() кадру одразу побачить turnId(0) != -1 і стартоне
-        // виконання наказів, навіть якщо ще ніхто не натиснув "Готово".
-        if (battleManager != null)
-            lastExecutedTurn = battleManager.turnId;
     }
 
     private void OnMouseDown()
@@ -105,9 +97,9 @@ public class BattalionScr : MonoBehaviour
 
     private void Update()
     {
-        if (battleManager != null && battleManager.turnId != lastExecutedTurn)
+        if (battleManager.isActive)
         {
-            lastExecutedTurn = battleManager.turnId;
+            battleManager.isActive = false;
             StartCoroutine(ExecuteOrders());
         }
     }
