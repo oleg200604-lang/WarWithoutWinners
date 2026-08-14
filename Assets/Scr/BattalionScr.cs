@@ -1,8 +1,10 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Дані та логіка батальйону: черга наказів, дальність, виконання ходу.
+/// Дані та логіка батальйону: черга наказів, дальність пересування,
+/// атака/захист по зоні ураження, виконання ходу.
 /// Жодної візуалізації тут немає — див. BattalionVisualsScr.
 /// </summary>
 public class BattalionScr : MonoBehaviour
@@ -19,14 +21,19 @@ public class BattalionScr : MonoBehaviour
     public float speed = 5f;          // сумарна дальність пересування на ВСІ 3 накази разом
     public float orderDuration = 1f;  // час виконання одного наказу, сек
 
+    [Header("Атака / захист (стандарт — піхота)")]
+    public float attackRange = 4f;
+    public float attackAngle = 60f;   // повний кут сектора ураження, градуси
+    public float blockAngleTolerance = 8f; // наскільки "на лінії" треба бути, щоб прикрити того, хто позаду
+
+    private int lastExecutedTurn = -1;
+
     private void Awake()
     {
         command[0] = new MoveCommand();
         command[1] = new MoveCommand();
         command[2] = new MoveCommand();
     }
-
-    private int lastExecutedTurn = -1;
 
     private void Start()
     {
@@ -44,10 +51,13 @@ public class BattalionScr : MonoBehaviour
         batalionManager.SelectBattalion(this);
     }
 
+    // ───────────────────────── Пересування ─────────────────────────
+
     /// <summary>
     /// Точка, від якої відраховується наказ slot — кінець останнього
     /// ВЖЕ ВІДДАНОГО наказу-пересування перед ним у черзі (або поточна
-    /// позиція батальйона, якщо таких немає).
+    /// позиція батальйона, якщо таких немає). Атака/захист батальйон
+    /// не пересувають, тому на ланцюжок походження вони не впливають.
     /// </summary>
     public Vector3 GetOrderOrigin(int slot)
     {
@@ -86,22 +96,139 @@ public class BattalionScr : MonoBehaviour
     /// </summary>
     public void SetMoveOrder(int slot, Vector3 pos)
     {
-        if (command[slot] is MoveCommand move)
+        command[slot] = new MoveCommand
         {
-            move.pos = pos;
-            move.commandType = CommandType.Move;
-            move.isSet = true;
+            pos = pos,
+            commandType = CommandType.Move,
+            isSet = true
+        };
+    }
+
+    // ────────────────────── Атака / захист ──────────────────────
+
+    public void SetAttackOrder(int slot, Vector3 direction)
+    {
+        command[slot] = new AttackCommand
+        {
+            direction = direction,
+            commandType = CommandType.Attack,
+            isSet = true
+        };
+    }
+
+    public void SetDefendOrder(int slot, Vector3 direction)
+    {
+        command[slot] = new DefendCommand
+        {
+            direction = direction,
+            commandType = CommandType.Defend,
+            isSet = true
+        };
+    }
+
+    public void TakeDamage()
+    {
+        print("Damage!");
+    }
+
+    private struct ZoneHit
+    {
+        public BattalionScr target;
+        public bool blocked;
+    }
+
+    /// <summary>
+    /// Всі батальйони (крім себе) в секторі [direction ± attackAngle/2] в
+    /// межах attackRange, відсортовані від найближчого до найдальшого, з
+    /// позначкою чи заблоковані іншим батальйоном, що стоїть ближче й
+    /// приблизно на тій самій лінії (закриває шкоду собою).
+    /// </summary>
+    private List<ZoneHit> ComputeZoneHits(Vector3 direction)
+    {
+        Vector3 origin = transform.position;
+        Vector3 dir = direction.normalized;
+
+        List<BattalionScr> inZone = new List<BattalionScr>();
+        foreach (var other in GetAllBattalions())
+        {
+            if (other == this)
+                continue;
+
+            Vector3 toOther = other.transform.position - origin;
+            float distance = toOther.magnitude;
+            if (distance < 0.001f || distance > attackRange)
+                continue;
+
+            if (Vector3.Angle(dir, toOther) <= attackAngle * 0.5f)
+                inZone.Add(other);
+        }
+
+        inZone.Sort((a, b) => Vector3.Distance(origin, a.transform.position)
+                              .CompareTo(Vector3.Distance(origin, b.transform.position)));
+
+        List<ZoneHit> result = new List<ZoneHit>();
+        List<BattalionScr> blockers = new List<BattalionScr>();
+
+        foreach (var target in inZone)
+        {
+            Vector3 toTarget = target.transform.position - origin;
+            float targetDistance = toTarget.magnitude;
+
+            bool blocked = false;
+            foreach (var blocker in blockers)
+            {
+                Vector3 toBlocker = blocker.transform.position - origin;
+                if (toBlocker.magnitude >= targetDistance)
+                    continue; // блокер має бути БЛИЖЧЕ за ціль
+
+                if (Vector3.Angle(toBlocker, toTarget) <= blockAngleTolerance)
+                {
+                    blocked = true;
+                    break;
+                }
+            }
+
+            result.Add(new ZoneHit { target = target, blocked = blocked });
+            blockers.Add(target); // сам теж може прикривати того, хто далі
+        }
+
+        return result;
+    }
+
+    /// <summary>Наносить шкоду всім незаблокованим у зоні, пише результат у консоль.</summary>
+    private void FireZone(Vector3 direction)
+    {
+        foreach (var hit in ComputeZoneHits(direction))
+        {
+            if (hit.blocked)
+            {
+                print($"{nameBattalion}: постріл по {hit.target.nameBattalion} заблокований іншим батальйоном");
+            }
+            else
+            {
+                hit.target.TakeDamage();
+                print($"{nameBattalion} влучив по {hit.target.nameBattalion}");
+            }
         }
     }
 
-    /// <summary>Скидає всю чергу наказів — виконується після останнього наказу.</summary>
-    private void ClearAllOrders()
+    private List<BattalionScr> GetAllBattalions()
     {
-        for (int i = 0; i < command.Length; i++)
+        List<BattalionScr> result = new List<BattalionScr>();
+        if (battleManager == null)
+            return result;
+
+        foreach (var manager in battleManager.battalionManagers)
         {
-            command[i] = new MoveCommand();
+            foreach (var reg in manager.regiment)
+            {
+                result.AddRange(reg.battalions);
+            }
         }
+        return result;
     }
+
+    // ───────────────────────── Виконання ходу ─────────────────────────
 
     private void Update()
     {
@@ -131,15 +258,65 @@ public class BattalionScr : MonoBehaviour
                 transform.position = target;
                 print(target);
             }
+            else if (command[i] is AttackCommand attack && attack.isSet)
+            {
+                FireZone(attack.direction);
+                yield return new WaitForSeconds(orderDuration);
+            }
+            else if (command[i] is DefendCommand defend && defend.isSet)
+            {
+                yield return StartCoroutine(ResolveDefend(defend));
+            }
             else
             {
-                // Порожній наказ або заготовка під інші типи (Attack/Defend) —
-                // все одно "тримає" однакову тривалість ходу наказу.
+                // Порожній наказ — все одно "тримає" однакову тривалість ходу.
                 yield return new WaitForSeconds(orderDuration);
             }
         }
 
         ClearAllOrders();
+    }
+
+    /// <summary>
+    /// Весь час наказу стежить за зоною. Щойно туди заходить ворог, який
+    /// нічим не прикритий — відкриває вогонь по всій зоні (як і Атака).
+    /// Кожен конкретний ворог "спускає гачок" не більше одного разу за
+    /// цей наказ — інакше стріляло б щокадру, поки він стоїть у зоні.
+    /// </summary>
+    private IEnumerator ResolveDefend(DefendCommand defend)
+    {
+        HashSet<BattalionScr> triggered = new HashSet<BattalionScr>();
+        float t = 0f;
+
+        while (t < orderDuration)
+        {
+            foreach (var hit in ComputeZoneHits(defend.direction))
+            {
+                if (hit.blocked)
+                    continue;
+                if (hit.target.teamID == teamID)
+                    continue; // захист реагує лише на ворогів
+                if (triggered.Contains(hit.target))
+                    continue;
+
+                triggered.Add(hit.target);
+                print($"{nameBattalion} (захист): {hit.target.nameBattalion} увійшов у зону без прикриття — відкриваю вогонь");
+                FireZone(defend.direction);
+                break; // за цей кадр досить одного тригера
+            }
+
+            t += Time.deltaTime;
+            yield return null;
+        }
+    }
+
+    /// <summary>Скидає всю чергу наказів — виконується після останнього наказу.</summary>
+    private void ClearAllOrders()
+    {
+        for (int i = 0; i < command.Length; i++)
+        {
+            command[i] = new MoveCommand();
+        }
     }
 }
 
@@ -149,6 +326,22 @@ public class MoveCommand : Command
     public CommandType commandType;
     public Vector3 pos;
     public bool isSet; // чи цей наказ взагалі був відданий гравцем
+}
+
+[System.Serializable]
+public class AttackCommand : Command
+{
+    public CommandType commandType;
+    public Vector3 direction; // напрямок зони ураження
+    public bool isSet;
+}
+
+[System.Serializable]
+public class DefendCommand : Command
+{
+    public CommandType commandType;
+    public Vector3 direction; // напрямок зони, за якою стежимо
+    public bool isSet;
 }
 
 [System.Serializable]

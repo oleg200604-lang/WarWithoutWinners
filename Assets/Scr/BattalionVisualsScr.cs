@@ -1,51 +1,60 @@
 using UnityEngine;
 
-/// <summary>
-/// Тільки візуалізація для одного батальйону: мітки точок наказів і стрілки
-/// між ними. Показує їх лише поки battalion == batalionManager.selectBattalion.
-/// Ніякої ігрової логіки тут немає — вся вона в BattalionScr.
-/// Вішається на той самий GameObject, що й BattalionScr.
-/// </summary>
 [RequireComponent(typeof(BattalionScr))]
 public class BattalionVisualsScr : MonoBehaviour
 {
-    public BattalionScr battalion;
-    public BatalionManagerScr batalionManager;
+    private BattalionScr battalion;
+    private BatalionManagerScr batalionManager;
 
-    [Header("Мітки наказів (показуються тільки коли батальйон обраний)")]
+    [Header("Мітка точки наказу")]
     public GameObject orderMarkerPrefab;
-    private GameObject[] orderMarkers = new GameObject[3];
 
-    [Header("Стрілки між точками наказів")]
-    [Tooltip("Префаб має бути 1 юніт завдовжки вздовж локальної осі +X, з піботом по центру.")]
+    [Header("Стрілка наказу")]
     public GameObject arrowPrefab;
+
+    private GameObject[] orderMarkers = new GameObject[3];
     private GameObject[] orderArrows = new GameObject[3];
 
-    private void Reset()
+    private void Awake()
     {
         battalion = GetComponent<BattalionScr>();
+
+        if (battalion != null)
+            batalionManager = battalion.batalionManager;
+    }
+
+    private void Start()
+    {
+        // Якщо посилання не було встановлене до Awake,
+        // пробуємо знайти менеджер ще раз.
+        if (batalionManager == null && battalion != null)
+            batalionManager = battalion.batalionManager;
+
+        if (batalionManager == null)
+        {
+            Debug.LogError(
+                $"BattalionVisualsScr: {name} не має BatalionManagerScr!",
+                this
+            );
+        }
     }
 
     private void Update()
     {
-        if (battalion == null)
-        {
-            Debug.LogWarning("BattalionVisualsScr: не призначено battalion.", this);
+        if (battalion == null || batalionManager == null)
             return;
-        }
-        if (batalionManager == null)
-        {
-            Debug.LogWarning("BattalionVisualsScr: не призначено batalionManager.", this);
-            return;
-        }
 
         bool isSelected = batalionManager.selectBattalion == battalion;
 
-        for (int i = 0; i < battalion.command.Length; i++)
+        for (int i = 0; i < 3; i++)
         {
-            bool hasOrder = isSelected && battalion.command[i] is MoveCommand move && move.isSet;
-            UpdateOrderMarker(i, hasOrder);
-            UpdateOrderArrow(i, hasOrder);
+            bool hasMoveOrder =
+                isSelected &&
+                battalion.command[i] is MoveCommand move &&
+                move.isSet;
+
+            UpdateOrderMarker(i, hasMoveOrder);
+            UpdateOrderArrow(i, hasMoveOrder);
         }
     }
 
@@ -58,15 +67,23 @@ public class BattalionVisualsScr : MonoBehaviour
         {
             if (orderMarkers[slot] != null)
                 orderMarkers[slot].SetActive(false);
+
             return;
         }
 
-        Vector3 pos = ((MoveCommand)battalion.command[slot]).pos;
+        MoveCommand move = battalion.command[slot] as MoveCommand;
+
+        if (move == null || !move.isSet)
+            return;
+
         if (orderMarkers[slot] == null)
-            orderMarkers[slot] = Instantiate(orderMarkerPrefab, pos, Quaternion.identity);
+        {
+            orderMarkers[slot] =
+                Instantiate(orderMarkerPrefab, move.pos, Quaternion.identity);
+        }
 
         orderMarkers[slot].SetActive(true);
-        orderMarkers[slot].transform.position = pos;
+        orderMarkers[slot].transform.position = move.pos;
     }
 
     private void UpdateOrderArrow(int slot, bool show)
@@ -78,25 +95,42 @@ public class BattalionVisualsScr : MonoBehaviour
         {
             if (orderArrows[slot] != null)
                 orderArrows[slot].SetActive(false);
+
             return;
         }
 
+        MoveCommand move = battalion.command[slot] as MoveCommand;
+
+        if (move == null || !move.isSet)
+            return;
+
         Vector3 start = battalion.GetOrderOrigin(slot);
-        Vector3 end = ((MoveCommand)battalion.command[slot]).pos;
-        Vector3 dir = end - start;
-        float distance = dir.magnitude;
+        Vector3 end = move.pos;
+
+        Vector3 direction = end - start;
+        float distance = direction.magnitude;
+
+        if (distance < 0.001f)
+            return;
 
         if (orderArrows[slot] == null)
-            orderArrows[slot] = Instantiate(arrowPrefab);
-
-        orderArrows[slot].SetActive(true);
-        orderArrows[slot].transform.position = (start + end) * 0.5f;
-
-        if (distance > 0.001f)
         {
-            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-            orderArrows[slot].transform.rotation = Quaternion.Euler(0, 0, angle);
+            orderArrows[slot] = Instantiate(arrowPrefab);
         }
-        orderArrows[slot].transform.localScale = new Vector3(distance, 1f, 1f);
+
+        GameObject arrow = orderArrows[slot];
+
+        arrow.SetActive(true);
+
+        arrow.transform.position = (start + end) * 0.5f;
+
+        float angle =
+            Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+
+        arrow.transform.rotation =
+            Quaternion.Euler(0f, 0f, angle);
+
+        arrow.transform.localScale =
+            new Vector3(distance, 1f, 1f);
     }
 }
