@@ -1,11 +1,16 @@
 using System.Collections;
 using UnityEngine;
 
+/// <summary>
+/// Дані та логіка батальйону: черга наказів, дальність, виконання ходу.
+/// Жодної візуалізації тут немає — див. BattalionVisualsScr.
+/// </summary>
 public class BattalionScr : MonoBehaviour
 {
     public bool isRun;
-    public string name;
+    public string nameBattalion;
     public BatalionManagerScr batalionManager;
+    public BattleManagerScr battleManager;
     public Personnel personnel;
     public Command[] command = new Command[3];
     public int teamID;
@@ -13,15 +18,6 @@ public class BattalionScr : MonoBehaviour
     [Header("Пересування")]
     public float speed = 5f;          // сумарна дальність пересування на ВСІ 3 накази разом
     public float orderDuration = 1f;  // час виконання одного наказу, сек
-
-    [Header("Мітки наказів (показуються тільки коли батальйон обраний)")]
-    public GameObject orderMarkerPrefab;
-    private GameObject[] orderMarkers = new GameObject[3];
-
-    [Header("Стрілки між точками наказів")]
-    [Tooltip("Префаб має бути 1 юніт завдовжки вздовж локальної осі +X, з піботом по центру.")]
-    public GameObject arrowPrefab;
-    private GameObject[] orderArrows = new GameObject[3];
 
     private void Awake()
     {
@@ -32,20 +28,12 @@ public class BattalionScr : MonoBehaviour
 
     private void Start()
     {
-        name = "Infantry " + Random.Range(0, 100).ToString();
+        nameBattalion = "Infantry " + Random.Range(0, 100).ToString();
     }
 
     private void OnMouseDown()
     {
-        if (teamID == batalionManager.teamID)
-        {
-            if (batalionManager.selectBattalion == this)
-                batalionManager.selectBattalion = null;
-            else
-                batalionManager.selectBattalion = this;
-
-            print(name);
-        }
+        batalionManager.SelectBattalion(this);
     }
 
     /// <summary>
@@ -109,81 +97,11 @@ public class BattalionScr : MonoBehaviour
 
     private void Update()
     {
-        if (isRun)
+        if (battleManager.isActive)
         {
-            isRun = false;
+            battleManager.isActive = false;
             StartCoroutine(ExecuteOrders());
         }
-
-        RefreshOrderVisuals();
-    }
-
-    /// <summary>
-    /// Мітки та стрілки показуються ТІЛЬКИ поки цей батальйон обраний
-    /// (підсвічений) у менеджері. Для решти — ховаємо, а не знищуємо,
-    /// щоб не плодити Instantiate/Destroy щокадру.
-    /// </summary>
-    private void RefreshOrderVisuals()
-    {
-        bool isSelected = batalionManager != null && batalionManager.selectBattalion == this;
-
-        for (int i = 0; i < command.Length; i++)
-        {
-            bool hasOrder = isSelected && command[i] is MoveCommand move && move.isSet;
-            UpdateOrderMarker(i, hasOrder);
-            UpdateOrderArrow(i, hasOrder);
-        }
-    }
-
-    private void UpdateOrderMarker(int slot, bool show)
-    {
-        if (orderMarkerPrefab == null)
-            return;
-
-        if (!show)
-        {
-            if (orderMarkers[slot] != null)
-                orderMarkers[slot].SetActive(false);
-            return;
-        }
-
-        Vector3 pos = ((MoveCommand)command[slot]).pos;
-        if (orderMarkers[slot] == null)
-            orderMarkers[slot] = Instantiate(orderMarkerPrefab, pos, Quaternion.identity);
-
-        orderMarkers[slot].SetActive(true);
-        orderMarkers[slot].transform.position = pos;
-    }
-
-    private void UpdateOrderArrow(int slot, bool show)
-    {
-        if (arrowPrefab == null)
-            return;
-
-        if (!show)
-        {
-            if (orderArrows[slot] != null)
-                orderArrows[slot].SetActive(false);
-            return;
-        }
-
-        Vector3 start = GetOrderOrigin(slot);
-        Vector3 end = ((MoveCommand)command[slot]).pos;
-        Vector3 dir = end - start;
-        float distance = dir.magnitude;
-
-        if (orderArrows[slot] == null)
-            orderArrows[slot] = Instantiate(arrowPrefab);
-
-        orderArrows[slot].SetActive(true);
-        orderArrows[slot].transform.position = (start + end) * 0.5f;
-
-        if (distance > 0.001f)
-        {
-            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-            orderArrows[slot].transform.rotation = Quaternion.Euler(0, 0, angle);
-        }
-        orderArrows[slot].transform.localScale = new Vector3(distance, 1f, 1f);
     }
 
     private IEnumerator ExecuteOrders()
@@ -237,7 +155,7 @@ public class Personnel
 
 public enum CommandType
 {
-    None, Move
+    None, Move, Attack, Defend
 }
 
 public interface Command

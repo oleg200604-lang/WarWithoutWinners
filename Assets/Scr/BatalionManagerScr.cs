@@ -2,6 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// Виділення батальйону та ввід гравця (вибір наказу, встановлення точки,
+/// запуск ходу). Жодної візуалізації тут немає — див. RangeIndicatorScr
+/// та BattalionVisualsScr.
+/// </summary>
 public class BatalionManagerScr : MonoBehaviour
 {
     public int teamID;
@@ -9,18 +14,15 @@ public class BatalionManagerScr : MonoBehaviour
     public int[] teamEnemyID;
     public int[] teamAllyID;
     public BattalionScr selectBattalion;
-
+    public BattleManagerScr battleManager;
     public List<Regiment> regiment;
-
     // Який наказ (0, 1, 2) зараз редагується клавішами 1/2/3
-    private int commandDuty;
 
-    [Header("Індикатор дальності — заливка (без контура)")]
-    public MeshFilter rangeFillMeshFilter;
-    public Color rangeFillColor = new Color(0.2f, 1f, 0.3f, 0.25f);
-    public int rangeSegments = 48;
-    private Mesh rangeFillMesh;
-    private MeshRenderer rangeFillMeshRenderer;
+    public CommandType commandType;
+    public GameObject commandPanel;
+    private int commandDuty;
+    public bool isRedy;
+    public int CommandDuty => commandDuty; // читання ззовні для візуалізації
 
     private void Update()
     {
@@ -60,84 +62,39 @@ public class BatalionManagerScr : MonoBehaviour
             }
         }
 
-        if (Keyboard.current.spaceKey.wasPressedThisFrame && selectBattalion != null)
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            selectBattalion.isRun = true;
-        }
 
-        UpdateRangeFill();
+            isRedy = true;
+            battleManager.IsSrtart();
+            selectBattalion = null;
+            commandPanel.SetActive(false);
+        }
     }
-
-    private void UpdateRangeFill()
+    public void SelectBattalion(BattalionScr battalion) 
     {
-        if (rangeFillMeshFilter == null)
-            return;
-
-        if (rangeFillMesh == null)
+        commandType = CommandType.None;
+        if (teamID == battalion.teamID)
         {
-            rangeFillMesh = new Mesh();
-            rangeFillMesh.name = "RangeFillMesh";
-            rangeFillMeshFilter.mesh = rangeFillMesh;
+            if (selectBattalion == battalion)
+            {
+                selectBattalion = null;
+                commandPanel.SetActive(false);
+            }
+            else 
+            {
+                selectBattalion = battalion;
+                commandPanel.SetActive(true);
+            }
+
+            print(battalion.nameBattalion);
         }
-        if (rangeFillMeshRenderer == null)
-            rangeFillMeshRenderer = rangeFillMeshFilter.GetComponent<MeshRenderer>();
-
-        bool show = selectBattalion != null;
-
-        if (!show)
-        {
-            rangeFillMesh.Clear();
-            if (rangeFillMeshRenderer != null)
-                rangeFillMeshRenderer.enabled = false;
-            return;
-        }
-
-        Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
-        float radius = selectBattalion.GetRemainingRange(commandDuty);
-
-        if (radius <= 0f)
-        {
-            rangeFillMesh.Clear();
-            if (rangeFillMeshRenderer != null)
-                rangeFillMeshRenderer.enabled = false;
-            return;
-        }
-
-        if (rangeFillMeshRenderer != null)
-            rangeFillMeshRenderer.enabled = true;
-
-        Vector3[] vertices = new Vector3[rangeSegments + 1];
-        Color[] colors = new Color[vertices.Length];
-        int[] triangles = new int[rangeSegments * 3];
-
-        Transform meshTransform = rangeFillMeshFilter.transform;
-        vertices[0] = meshTransform.InverseTransformPoint(origin);
-        colors[0] = rangeFillColor;
-
-        for (int i = 0; i < rangeSegments; i++)
-        {
-            float angle = 2f * Mathf.PI * i / rangeSegments;
-            Vector3 worldPoint = origin + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0) * radius;
-            vertices[i + 1] = meshTransform.InverseTransformPoint(worldPoint);
-            colors[i + 1] = rangeFillColor;
-        }
-
-        for (int i = 0; i < rangeSegments; i++)
-        {
-            int next = (i + 1) % rangeSegments;
-            triangles[i * 3] = 0;
-            triangles[i * 3 + 1] = i + 1;
-            triangles[i * 3 + 2] = next + 1;
-        }
-
-        rangeFillMesh.Clear();
-        rangeFillMesh.vertices = vertices;
-        rangeFillMesh.colors = colors;
-        rangeFillMesh.triangles = triangles;
     }
 }
+
 [System.Serializable]
 public class Regiment
 {
-    public BattalionScr[] battalions;
+    public string nameRegiment;
+    public List<BattalionScr> battalions;
 }
