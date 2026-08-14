@@ -180,9 +180,6 @@ MonoBehaviour:
   teamID: 0
   speed: 5
   orderDuration: 1
-  attackRange: 4
-  attackAngle: 60
-  blockAngleTolerance: 8
 --- !u!61 &179838008
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -398,9 +395,6 @@ MonoBehaviour:
   teamID: 0
   speed: 5
   orderDuration: 1
-  attackRange: 4
-  attackAngle: 60
-  blockAngleTolerance: 8
 --- !u!61 &202743265
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -481,7 +475,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &224357365
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1253,10 +1247,10 @@ RectTransform:
   - {fileID: 814297966}
   m_Father: {fileID: 224357365}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1410, y: -100}
-  m_SizeDelta: {x: 150, y: 150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &547511465
 MonoBehaviour:
@@ -1304,7 +1298,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1916624630}
         m_TargetAssemblyTypeName: BatalionManagerScr, Assembly-CSharp
-        m_MethodName: SetCommandType
+        m_MethodName: SelectComand
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1386,10 +1380,10 @@ RectTransform:
   - {fileID: 299647371}
   m_Father: {fileID: 224357365}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 810, y: -100}
-  m_SizeDelta: {x: 150, y: 150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &589914228
 MonoBehaviour:
@@ -1437,7 +1431,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1916624630}
         m_TargetAssemblyTypeName: BatalionManagerScr, Assembly-CSharp
-        m_MethodName: SetCommandType
+        m_MethodName: SelectComand
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1840,10 +1834,10 @@ RectTransform:
   - {fileID: 407456816}
   m_Father: {fileID: 224357365}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 510, y: -100}
-  m_SizeDelta: {x: 150, y: 150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1208189147
 MonoBehaviour:
@@ -1889,13 +1883,13 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1916624630}
-        m_TargetAssemblyTypeName: BatalionManagerScr, Assembly-CSharp
-        m_MethodName: SetCommandType
-        m_Mode: 3
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: 
+        m_MethodName: 
+        m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_ObjectArgumentAssemblyTypeName: 
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -2046,9 +2040,6 @@ MonoBehaviour:
   teamID: 0
   speed: 5
   orderDuration: 1
-  attackRange: 4
-  attackAngle: 60
-  blockAngleTolerance: 8
 --- !u!114 &1307456461
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2298,10 +2289,10 @@ RectTransform:
   - {fileID: 302332892}
   m_Father: {fileID: 224357365}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 1110, y: -100}
-  m_SizeDelta: {x: 150, y: 150}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1756825004
 MonoBehaviour:
@@ -2349,7 +2340,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 1916624630}
         m_TargetAssemblyTypeName: BatalionManagerScr, Assembly-CSharp
-        m_MethodName: SetCommandType
+        m_MethodName: SelectComand
         m_Mode: 3
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2527,6 +2518,7 @@ MonoBehaviour:
   commandType: 0
   commandPanel: {fileID: 224357364}
   isRedy: 0
+  nameSelectBattalion: {fileID: 741002327}
 --- !u!4 &1916624631
 Transform:
   m_ObjectHideFlags: 0

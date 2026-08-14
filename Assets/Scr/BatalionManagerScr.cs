@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 /// <summary>
 /// Виділення батальйону та ввід гравця (вибір наказу, встановлення точки,
@@ -23,9 +25,11 @@ public class BatalionManagerScr : MonoBehaviour
     private int commandDuty;
     public bool isRedy;
     public int CommandDuty => commandDuty; // читання ззовні для візуалізації
+    public TextMeshProUGUI nameSelectBattalion;
 
     private void Update()
     {
+
         if (Keyboard.current.digit1Key.wasPressedThisFrame)
         {
             commandDuty = 0;
@@ -41,45 +45,31 @@ public class BatalionManagerScr : MonoBehaviour
             commandDuty = 2;
             print("Наказ 3");
         }
-
-        if (Mouse.current.rightButton.wasPressedThisFrame && selectBattalion != null)
+        switch (commandType) 
         {
-            Vector3 mousePosition = Mouse.current.position.ReadValue();
-            Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
-            worldPosition.z = 0;
-
-            switch (commandType)
+            case CommandType.Move:
+            if (Mouse.current.rightButton.wasPressedThisFrame && selectBattalion != null)
             {
-                case CommandType.Attack:
-                    {
-                        Vector3 direction = worldPosition - selectBattalion.transform.position;
-                        selectBattalion.SetAttackOrder(commandDuty, direction);
-                        break;
-                    }
-                case CommandType.Defend:
-                    {
-                        Vector3 direction = worldPosition - selectBattalion.transform.position;
-                        selectBattalion.SetDefendOrder(commandDuty, direction);
-                        break;
-                    }
-                default: // Move — батальйон нікуди не йде лише коли обрано Attack/Defend
-                    {
-                        Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
-                        float maxRange = selectBattalion.GetRemainingRange(commandDuty);
-                        float dist = Vector3.Distance(origin, worldPosition);
+                Vector3 mousePosition = Mouse.current.position.ReadValue();
+                Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
+                worldPosition.z = 0;
 
-                        if (dist <= maxRange)
-                        {
-                            selectBattalion.SetMoveOrder(commandDuty, worldPosition);
-                        }
-                        else
-                        {
-                            print("Точка поза межами дальності — наказ не встановлено");
-                        }
-                        break;
-                    }
+                Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
+                float maxRange = selectBattalion.GetRemainingRange(commandDuty);
+                float dist = Vector3.Distance(origin, worldPosition);
+
+                if (dist <= maxRange)
+                {
+                    selectBattalion.SetMoveOrder(commandDuty, worldPosition);
+                }
+                else
+                {
+                    print("Точка поза межами дальності — наказ не встановлено");
+                }
             }
+                break;
         }
+        
 
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
@@ -88,10 +78,36 @@ public class BatalionManagerScr : MonoBehaviour
             battleManager.CheckAllReady();
             selectBattalion = null;
             commandPanel.SetActive(false);
+            commandType = CommandType.None;
+        }
+    }
+
+    public void SelectComand(int comand)
+    {
+        switch (comand)
+        {
+            case 0:
+                commandType = CommandType.None;
+
+                break; 
+            case 1:
+                commandType = CommandType.Move;
+
+                break; 
+            case 2:
+                commandType = CommandType.Attack;
+
+                break;
+
+            case 3:
+                commandType = CommandType.Defend;
+
+                break;
         }
     }
     public void SelectBattalion(BattalionScr battalion)
     {
+        nameSelectBattalion.text = battalion.nameBattalion;
         commandType = CommandType.None;
         if (teamID == battalion.teamID)
         {
@@ -108,30 +124,6 @@ public class BatalionManagerScr : MonoBehaviour
 
             print(battalion.nameBattalion);
         }
-    }
-
-    /// <summary>Викликати з кнопок commandPanel (Move/Attack/Defend) для поточного наказу.</summary>
-    public void SetCommandType(int type)
-    {
-        switch (type)
-        {
-            case 0:
-            commandType = CommandType.None;
-                break;
-
-            case 1:
-                commandType = CommandType.Move;
-                break;
-
-            case 2:
-                commandType = CommandType.Attack;
-                break;
-
-            case 3:
-                commandType = CommandType.Defend;
-                break;
-        }
-        
     }
 }
 
