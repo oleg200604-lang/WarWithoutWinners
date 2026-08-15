@@ -2,11 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// <summary>
-/// Виділення батальйону та ввід гравця (вибір наказу, встановлення точки,
-/// запуск ходу). Жодної візуалізації тут немає — див. RangeIndicatorScr
-/// та BattalionVisualsScr.
-/// </summary>
 public class BatalionManagerScr : MonoBehaviour
 {
     public int teamID;
@@ -142,7 +137,45 @@ public class BatalionManagerScr : MonoBehaviour
                 print("Не вдалося встановити наказ атаки");
             }
         }
-    }   
+    }
+
+    public void CreateRegiment()
+    {
+        if (selectBattalion == null)
+        {
+            Debug.LogWarning("Немає вибраного батальйону!");
+            return;
+        }
+
+        Regiment newRegiment = new Regiment{nameRegiment = "Regiment", battalions = new List<BattalionScr>() { }, battalionType = BattalionType.infantry };
+
+        newRegiment.battalions.Add(selectBattalion);
+
+        regiment.Add(newRegiment);
+
+        Debug.Log($"Створено полк: {newRegiment.nameRegiment}");
+    }
+
+    public void AddRegiment(BattalionScr battalion, Regiment regiment)
+    {
+        if (battalion.battalion.type == regiment.battalionType)
+        {
+            regiment.battalions.Add(battalion);
+        }
+    }
+
+    public void RemovRegiment(BattalionScr battalion, Regiment regiment)
+    {
+        if (battalion.battalion.type == regiment.battalionType)
+        {
+            regiment.battalions.Add(battalion);
+        }
+    }
+    public void DestroyRegiment(Regiment regiments)
+    {
+        regiment.Remove(regiments);
+    }
+
 
     public void SelectBattalion(BattalionScr battalion) 
     {
@@ -193,4 +226,5 @@ public class Regiment
 {
     public string nameRegiment;
     public List<BattalionScr> battalions;
+    public BattalionType battalionType;
 }
