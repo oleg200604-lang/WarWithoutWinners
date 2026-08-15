@@ -1059,7 +1059,7 @@ GameObject:
   - component: {fileID: 1307456460}
   - component: {fileID: 1307456461}
   - component: {fileID: 1307456462}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Battalion
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1186,9 +1186,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattalionAttackSystemScr
   rayCount: 31
   step: 0.25
+  coneAngle: 90
   battalionLayer:
     serializedVersion: 2
-    m_Bits: 0
+    m_Bits: 8
 --- !u!1 &1405401221
 GameObject:
   m_ObjectHideFlags: 0
@@ -1199,7 +1200,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1405401222}
   - component: {fileID: 1405401223}
-  m_Layer: 0
+  m_Layer: 3
   m_Name: Isometric Diamond
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1372,7 +1373,10 @@ MonoBehaviour:
   batalionManager: {fileID: 1916624630}
   meshFilter: {fileID: 1456703853}
   fillColor: {r: 0.2, g: 1, b: 0.3, a: 0.25}
+  attackFillColor: {r: 1, g: 0.25, b: 0.25, a: 0.25}
   segments: 48
+  rayFanLineRenderer: {fileID: 0}
+  rayColor: {r: 1, g: 0.3, b: 0.3, a: 0.6}
 --- !u!4 &1456703855
 Transform:
   m_ObjectHideFlags: 0
@@ -1808,7 +1812,6 @@ GameObject:
   - component: {fileID: 1882419471}
   - component: {fileID: 1882419470}
   - component: {fileID: 1882419469}
-  - component: {fileID: 1882419474}
   m_Layer: 3
   m_Name: Battalion (1)
   m_TagString: Untagged
@@ -1830,6 +1833,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattalionAttackSystemScr
   rayCount: 31
   step: 0.25
+  coneAngle: 90
   battalionLayer:
     serializedVersion: 2
     m_Bits: 8
@@ -1939,33 +1943,6 @@ Transform:
   - {fileID: 1951100097}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!50 &1882419474
-Rigidbody2D:
-  serializedVersion: 5
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1882419468}
-  m_BodyType: 0
-  m_Simulated: 1
-  m_UseFullKinematicContacts: 0
-  m_UseAutoMass: 0
-  m_Mass: 1
-  m_LinearDamping: 0
-  m_AngularDamping: 0
-  m_GravityScale: 0
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_Interpolate: 0
-  m_SleepingMode: 1
-  m_CollisionDetection: 0
-  m_Constraints: 0
 --- !u!1 &1916624629
 GameObject:
   m_ObjectHideFlags: 0

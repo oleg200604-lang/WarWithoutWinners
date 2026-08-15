@@ -4,17 +4,24 @@ public class BattalionAttackSystemScr : MonoBehaviour
 {
     [SerializeField] private int rayCount = 31;
     [SerializeField] private float step = 0.25f;
+    [SerializeField] private float coneAngle = 90f;
     [SerializeField] private LayerMask battalionLayer;
 
+    // Публічний доступ для прев'ю-візуалізації (RangeIndicatorScr), щоб
+    // "всі промені" на екрані завжди збігались із тим, що реально рахує
+    // FindTarget — жодних задубльованих магічних чисел в двох місцях.
+    public int RayCount => rayCount;
+    public float ConeAngle => coneAngle;
+
     public BattalionScr FindTarget(
-    BattalionScr attacker,
-    Vector3 direction,
-    float maxAttackRange)
+        BattalionScr attacker,
+        Vector3 direction,
+        float maxAttackRange)
     {
         Vector3 origin = attacker.transform.position;
 
-        float startAngle = -45f;
-        float angleStep = 90f / (rayCount - 1);
+        float startAngle = -coneAngle * 0.5f;
+        float angleStep = rayCount > 1 ? coneAngle / (rayCount - 1) : 0f;
 
         for (int i = 0; i < rayCount; i++)
         {
@@ -23,59 +30,33 @@ public class BattalionAttackSystemScr : MonoBehaviour
             Vector3 rayDirection =
                 Quaternion.Euler(0f, 0f, angle) * direction;
 
-            RaycastHit2D hit = Physics2D.Raycast(
+            // RaycastAll, а не Raycast: origin лежить УСЕРЕДИНІ власного
+            // колайдера атакуючого батальйона, тож звичайний одиничний
+            // Raycast майже завжди впирається сам у себе на дистанції ~0
+            // і ніколи не долітає до цілі позаду. RaycastAll повертає всі
+            // перетини вздовж променя — власний колайдер просто
+            // пропускаємо (target == attacker) і перевіряємо далі.
+            RaycastHit2D[] hits = Physics2D.RaycastAll(
                 origin,
                 rayDirection,
                 maxAttackRange,
                 battalionLayer
             );
 
-            if (hit.collider == null)
-                continue;
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
-            BattalionScr target =
-                hit.collider.GetComponent<BattalionScr>();
+            foreach (RaycastHit2D hit in hits)
+            {
+                BattalionScr target = hit.collider.GetComponent<BattalionScr>();
 
-            if (target == null)
-                continue;
+                if (target == null || target == attacker)
+                    continue;
 
-            if (target.teamID == attacker.teamID)
-                continue;
+                if (target.teamID == attacker.teamID)
+                    continue;
 
-            return target;
-        }
-
-        return null;
-    }
-
-    private BattalionScr ScanRay(BattalionScr attacker, Vector3 origin, Vector3 direction, float range)
-    {
-        for (float distance = step;
-             distance <= range;
-             distance += step)
-        {
-            Vector3 point =
-                origin + direction * distance;
-
-            Collider2D hit = Physics2D.OverlapCircle(
-                point,
-                0.1f,
-                battalionLayer
-            );
-
-            if (hit == null)
-                continue;
-
-            BattalionScr target =
-                hit.GetComponent<BattalionScr>();
-
-            if (target == null)
-                continue;
-
-            if (target.teamID == attacker.teamID)
-                continue;
-
-            return target;
+                return target;
+            }
         }
 
         return null;
