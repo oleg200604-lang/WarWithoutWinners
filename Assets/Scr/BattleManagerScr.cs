@@ -4,6 +4,7 @@ using UnityEngine;
 
 public class BattleManagerScr : MonoBehaviour
 {
+
     public List<BatalionManagerScr> battalionManagers;
     public bool isActive;
     public void IsSrtart()

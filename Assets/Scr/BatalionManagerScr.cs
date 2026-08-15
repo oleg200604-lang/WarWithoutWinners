@@ -16,13 +16,11 @@ public class BatalionManagerScr : MonoBehaviour
     public BattalionScr selectBattalion;
     public BattleManagerScr battleManager;
     public List<Regiment> regiment;
-    // Який наказ (0, 1, 2) зараз редагується клавішами 1/2/3
-
     public CommandType commandType;
     public GameObject commandPanel;
     private int commandDuty;
     public bool isRedy;
-    public int CommandDuty => commandDuty; // читання ззовні для візуалізації
+    public int CommandDuty => commandDuty; 
 
     private void Update()
     {
@@ -41,7 +39,33 @@ public class BatalionManagerScr : MonoBehaviour
             commandDuty = 2;
             print("Наказ 3");
         }
+        switch (commandType)
+        {
+            case CommandType.None:
+                break;
 
+            case CommandType.Move:
+                Move();
+                break;
+
+            case CommandType.Attack:
+                Attack();
+                break;
+        }
+        
+
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
+        {
+
+            isRedy = true;
+            battleManager.IsSrtart();
+            selectBattalion = null;
+            commandPanel.SetActive(false);
+        }
+    }
+
+    private void Move()
+    {
         if (Mouse.current.rightButton.wasPressedThisFrame && selectBattalion != null)
         {
             Vector3 mousePosition = Mouse.current.position.ReadValue();
@@ -61,16 +85,65 @@ public class BatalionManagerScr : MonoBehaviour
                 print("Точка поза межами дальності — наказ не встановлено");
             }
         }
-
-        if (Keyboard.current.spaceKey.wasPressedThisFrame)
-        {
-
-            isRedy = true;
-            battleManager.IsSrtart();
-            selectBattalion = null;
-            commandPanel.SetActive(false);
-        }
     }
+
+    private void Attack()
+    {
+        if (Mouse.current.rightButton.wasPressedThisFrame &&
+            selectBattalion != null)
+        {
+            Vector3 mousePosition =
+                Mouse.current.position.ReadValue();
+
+            Vector3 worldPosition =
+                Camera.main.ScreenToWorldPoint(mousePosition);
+
+            worldPosition.z = 0;
+
+            Vector3 origin =
+                selectBattalion.GetOrderOrigin(commandDuty);
+
+            Vector3 direction =
+                worldPosition - origin;
+
+            direction.z = 0;
+
+            if (direction.sqrMagnitude < 0.001f)
+                return;
+
+            direction.Normalize();
+
+            float remainingSpeed =
+                selectBattalion.GetRemainingRange(commandDuty);
+
+            // Атака использует Speed в 2 раза быстрее Move.
+            float maxAttackRange =
+                remainingSpeed / 2f;
+
+            if (maxAttackRange <= 0f)
+            {
+                print("Недостатньо Speed для атаки");
+                return;
+            }
+
+            if (selectBattalion.SetAttackOrder(
+                commandDuty,
+                direction,
+                maxAttackRange))
+            {
+                print(
+                    "Наказ атаки встановлено. " +
+                    "Дальність: " +
+                    maxAttackRange
+                );
+            }
+            else
+            {
+                print("Не вдалося встановити наказ атаки");
+            }
+        }
+    }   
+
     public void SelectBattalion(BattalionScr battalion) 
     {
         commandType = CommandType.None;
@@ -89,6 +162,29 @@ public class BatalionManagerScr : MonoBehaviour
 
             print(battalion.nameBattalion);
         }
+    }
+
+    public void SetCommandType(int type)
+    {
+        switch (type)
+        {
+            case 0:
+                commandType = CommandType.None;
+                break;
+
+            case 1:
+                commandType = CommandType.Move;
+                break;
+
+            case 2:
+                commandType = CommandType.Attack;
+                break;
+
+            case 3:
+                commandType = CommandType.Defend;
+                break;
+        }
+
     }
 }
 
