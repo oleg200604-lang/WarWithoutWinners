@@ -12,6 +12,7 @@ public class BattalionScr : MonoBehaviour
 
     public BatalionManagerScr batalionManager;
     public BattleManagerScr battleManager;
+    public BattalionAttackSystemScr attackSystem;
 
     public Personnel personnel;
 
@@ -31,9 +32,17 @@ public class BattalionScr : MonoBehaviour
         command[2] = new MoveCommand();
     }
 
+    private int lastExecutedTurn = -1;
+
     private void Start()
     {
         nameBattalion = "Infantry " + Random.Range(0, 100);
+
+        // Якщо почати з lastExecutedTurn = -1 без цього — перший-ліпший
+        // Update() кадру одразу побачить turnId(0) != -1 і стартоне
+        // виконання наказів, навіть якщо ще ніхто не натиснув "Готово".
+        if (battleManager != null)
+            lastExecutedTurn = battleManager.turnId;
     }
 
     private void OnMouseDown()
@@ -55,6 +64,12 @@ public class BattalionScr : MonoBehaviour
             {
                 origin = move.pos;
             }
+            else if (command[i] is AttackOrder attack && attack.isSet)
+            {
+                // Атака теж реально пересуває батальйон — наступний наказ
+                // має рахуватись від точки, куди атака його довела.
+                origin += attack.direction * attack.range;
+            }
         }
 
         return origin;
@@ -75,6 +90,12 @@ public class BattalionScr : MonoBehaviour
             {
                 used += Vector3.Distance(point, move.pos);
                 point = move.pos;
+            }
+            else if (command[i] is AttackOrder attack && attack.isSet)
+            {
+                // Той самий "курс 2 Speed за одиницю", що й у SetAttackOrder.
+                used += attack.range * 2f;
+                point += attack.direction * attack.range;
             }
         }
 
@@ -146,11 +167,19 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Заглушка на майбутню логіку втрат — поки просто фіксує влучання.
+    /// </summary>
+    public void TakeDamage()
+    {
+        print("Damage!");
+    }
+
     private void Update()
     {
-        if (battleManager.isActive)
+        if (battleManager != null && battleManager.turnId != lastExecutedTurn)
         {
-            battleManager.isActive = false;
+            lastExecutedTurn = battleManager.turnId;
             StartCoroutine(ExecuteOrders());
         }
     }
@@ -191,15 +220,47 @@ public class BattalionScr : MonoBehaviour
             }
             else if (command[i] is AttackOrder attack && attack.isSet)
             {
-                // Поки тільки показуємо, що наказ виконується.
-                print(
-                    "Attack: direction = "
-                    + attack.direction
-                    + ", range = "
-                    + attack.range
-                );
+                Vector3 start = transform.position;
+                Vector3 target = start + attack.direction * attack.range;
 
-                yield return new WaitForSeconds(orderDuration);
+                if (attackSystem != null)
+                {
+                    BattalionScr hitTarget = attackSystem.FindTarget(this, attack.direction, attack.range);
+
+                    if (hitTarget != null)
+                    {
+                        hitTarget.TakeDamage();
+                        print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
+                    }
+                    else
+                    {
+                        print(nameBattalion + ": атака нікого не зачепила");
+                    }
+                }
+                else
+                {
+                    Debug.LogWarning(nameBattalion + ": attackSystem не призначено — атака рухає батальйон, але не завдає шкоди.", this);
+                }
+
+                float t = 0f;
+
+                while (t < orderDuration)
+                {
+                    t += Time.deltaTime;
+
+                    transform.position =
+                        Vector3.Lerp(
+                            start,
+                            target,
+                            t / orderDuration
+                        );
+
+                    yield return null;
+                }
+
+                transform.position = target;
+
+                print("Attack: direction = " + attack.direction + ", range = " + attack.range);
             }
             else
             {

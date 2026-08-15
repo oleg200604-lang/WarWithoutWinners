@@ -12,9 +12,13 @@ public class BattalionVisualsScr : MonoBehaviour
     public BattalionScr battalion;
     public BatalionManagerScr batalionManager;
 
-    [Header("Мітки наказів (показуються тільки коли батальйон обраний)")]
+    [Header("Мітки наказу руху (показуються тільки коли батальйон обраний)")]
     public GameObject orderMarkerPrefab;
     private GameObject[] orderMarkers = new GameObject[3];
+
+    [Header("Мітки наказу атаки")]
+    public GameObject attackMarkerPrefab;
+    private GameObject[] attackMarkers = new GameObject[3];
 
     [Header("Стрілки між точками наказів")]
     [Tooltip("Префаб має бути 1 юніт завдовжки вздовж локальної осі +X, з піботом по центру.")]
@@ -43,33 +47,46 @@ public class BattalionVisualsScr : MonoBehaviour
 
         for (int i = 0; i < battalion.command.Length; i++)
         {
-            bool hasOrder = isSelected && battalion.command[i] is MoveCommand move && move.isSet;
-            UpdateOrderMarker(i, hasOrder);
-            UpdateOrderArrow(i, hasOrder);
+            bool hasMove = isSelected && battalion.command[i] is MoveCommand move && move.isSet;
+            bool hasAttack = isSelected && battalion.command[i] is AttackOrder attack && attack.isSet;
+
+            Vector3 movePoint = hasMove ? ((MoveCommand)battalion.command[i]).pos : default;
+
+            Vector3 attackPoint = default;
+            if (hasAttack)
+            {
+                AttackOrder attackOrder = (AttackOrder)battalion.command[i];
+                attackPoint = battalion.GetOrderOrigin(i) + attackOrder.direction * attackOrder.range;
+            }
+
+            UpdateMarker(orderMarkers, orderMarkerPrefab, i, hasMove, movePoint);
+            UpdateMarker(attackMarkers, attackMarkerPrefab, i, hasAttack, attackPoint);
+
+            Vector3 arrowEnd = hasMove ? movePoint : attackPoint;
+            UpdateOrderArrow(i, hasMove || hasAttack, battalion.GetOrderOrigin(i), arrowEnd);
         }
     }
 
-    private void UpdateOrderMarker(int slot, bool show)
+    private void UpdateMarker(GameObject[] pool, GameObject prefab, int slot, bool show, Vector3 point)
     {
-        if (orderMarkerPrefab == null)
+        if (prefab == null)
             return;
 
         if (!show)
         {
-            if (orderMarkers[slot] != null)
-                orderMarkers[slot].SetActive(false);
+            if (pool[slot] != null)
+                pool[slot].SetActive(false);
             return;
         }
 
-        Vector3 pos = ((MoveCommand)battalion.command[slot]).pos;
-        if (orderMarkers[slot] == null)
-            orderMarkers[slot] = Instantiate(orderMarkerPrefab, pos, Quaternion.identity);
+        if (pool[slot] == null)
+            pool[slot] = Instantiate(prefab, point, Quaternion.identity);
 
-        orderMarkers[slot].SetActive(true);
-        orderMarkers[slot].transform.position = pos;
+        pool[slot].SetActive(true);
+        pool[slot].transform.position = point;
     }
 
-    private void UpdateOrderArrow(int slot, bool show)
+    private void UpdateOrderArrow(int slot, bool show, Vector3 start, Vector3 end)
     {
         if (arrowPrefab == null)
             return;
@@ -81,8 +98,6 @@ public class BattalionVisualsScr : MonoBehaviour
             return;
         }
 
-        Vector3 start = battalion.GetOrderOrigin(slot);
-        Vector3 end = ((MoveCommand)battalion.command[slot]).pos;
         Vector3 dir = end - start;
         float distance = dir.magnitude;
 

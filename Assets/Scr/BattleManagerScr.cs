@@ -4,24 +4,22 @@ using UnityEngine;
 
 public class BattleManagerScr : MonoBehaviour
 {
-
     public List<BatalionManagerScr> battalionManagers;
-    public bool isActive;
+    public int turnId;
+
     public void IsSrtart()
     {
-        int x=0;
-        for (int i = 0; i< battalionManagers.Count; i++)
+        for (int i = 0; i < battalionManagers.Count; i++)
         {
-            if (battalionManagers[i].isRedy == true)
-            {
-                x++;
-                if (x-1 == i)
-                {
-                    isActive = true;
-                }
-            }
-            print(x + "=" + i);
+            if (!battalionManagers[i].isRedy)
+                return; // хоч один не готовий — хід не починається
+        }
+
+        turnId++;
+
+        for (int i = 0; i < battalionManagers.Count; i++)
+        {
+            battalionManagers[i].isRedy = false; // готуємо до наступного ходу
         }
     }
-
 }
