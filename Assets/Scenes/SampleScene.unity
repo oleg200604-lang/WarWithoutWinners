@@ -1150,8 +1150,12 @@ MonoBehaviour:
     combatCapable: 800
     combatCapableNo: 0
     experience: 0
-    organization: 0
-    organizationMax: 0
+    organization: 100
+    organizationMax: 100
+  battalion:
+    type: 1
+    damage: 200
+    Speed: 0
   teamID: 0
   speed: 5
   orderDuration: 1
@@ -1878,6 +1882,10 @@ MonoBehaviour:
     experience: 0
     organization: 0
     organizationMax: 0
+  battalion:
+    type: 0
+    damage: 0
+    Speed: 0
   teamID: 1
   speed: 5
   orderDuration: 1

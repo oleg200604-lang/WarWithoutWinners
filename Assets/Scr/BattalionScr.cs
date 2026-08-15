@@ -15,6 +15,7 @@ public class BattalionScr : MonoBehaviour
     public BattalionAttackSystemScr attackSystem;
 
     public Personnel personnel;
+    public Battalion battalion;
 
     public Command[] command = new Command[3];
 
@@ -170,9 +171,11 @@ public class BattalionScr : MonoBehaviour
     /// <summary>
     /// Заглушка на майбутню логіку втрат — поки просто фіксує влучання.
     /// </summary>
-    public void TakeDamage()
+    public void TakeDamage(float damage)
     {
-        print("Damage!");
+        print(damage);
+
+        personnel.Losses(1, 3, damage);
     }
 
     private void Update()
@@ -229,7 +232,8 @@ public class BattalionScr : MonoBehaviour
 
                     if (hitTarget != null)
                     {
-                        hitTarget.TakeDamage();
+                        hitTarget.TakeDamage(battalion.damage * (float)(personnel.personnelMax / (personnel.combatCapable + (personnel.combatCapableNo/2))) * (float)(personnel.organizationMax/personnel.organization));
+                        Debug.Log(battalion.damage +" "+ (float)(personnel.personnelMax / (personnel.combatCapable + (personnel.combatCapableNo / 2))) + " " + (float)(personnel.organizationMax / personnel.organization));
                         print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
                     }
                     else
@@ -300,6 +304,86 @@ public class Personnel
 
     public int organization;
     public int organizationMax;
+    public void Losses(float deadRatio, float earlyRatio, float damage)
+    {
+        if (damage <= 0)
+            return;
+
+        int damageAmount = (int)damage;
+
+        if (damageAmount <= 0)
+            return;
+
+        // =========================================
+        // 1. ЯКЩО БОЄЗДАТНИХ НЕМАЄ
+        // =========================================
+
+        if (combatCapable <= 0)
+        {
+            // Вся шкода йде в небоєздатних.
+            int killedEarly = System.Math.Min(damageAmount, combatCapableNo);
+
+            combatCapableNo -= killedEarly;
+
+            return;
+        }
+
+        // =========================================
+        // 2. Є БОЄЗДАТНІ
+        // =========================================
+
+        int actualDamage = System.Math.Min(damageAmount, combatCapable);
+
+        // Загальна сума пропорцій
+        float ratioSum = deadRatio + earlyRatio;
+
+        if (ratioSum <= 0)
+            return;
+
+        // =========================================
+        // 3. РОЗПОДІЛ НОВИХ ВТРАТ
+        // =========================================
+
+        // Частина стає мертвими
+        int newDead = (int)(actualDamage * deadRatio / ratioSum);
+
+        // Решта стає небоєздатними
+        int newEarly = actualDamage - newDead;
+
+        // =========================================
+        // 4. ЧАСТИНА ІСНУЮЧИХ Н
+        //    ПЕРЕТВОРЮЄТЬСЯ НА М
+        // =========================================
+
+        int earlyToDead = 0;
+
+        if (combatCapableNo > 0)
+        {
+            // Кількість Н, яка переходить у М.
+            earlyToDead = System.Math.Min(newDead, combatCapableNo);
+
+            combatCapableNo -= earlyToDead;
+        }
+
+        // =========================================
+        // 5. ЗАБИРАЄМО БОЄЗДАТНИХ
+        // =========================================
+
+        combatCapable -= actualDamage;
+
+        // =========================================
+        // 6. ДОДАЄМО НОВИХ НЕБОЄЗДАТНИХ
+        // =========================================
+
+        combatCapableNo += newEarly;
+
+        // =========================================
+        // МЕРТВІ НЕ ЗБЕРІГАЮТЬСЯ ОКРЕМО.
+        //
+        // dead =
+        // personnelMax - combatCapable - combatCapableNo
+        // =========================================
+    }
 }
 
 public enum CommandType
@@ -312,6 +396,7 @@ public enum CommandType
 
 public interface Command
 {
+
 }
 
 [System.Serializable]
