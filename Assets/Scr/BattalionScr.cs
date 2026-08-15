@@ -39,11 +39,10 @@ public class BattalionScr : MonoBehaviour
     {
         nameBattalion = "Infantry " + Random.Range(0, 100);
 
-        // Якщо почати з lastExecutedTurn = -1 без цього — перший-ліпший
-        // Update() кадру одразу побачить turnId(0) != -1 і стартоне
-        // виконання наказів, навіть якщо ще ніхто не натиснув "Готово".
         if (battleManager != null)
+        {
             lastExecutedTurn = battleManager.turnId;
+        }
     }
 
     private void OnMouseDown()
@@ -51,10 +50,6 @@ public class BattalionScr : MonoBehaviour
         batalionManager.SelectBattalion(this);
     }
 
-    /// <summary>
-    /// Точка, від якої відраховується наказ slot.
-    /// Береться кінець останнього встановленого Move-наказу.
-    /// </summary>
     public Vector3 GetOrderOrigin(int slot)
     {
         Vector3 origin = transform.position;
@@ -67,8 +62,6 @@ public class BattalionScr : MonoBehaviour
             }
             else if (command[i] is AttackOrder attack && attack.isSet)
             {
-                // Атака теж реально пересуває батальйон — наступний наказ
-                // має рахуватись від точки, куди атака його довела.
                 origin += attack.direction * attack.range;
             }
         }
@@ -76,10 +69,6 @@ public class BattalionScr : MonoBehaviour
         return origin;
     }
 
-    /// <summary>
-    /// Повертає скільки звичайного Speed залишилося
-    /// для цього та наступних наказів.
-    /// </summary>
     public float GetRemainingRange(int slot)
     {
         float used = 0f;
@@ -94,7 +83,6 @@ public class BattalionScr : MonoBehaviour
             }
             else if (command[i] is AttackOrder attack && attack.isSet)
             {
-                // Той самий "курс 2 Speed за одиницю", що й у SetAttackOrder.
                 used += attack.range * 2f;
                 point += attack.direction * attack.range;
             }
@@ -103,9 +91,6 @@ public class BattalionScr : MonoBehaviour
         return Mathf.Max(0f, speed - used);
     }
 
-    /// <summary>
-    /// Встановлює наказ Move.
-    /// </summary>
     public void SetMoveOrder(int slot, Vector3 pos)
     {
         if (slot < 0 || slot >= command.Length)
@@ -119,10 +104,6 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Встановлює наказ Attack.
-    /// Атака витрачає Speed у 2 рази швидше за Move.
-    /// </summary>
     public bool SetAttackOrder(
         int slot,
         Vector3 direction,
@@ -134,7 +115,6 @@ public class BattalionScr : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             return false;
 
-        // Атака коштує 2 Speed за одиницю дальності.
         float maxAttackRange = GetRemainingRange(slot) / 2f;
 
         if (range > maxAttackRange)
@@ -157,9 +137,6 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
-    /// <summary>
-    /// Скидає всю чергу наказів.
-    /// </summary>
     private void ClearAllOrders()
     {
         for (int i = 0; i < command.Length; i++)
@@ -168,14 +145,11 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Заглушка на майбутню логіку втрат — поки просто фіксує влучання.
-    /// </summary>
     public void TakeDamage(float damage)
     {
         print(damage);
 
-        personnel.Losses(1, 3, damage);
+        personnel.Losses(1, 9, damage);
     }
 
     private void Update()
@@ -268,7 +242,6 @@ public class BattalionScr : MonoBehaviour
             }
             else
             {
-                // Порожній наказ.
                 yield return new WaitForSeconds(orderDuration);
             }
         }
@@ -314,75 +287,42 @@ public class Personnel
         if (damageAmount <= 0)
             return;
 
-        // =========================================
-        // 1. ЯКЩО БОЄЗДАТНИХ НЕМАЄ
-        // =========================================
 
         if (combatCapable <= 0)
         {
-            // Вся шкода йде в небоєздатних.
             int killedEarly = System.Math.Min(damageAmount, combatCapableNo);
-
             combatCapableNo -= killedEarly;
-
             return;
         }
 
-        // =========================================
-        // 2. Є БОЄЗДАТНІ
-        // =========================================
 
         int actualDamage = System.Math.Min(damageAmount, combatCapable);
 
-        // Загальна сума пропорцій
         float ratioSum = deadRatio + earlyRatio;
 
         if (ratioSum <= 0)
             return;
 
-        // =========================================
-        // 3. РОЗПОДІЛ НОВИХ ВТРАТ
-        // =========================================
-
-        // Частина стає мертвими
         int newDead = (int)(actualDamage * deadRatio / ratioSum);
 
-        // Решта стає небоєздатними
         int newEarly = actualDamage - newDead;
 
-        // =========================================
-        // 4. ЧАСТИНА ІСНУЮЧИХ Н
-        //    ПЕРЕТВОРЮЄТЬСЯ НА М
-        // =========================================
 
         int earlyToDead = 0;
 
         if (combatCapableNo > 0)
         {
-            // Кількість Н, яка переходить у М.
             earlyToDead = System.Math.Min(newDead, combatCapableNo);
 
             combatCapableNo -= earlyToDead;
         }
 
-        // =========================================
-        // 5. ЗАБИРАЄМО БОЄЗДАТНИХ
-        // =========================================
 
         combatCapable -= actualDamage;
 
-        // =========================================
-        // 6. ДОДАЄМО НОВИХ НЕБОЄЗДАТНИХ
-        // =========================================
 
         combatCapableNo += newEarly;
 
-        // =========================================
-        // МЕРТВІ НЕ ЗБЕРІГАЮТЬСЯ ОКРЕМО.
-        //
-        // dead =
-        // personnelMax - combatCapable - combatCapableNo
-        // =========================================
     }
 }
 
@@ -404,11 +344,10 @@ public class Battalion
 {
     public BattalionType type;
     public float damage;
-    public float Speed;
+    public float speed;
 }
 
 public enum BattalionType
 {
-    none,
-    inf
+    none, infantry, artillery, cavalry, mechanically
 }
