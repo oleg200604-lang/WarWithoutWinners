@@ -26,6 +26,10 @@ public class BattalionScr : MonoBehaviour
 
     public float orderDuration = 1f;
 
+    [Header("Атака / Захист")]
+    [Tooltip("Фіксована дальність — НЕ залежить від того, скільки Speed вже витрачено іншими наказами в черзі.")]
+    public float attackRange = 2.5f;
+
     private void Awake()
     {
         command[0] = new MoveCommand();
@@ -115,11 +119,12 @@ public class BattalionScr : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             return false;
 
-        float maxAttackRange = GetRemainingRange(slot) / 2f;
-
-        if (range > maxAttackRange)
+        // Фіксована дальність — раніше тут стояло GetRemainingRange(slot)/2f,
+        // через що атака ставала слабшою залежно від того, скільки Speed
+        // вже витратили попередні накази в черзі. Тепер це незалежний ліміт.
+        if (range > attackRange)
         {
-            range = maxAttackRange;
+            range = attackRange;
         }
 
         if (range <= 0f)
@@ -137,6 +142,34 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Захист — гравець задає лише напрямок, батальйон нікуди не рухається
+    /// і Speed не витрачає. Дальність зони — та сама фіксована attackRange,
+    /// що й в атаки, незалежно від залишку Speed.
+    /// </summary>
+    public bool SetDefendOrder(int slot, Vector3 direction)
+    {
+        if (slot < 0 || slot >= command.Length)
+            return false;
+
+        if (direction.sqrMagnitude < 0.001f)
+            return false;
+
+        if (attackRange <= 0f)
+            return false;
+
+        DefendOrder defend = new DefendOrder();
+
+        defend.direction = direction.normalized;
+        defend.range = attackRange;
+        defend.commandType = CommandType.Defend;
+        defend.isSet = true;
+
+        command[slot] = defend;
+
+        return true;
+    }
+
     private void ClearAllOrders()
     {
         for (int i = 0; i < command.Length; i++)
@@ -150,6 +183,14 @@ public class BattalionScr : MonoBehaviour
         print(damage);
 
         personnel.Losses(1, 9, damage);
+    }
+
+    /// <summary>Спільна формула шкоди для Attack і Defend — щоб не дублювати той самий вираз двічі.</summary>
+    private float ComputeAttackDamage()
+    {
+        return battalion.damage
+            * (float)(personnel.personnelMax / (personnel.combatCapable + (personnel.combatCapableNo / 2)))
+            * (float)(personnel.organizationMax / personnel.organization);
     }
 
     private void Update()
@@ -200,26 +241,12 @@ public class BattalionScr : MonoBehaviour
                 Vector3 start = transform.position;
                 Vector3 target = start + attack.direction * attack.range;
 
-                if (attackSystem != null)
-                {
-                    BattalionScr hitTarget = attackSystem.FindTarget(this, attack.direction, attack.range);
-
-                    if (hitTarget != null)
-                    {
-                        hitTarget.TakeDamage(battalion.damage * (float)(personnel.personnelMax / (personnel.combatCapable + (personnel.combatCapableNo/2))) * (float)(personnel.organizationMax/personnel.organization));
-                        Debug.Log(battalion.damage +" "+ (float)(personnel.personnelMax / (personnel.combatCapable + (personnel.combatCapableNo / 2))) + " " + (float)(personnel.organizationMax / personnel.organization));
-                        print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
-                    }
-                    else
-                    {
-                        print(nameBattalion + ": атака нікого не зачепила");
-                    }
-                }
-                else
+                if (attackSystem == null)
                 {
                     Debug.LogWarning(nameBattalion + ": attackSystem не призначено — атака рухає батальйон, але не завдає шкоди.", this);
                 }
 
+                bool hasHit = false;
                 float t = 0f;
 
                 while (t < orderDuration)
@@ -233,12 +260,67 @@ public class BattalionScr : MonoBehaviour
                             t / orderDuration
                         );
 
+                    // Перевіряємо щокадру, поки батальйон іде вперед — а не
+                    // лише один раз на старті. Дальність променя щоразу
+                    // береться від ПОТОЧНОЇ позиції до кінця шляху.
+                    if (!hasHit && attackSystem != null)
+                    {
+                        float remainingDistance = Vector3.Distance(transform.position, target);
+                        BattalionScr hitTarget = attackSystem.FindTarget(this, attack.direction, remainingDistance);
+
+                        if (hitTarget != null)
+                        {
+                            float damage = ComputeAttackDamage();
+                            hitTarget.TakeDamage(damage);
+                            print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
+                            hasHit = true;
+                        }
+                    }
+
                     yield return null;
                 }
 
                 transform.position = target;
 
+                if (attackSystem != null && !hasHit)
+                {
+                    print(nameBattalion + ": атака нікого не зачепила");
+                }
+
                 print("Attack: direction = " + attack.direction + ", range = " + attack.range);
+            }
+            else if (command[i] is DefendOrder defend && defend.isSet)
+            {
+                // Захист нікуди не рухається — просто чекає весь час
+                // наказу (orderDuration) і щокадру перевіряє свою зону.
+                // Щойно там з'являється ворог — б'є один раз.
+                bool hasFired = false;
+                float t = 0f;
+
+                while (t < orderDuration)
+                {
+                    t += Time.deltaTime;
+
+                    if (!hasFired && attackSystem != null)
+                    {
+                        BattalionScr hitTarget = attackSystem.FindTarget(this, defend.direction, defend.range);
+
+                        if (hitTarget != null)
+                        {
+                            float damage = ComputeAttackDamage();
+                            hitTarget.TakeDamage(damage);
+                            print(nameBattalion + ": захист влучив по " + hitTarget.nameBattalion);
+                            hasFired = true;
+                        }
+                    }
+
+                    yield return null;
+                }
+
+                if (!hasFired)
+                {
+                    print(nameBattalion + ": захист нікого не побачив");
+                }
             }
             else
             {
@@ -264,6 +346,15 @@ public class AttackOrder : Command
     public CommandType commandType;
     public Vector3 direction;
     public float range;
+    public bool isSet;
+}
+
+[System.Serializable]
+public class DefendOrder : Command
+{
+    public CommandType commandType;
+    public Vector3 direction; // гравець визначає лише напрямок
+    public float range;       // та сама фіксована attackRange, що й в атаки
     public bool isSet;
 }
 

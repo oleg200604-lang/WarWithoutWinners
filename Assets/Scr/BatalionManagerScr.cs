@@ -15,7 +15,7 @@ public class BatalionManagerScr : MonoBehaviour
     public GameObject commandPanel;
     private int commandDuty;
     public bool isRedy;
-    public int CommandDuty => commandDuty; 
+    public int CommandDuty => commandDuty;
 
     private void Update()
     {
@@ -46,8 +46,12 @@ public class BatalionManagerScr : MonoBehaviour
             case CommandType.Attack:
                 Attack();
                 break;
+
+            case CommandType.Defend:
+                Defend();
+                break;
         }
-        
+
 
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
@@ -106,35 +110,75 @@ public class BatalionManagerScr : MonoBehaviour
             if (direction.sqrMagnitude < 0.001f)
                 return;
 
+            float clickDistance = direction.magnitude;
             direction.Normalize();
 
-            float remainingSpeed =
-                selectBattalion.GetRemainingRange(commandDuty);
-
-            // Атака использует Speed в 2 раза быстрее Move.
-            float maxAttackRange =
-                remainingSpeed / 2f;
+            // Фіксована дальність — не залежить від залишку Speed.
+            float maxAttackRange = selectBattalion.attackRange;
 
             if (maxAttackRange <= 0f)
             {
-                print("Недостатньо Speed для атаки");
+                print("attackRange батальйона дорівнює нулю");
                 return;
             }
+
+            // Береться реальна відстань до кліку, обрізана максимумом —
+            // так само, як Move.
+            float range = Mathf.Min(clickDistance, maxAttackRange);
 
             if (selectBattalion.SetAttackOrder(
                 commandDuty,
                 direction,
-                maxAttackRange))
+                range))
             {
                 print(
                     "Наказ атаки встановлено. " +
                     "Дальність: " +
-                    maxAttackRange
+                    range
                 );
             }
             else
             {
                 print("Не вдалося встановити наказ атаки");
+            }
+        }
+    }
+
+    private void Defend()
+    {
+        if (Mouse.current.rightButton.wasPressedThisFrame &&
+            selectBattalion != null)
+        {
+            Vector3 mousePosition =
+                Mouse.current.position.ReadValue();
+
+            Vector3 worldPosition =
+                Camera.main.ScreenToWorldPoint(mousePosition);
+
+            worldPosition.z = 0;
+
+            Vector3 origin =
+                selectBattalion.GetOrderOrigin(commandDuty);
+
+            // На відміну від атаки — дистанція кліку не має значення,
+            // гравець задає лише напрямок захисту.
+            Vector3 direction =
+                worldPosition - origin;
+
+            direction.z = 0;
+
+            if (direction.sqrMagnitude < 0.001f)
+                return;
+
+            direction.Normalize();
+
+            if (selectBattalion.SetDefendOrder(commandDuty, direction))
+            {
+                print("Наказ захисту встановлено. Напрямок: " + direction);
+            }
+            else
+            {
+                print("Не вдалося встановити наказ захисту");
             }
         }
     }
@@ -147,7 +191,7 @@ public class BatalionManagerScr : MonoBehaviour
             return;
         }
 
-        Regiment newRegiment = new Regiment{nameRegiment = "Regiment", battalions = new List<BattalionScr>() { }, battalionType = BattalionType.infantry };
+        Regiment newRegiment = new Regiment { nameRegiment = "Regiment", battalions = new List<BattalionScr>() { }, battalionType = BattalionType.infantry };
 
         newRegiment.battalions.Add(selectBattalion);
 
@@ -177,7 +221,7 @@ public class BatalionManagerScr : MonoBehaviour
     }
 
 
-    public void SelectBattalion(BattalionScr battalion) 
+    public void SelectBattalion(BattalionScr battalion)
     {
         commandType = CommandType.None;
         if (teamID == battalion.teamID)
@@ -187,7 +231,7 @@ public class BatalionManagerScr : MonoBehaviour
                 selectBattalion = null;
                 commandPanel.SetActive(false);
             }
-            else 
+            else
             {
                 selectBattalion = battalion;
                 commandPanel.SetActive(true);

@@ -3,13 +3,12 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// Прев'ю наказу, який гравець зараз готує (до правого кліку):
-/// — Move: заповнене коло дальності пересування (як і раніше);
-/// — Attack: коло максимальної дальності атаки (Speed/2) + віяло
-///   променів (rayCount/ConeAngle обраного батальйона — ті самі, що й
-///   реально рахує BattalionAttackSystemScr.FindTarget), наведене на
-///   курсор миші.
-/// Показує РІВНО ОДНЕ з двох — залежно від batalionManager.commandType.
-/// Раніше коло руху показувалось завжди, незалежно від обраної панелі.
+/// — Move: заповнене коло дальності пересування;
+/// — Attack / Defend: коло фіксованої дальності (selected.attackRange,
+///   не залежить від залишку Speed) + віяло променів (rayCount/ConeAngle
+///   обраного батальйона), наведене на курсор миші. Attack і Defend
+///   розрізняються лише кольором.
+/// Показує РІВНО ОДНЕ з трьох — залежно від batalionManager.commandType.
 /// </summary>
 public class RangeIndicatorScr : MonoBehaviour
 {
@@ -17,13 +16,15 @@ public class RangeIndicatorScr : MonoBehaviour
 
     [Header("Заливка (без контура)")]
     public MeshFilter meshFilter;
-    public Color fillColor = new Color(0.2f, 1f, 0.3f, 0.25f);        // Move
+    public Color fillColor = new Color(0.2f, 1f, 0.3f, 0.25f);         // Move
     public Color attackFillColor = new Color(1f, 0.25f, 0.25f, 0.25f); // Attack
+    public Color defendFillColor = new Color(0.25f, 0.45f, 1f, 0.25f); // Defend
     public int segments = 48;
 
-    [Header("Промені атаки")]
+    [Header("Промені атаки/захисту")]
     public LineRenderer rayFanLineRenderer;
     public Color rayColor = new Color(1f, 0.3f, 0.3f, 0.6f);
+    public Color defendRayColor = new Color(0.3f, 0.5f, 1f, 0.6f);
 
     private Mesh mesh;
     private MeshRenderer meshRenderer;
@@ -70,10 +71,14 @@ public class RangeIndicatorScr : MonoBehaviour
             Show();
             BuildCircle(origin, radius, fillColor);
         }
-        else if (commandType == CommandType.Attack)
+        else if (commandType == CommandType.Attack || commandType == CommandType.Defend)
         {
-            float maxAttackRange = selected.GetRemainingRange(slot) / 2f;
-            if (maxAttackRange <= 0f)
+            bool isDefend = commandType == CommandType.Defend;
+
+            // Фіксована дальність — та сама attackRange, що й у
+            // SetAttackOrder/SetDefendOrder, не залежить від залишку Speed.
+            float maxRange = selected.attackRange;
+            if (maxRange <= 0f)
             {
                 Hide();
                 HideRayFan();
@@ -81,20 +86,21 @@ public class RangeIndicatorScr : MonoBehaviour
             }
 
             Show();
-            BuildCircle(origin, maxAttackRange, attackFillColor);
-            ShowRayFan(selected, origin, maxAttackRange);
+            BuildCircle(origin, maxRange, isDefend ? defendFillColor : attackFillColor);
+            ShowRayFan(selected, origin, maxRange, isDefend ? defendRayColor : rayColor);
         }
         else
         {
-            // None / Defend — поки що не показуємо жодного прев'ю руху/атаки.
+            // None — жодного прев'ю.
             Hide();
             HideRayFan();
         }
     }
 
-    private void ShowRayFan(BattalionScr selected, Vector3 origin, float range)
+    private void ShowRayFan(BattalionScr selected, Vector3 origin, float range, Color color)
     {
-        if (rayFanLineRenderer == null)
+        LineRenderer rayFan = EnsureRayFan();
+        if (rayFan == null)
             return;
 
         Vector3 direction = GetAimDirection(origin);
@@ -124,11 +130,38 @@ public class RangeIndicatorScr : MonoBehaviour
             points[i * 2 + 1] = origin + rayDir * range;
         }
 
-        rayFanLineRenderer.positionCount = points.Length;
-        rayFanLineRenderer.SetPositions(points);
-        rayFanLineRenderer.startColor = rayColor;
-        rayFanLineRenderer.endColor = rayColor;
-        rayFanLineRenderer.enabled = true;
+        rayFan.positionCount = points.Length;
+        rayFan.SetPositions(points);
+        rayFan.startColor = color;
+        rayFan.endColor = color;
+        rayFan.enabled = true;
+    }
+
+    /// <summary>
+    /// rayFanLineRenderer раніше треба було вручну перетягнути в
+    /// інспекторі — якщо цього не зробити, промені просто мовчки не
+    /// малювались. Тепер, якщо поле порожнє, компонент створює собі
+    /// LineRenderer сам, на дочірньому об'єкті, з базовим матеріалом
+    /// (Sprites/Default, він є в будь-якому проєкті).
+    /// </summary>
+    private LineRenderer EnsureRayFan()
+    {
+        if (rayFanLineRenderer != null)
+            return rayFanLineRenderer;
+
+        GameObject go = new GameObject("RayFanLineRenderer (auto)");
+        go.transform.SetParent(transform, false);
+
+        LineRenderer lr = go.AddComponent<LineRenderer>();
+        lr.useWorldSpace = true;
+        lr.widthMultiplier = 0.05f;
+
+        Shader shader = Shader.Find("Sprites/Default");
+        if (shader != null)
+            lr.material = new Material(shader);
+
+        rayFanLineRenderer = lr;
+        return rayFanLineRenderer;
     }
 
     private void HideRayFan()

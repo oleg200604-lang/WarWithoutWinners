@@ -20,6 +20,10 @@ public class BattalionVisualsScr : MonoBehaviour
     public GameObject attackMarkerPrefab;
     private GameObject[] attackMarkers = new GameObject[3];
 
+    [Header("Мітки наказу захисту")]
+    public GameObject defendMarkerPrefab;
+    private GameObject[] defendMarkers = new GameObject[3];
+
     [Header("Стрілки між точками наказів")]
     [Tooltip("Префаб має бути 1 юніт завдовжки вздовж локальної осі +X, з піботом по центру.")]
     public GameObject arrowPrefab;
@@ -49,6 +53,7 @@ public class BattalionVisualsScr : MonoBehaviour
         {
             bool hasMove = isSelected && battalion.command[i] is MoveCommand move && move.isSet;
             bool hasAttack = isSelected && battalion.command[i] is AttackOrder attack && attack.isSet;
+            bool hasDefend = isSelected && battalion.command[i] is DefendOrder defend && defend.isSet;
 
             Vector3 movePoint = hasMove ? ((MoveCommand)battalion.command[i]).pos : default;
 
@@ -59,11 +64,19 @@ public class BattalionVisualsScr : MonoBehaviour
                 attackPoint = battalion.GetOrderOrigin(i) + attackOrder.direction * attackOrder.range;
             }
 
+            Vector3 defendPoint = default;
+            if (hasDefend)
+            {
+                DefendOrder defendOrder = (DefendOrder)battalion.command[i];
+                defendPoint = battalion.GetOrderOrigin(i) + defendOrder.direction * defendOrder.range;
+            }
+
             UpdateMarker(orderMarkers, orderMarkerPrefab, i, hasMove, movePoint);
             UpdateMarker(attackMarkers, attackMarkerPrefab, i, hasAttack, attackPoint);
+            UpdateMarker(defendMarkers, defendMarkerPrefab, i, hasDefend, defendPoint);
 
-            Vector3 arrowEnd = hasMove ? movePoint : attackPoint;
-            UpdateOrderArrow(i, hasMove || hasAttack, battalion.GetOrderOrigin(i), arrowEnd);
+            Vector3 arrowEnd = hasMove ? movePoint : (hasAttack ? attackPoint : defendPoint);
+            UpdateOrderArrow(i, hasMove || hasAttack || hasDefend, battalion.GetOrderOrigin(i), arrowEnd);
         }
     }
 
