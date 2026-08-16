@@ -88,54 +88,25 @@ public class BatalionManagerScr : MonoBehaviour
 
     private void Attack()
     {
-        if (Mouse.current.rightButton.wasPressedThisFrame &&
-            selectBattalion != null)
+        if (Mouse.current.rightButton.wasPressedThisFrame && selectBattalion != null)
         {
-            Vector3 mousePosition =
-                Mouse.current.position.ReadValue();
-
-            Vector3 worldPosition =
-                Camera.main.ScreenToWorldPoint(mousePosition);
-
+            Vector3 mousePosition = Mouse.current.position.ReadValue();
+            Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
             worldPosition.z = 0;
 
-            Vector3 origin =
-                selectBattalion.GetOrderOrigin(commandDuty);
-
-            Vector3 direction =
-                worldPosition - origin;
-
+            Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
+            Vector3 direction = worldPosition - origin;
             direction.z = 0;
 
             if (direction.sqrMagnitude < 0.001f)
                 return;
 
-            float clickDistance = direction.magnitude;
+            float desiredMoveDistance = direction.magnitude;
             direction.Normalize();
 
-            // Фіксована дальність — не залежить від залишку Speed.
-            float maxAttackRange = selectBattalion.attackRange;
-
-            if (maxAttackRange <= 0f)
+            if (selectBattalion.SetAttackOrder(commandDuty, direction, desiredMoveDistance))
             {
-                print("attackRange батальйона дорівнює нулю");
-                return;
-            }
-
-            // Береться реальна відстань до кліку, обрізана максимумом —
-            // так само, як Move.
-            float range = Mathf.Min(clickDistance, maxAttackRange);
-
-            if (selectBattalion.SetAttackOrder(
-                commandDuty,
-                direction,
-                range))
-            {
-                print(
-                    "Наказ атаки встановлено. " +
-                    "Дальність: " +
-                    range
-                );
+                print("Наказ атаки встановлено.");
             }
             else
             {

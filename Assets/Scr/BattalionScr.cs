@@ -66,7 +66,7 @@ public class BattalionScr : MonoBehaviour
             }
             else if (command[i] is AttackOrder attack && attack.isSet)
             {
-                origin += attack.direction * attack.range;
+                origin += attack.direction * attack.moveDistance;
             }
         }
 
@@ -87,8 +87,9 @@ public class BattalionScr : MonoBehaviour
             }
             else if (command[i] is AttackOrder attack && attack.isSet)
             {
-                used += attack.range * 2f;
-                point += attack.direction * attack.range;
+                // Той самий бюджет Speed, що й Move, тільки дорожчий множник.
+                used += attack.moveDistance * attackMoveCostMultiplier;
+                point += attack.direction * attack.moveDistance;
             }
         }
 
@@ -108,10 +109,7 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
-    public bool SetAttackOrder(
-        int slot,
-        Vector3 direction,
-        float range)
+    public bool SetAttackOrder(int slot, Vector3 direction, float desiredMoveDistance)
     {
         if (slot < 0 || slot >= command.Length)
             return false;
@@ -119,21 +117,25 @@ public class BattalionScr : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             return false;
 
-        // Фіксована дальність — раніше тут стояло GetRemainingRange(slot)/2f,
-        // через що атака ставала слабшою залежно від того, скільки Speed
-        // вже витратили попередні накази в черзі. Тепер це незалежний ліміт.
-        if (range > attackRange)
-        {
-            range = attackRange;
-        }
-
-        if (range <= 0f)
+        if (attackRange <= 0f)
             return false;
+
+        // Рух під час атаки — той самий рух, що й Move: витрачає спільний
+        // бюджет Speed, тільки дорожче (attackMoveCostMultiplier за одиницю
+        // дистанції). Тому обмежуємо moveDistance залишком Speed, а не
+        // фіксованим attackRange, як робили раніше.
+        float remainingSpeed = GetRemainingRange(slot);
+        float maxMoveDistance = attackMoveCostMultiplier > 0f
+            ? remainingSpeed / attackMoveCostMultiplier
+            : 0f;
+
+        float moveDistance = Mathf.Clamp(desiredMoveDistance, 0f, maxMoveDistance);
 
         AttackOrder attack = new AttackOrder();
 
         attack.direction = direction.normalized;
-        attack.range = range;
+        attack.moveDistance = moveDistance;
+        attack.zoneRange = attackRange; // фіксована, не залежить від Speed
         attack.commandType = CommandType.Attack;
         attack.isSet = true;
 
@@ -142,11 +144,6 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
-    /// <summary>
-    /// Захист — гравець задає лише напрямок, батальйон нікуди не рухається
-    /// і Speed не витрачає. Дальність зони — та сама фіксована attackRange,
-    /// що й в атаки, незалежно від залишку Speed.
-    /// </summary>
     public bool SetDefendOrder(int slot, Vector3 direction)
     {
         if (slot < 0 || slot >= command.Length)
@@ -239,55 +236,48 @@ public class BattalionScr : MonoBehaviour
             else if (command[i] is AttackOrder attack && attack.isSet)
             {
                 Vector3 start = transform.position;
-                Vector3 target = start + attack.direction * attack.range;
+                Vector3 target = start + attack.direction * attack.moveDistance;
 
+                // Зона перевіряється ОДИН раз, до початку руху, від стартової
+                // позиції — на всю фіксовану attack.zoneRange. Вона НЕ залежить
+                // ні від Speed, ні від того, скільки юніт фактично пройде.
                 if (attackSystem == null)
                 {
                     Debug.LogWarning(nameBattalion + ": attackSystem не призначено — атака рухає батальйон, але не завдає шкоди.", this);
                 }
+                else
+                {
+                    BattalionScr hitTarget = attackSystem.FindTarget(this, attack.direction, attack.zoneRange);
 
-                bool hasHit = false;
+                    if (hitTarget != null)
+                    {
+                        float damage = ComputeAttackDamage();
+                        hitTarget.TakeDamage(damage);
+                        print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
+                    }
+                    else
+                    {
+                        print(nameBattalion + ": атака нікого не зачепила");
+                    }
+                }
+
+                // Рух — точно як у Move: та сама Lerp-анімація за orderDuration,
+                // лише дорожча по Speed (attackMoveCostMultiplier). Ніякої окремої
+                // "логіки руху атаки" більше немає.
                 float t = 0f;
 
                 while (t < orderDuration)
                 {
                     t += Time.deltaTime;
-
-                    transform.position =
-                        Vector3.Lerp(
-                            start,
-                            target,
-                            t / orderDuration
-                        );
-
-                    // Перевіряємо щокадру, поки батальйон іде вперед — а не
-                    // лише один раз на старті. Дальність променя щоразу
-                    // береться від ПОТОЧНОЇ позиції до кінця шляху.
-                    if (!hasHit && attackSystem != null)
-                    {
-                        float remainingDistance = Vector3.Distance(transform.position, target);
-                        BattalionScr hitTarget = attackSystem.FindTarget(this, attack.direction, remainingDistance);
-
-                        if (hitTarget != null)
-                        {
-                            float damage = ComputeAttackDamage();
-                            hitTarget.TakeDamage(damage);
-                            print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
-                            hasHit = true;
-                        }
-                    }
-
+                    transform.position = Vector3.Lerp(start, target, t / orderDuration);
                     yield return null;
                 }
 
                 transform.position = target;
 
-                if (attackSystem != null && !hasHit)
-                {
-                    print(nameBattalion + ": атака нікого не зачепила");
-                }
-
-                print("Attack: direction = " + attack.direction + ", range = " + attack.range);
+                print("Attack: direction = " + attack.direction +
+                      ", moveDistance = " + speed +
+                      ", zoneRange = " + attack.zoneRange);
             }
             else if (command[i] is DefendOrder defend && defend.isSet)
             {
@@ -345,7 +335,8 @@ public class AttackOrder : Command
 {
     public CommandType commandType;
     public Vector3 direction;
-    public float range;
+    public float moveDistance;
+    public float zoneRange;    // фіксована attackRange — дальність виявлення, завжди повна
     public bool isSet;
 }
 
