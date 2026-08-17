@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -33,11 +34,62 @@ public class BattalionScr : MonoBehaviour
     [Tooltip("У скільки разів рух під час атаки дорожчий за звичайний Move (Speed за ту саму дистанцію).")]
     public float attackMoveCostMultiplier = 2f;
 
+    [Header("Зайнятість клітинки")]
+    [Tooltip("Мінімальна відстань до іншого батальйона — новий наказ (Move/Attack) не встановиться, якщо кінцева точка опиниться ближче цього значення до чужої кінцевої позиції.")]
+    public float footprintRadius = 0.6f;
+
+    // Реєстр усіх батальйонів на сцені — потрібен, щоб перевіряти, чи
+    // клітинка вільна, не залежачи від того, хто саме там перебуватиме.
+    private static readonly List<BattalionScr> AllBattalions = new List<BattalionScr>();
+
+    private void OnEnable()
+    {
+        AllBattalions.Add(this);
+    }
+
+    private void OnDisable()
+    {
+        AllBattalions.Remove(this);
+    }
+
     private void Awake()
     {
         command[0] = new MoveCommand();
         command[1] = new MoveCommand();
         command[2] = new MoveCommand();
+    }
+
+    /// <summary>
+    /// Перевіряє, чи точка вільна від усіх ІНШИХ батальйонів — щоб накази
+    /// не призводили до накладання одного батальйона на інший.
+    /// </summary>
+    private static bool IsPositionFree(Vector3 point, float radius, BattalionScr self)
+    {
+        foreach (BattalionScr other in AllBattalions)
+        {
+            if (other == null || other == self)
+                continue;
+
+            float minDist = radius + other.footprintRadius;
+
+            if (Vector3.Distance(other.transform.position, point) < minDist)
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Наказ на слоті slot змінився — усі НАСТУПНІ накази в черзі більше
+    /// не є коректними (вони могли розраховувати origin/дальність від
+    /// старого наказу), тож скидаємо їх до порожніх.
+    /// </summary>
+    private void ClearOrdersAfter(int slot)
+    {
+        for (int i = slot + 1; i < command.Length; i++)
+        {
+            command[i] = new MoveCommand();
+        }
     }
 
     private int lastExecutedTurn = -1;
@@ -99,17 +151,28 @@ public class BattalionScr : MonoBehaviour
         return Mathf.Max(0f, speed - used);
     }
 
-    public void SetMoveOrder(int slot, Vector3 pos)
+    public bool SetMoveOrder(int slot, Vector3 pos)
     {
         if (slot < 0 || slot >= command.Length)
-            return;
+            return false;
 
-        if (command[slot] is MoveCommand move)
-        {
-            move.pos = pos;
-            move.commandType = CommandType.Move;
-            move.isSet = true;
-        }
+        // Не даємо поставити наказ так, щоб батальйон опинився впритул
+        // до іншого — інакше вони накладаються один на одного.
+        if (!IsPositionFree(pos, footprintRadius, this))
+            return false;
+
+        // Зміна наказу на цьому слоті скасовує все, що йшло далі в черзі —
+        // ті накази розраховувались відносно старої кінцевої точки.
+        ClearOrdersAfter(slot);
+
+        MoveCommand move = new MoveCommand();
+        move.pos = pos;
+        move.commandType = CommandType.Move;
+        move.isSet = true;
+
+        command[slot] = move;
+
+        return true;
     }
 
     public bool SetAttackOrder(int slot, Vector3 direction, float desiredMoveDistance)
@@ -134,6 +197,13 @@ public class BattalionScr : MonoBehaviour
 
         float moveDistance = Mathf.Clamp(desiredMoveDistance, 0f, maxMoveDistance);
 
+        Vector3 targetPoint = GetOrderOrigin(slot) + direction.normalized * moveDistance;
+
+        if (!IsPositionFree(targetPoint, footprintRadius, this))
+            return false;
+
+        ClearOrdersAfter(slot);
+
         AttackOrder attack = new AttackOrder();
 
         attack.direction = direction.normalized;
@@ -157,6 +227,11 @@ public class BattalionScr : MonoBehaviour
 
         if (attackRange <= 0f)
             return false;
+
+        // Захист не рухає батальйон, тож перевірка зайнятості клітинки
+        // тут не потрібна — але наступні накази в черзі так само
+        // скидаються, бо їхній origin міг залежати від старого наказу.
+        ClearOrdersAfter(slot);
 
         DefendOrder defend = new DefendOrder();
 
@@ -246,21 +321,6 @@ public class BattalionScr : MonoBehaviour
                     Debug.LogWarning(nameBattalion + ": attackSystem не призначено — атака рухає батальйон, але не завдає шкоди.", this);
                 }
 
-                // Рух — точно як у Move: та сама Lerp-анімація за orderDuration,
-                // лише дорожча по Speed (attackMoveCostMultiplier).
-                //
-                // Перевірку на ворога робимо ЩОКАДРУ, поки триває весь наказ —
-                // а не один раз на старті. Інакше, якщо в момент кліку в зоні
-                // нікого не було (наприклад, ворог зайшов туди пізніше, поки
-                // батальйон ще рухався, або поки паралельно виконувались
-                // накази інших батальйонів того ж ходу), удар просто не
-                // рахувався б узагалі.
-                //
-                // Дальність зони (attack.zoneRange) лишається фіксованою і не
-                // залежить від Speed — але рахуємо її щоразу від ПОТОЧНОЇ
-                // (рухомої) позиції батальйона, а не від нерухомої точки
-                // старту, тож зона атаки "їде" разом з батальйоном під час
-                // штурму.
                 bool hasHit = false;
                 float t = 0f;
 
@@ -298,9 +358,6 @@ public class BattalionScr : MonoBehaviour
             }
             else if (command[i] is DefendOrder defend && defend.isSet)
             {
-                // Захист нікуди не рухається — просто чекає весь час
-                // наказу (orderDuration) і щокадру перевіряє свою зону.
-                // Щойно там з'являється ворог — б'є один раз.
                 bool hasFired = false;
                 float t = 0f;
 
@@ -353,7 +410,7 @@ public class AttackOrder : Command
     public CommandType commandType;
     public Vector3 direction;
     public float moveDistance;
-    public float zoneRange;    // фіксована attackRange — дальність виявлення, завжди повна
+    public float zoneRange;    
     public bool isSet;
 }
 

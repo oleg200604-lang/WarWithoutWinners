@@ -10,9 +10,11 @@ public class BatalionManagerScr : MonoBehaviour
     public int[] teamAllyID;
     public BattalionScr selectBattalion;
     public BattleManagerScr battleManager;
+
+    public BattalionUIManagerScr battalionUIManager;
     public List<Regiment> regiment;
+
     public CommandType commandType;
-    public GameObject commandPanel;
     private int commandDuty;
     public bool isRedy;
     public int CommandDuty => commandDuty;
@@ -59,7 +61,7 @@ public class BatalionManagerScr : MonoBehaviour
             isRedy = true;
             battleManager.IsSrtart();
             selectBattalion = null;
-            commandPanel.SetActive(false);
+            battalionUIManager.CommandPanel(false);
         }
     }
 
@@ -75,13 +77,19 @@ public class BatalionManagerScr : MonoBehaviour
             float maxRange = selectBattalion.GetRemainingRange(commandDuty);
             float dist = Vector3.Distance(origin, worldPosition);
 
-            if (dist <= maxRange)
+            if (dist > maxRange)
             {
-                selectBattalion.SetMoveOrder(commandDuty, worldPosition);
+                print("Точка поза межами дальності — наказ не встановлено");
+                return;
+            }
+
+            if (selectBattalion.SetMoveOrder(commandDuty, worldPosition))
+            {
+                AdvanceCommandDuty();
             }
             else
             {
-                print("Точка поза межами дальності — наказ не встановлено");
+                print("Точка зайнята іншим батальйоном — наказ не встановлено");
             }
         }
     }
@@ -107,10 +115,11 @@ public class BatalionManagerScr : MonoBehaviour
             if (selectBattalion.SetAttackOrder(commandDuty, direction, desiredMoveDistance))
             {
                 print("Наказ атаки встановлено.");
+                AdvanceCommandDuty();
             }
             else
             {
-                print("Не вдалося встановити наказ атаки");
+                print("Не вдалося встановити наказ атаки — можливо, точка зайнята іншим батальйоном");
             }
         }
     }
@@ -146,11 +155,21 @@ public class BatalionManagerScr : MonoBehaviour
             if (selectBattalion.SetDefendOrder(commandDuty, direction))
             {
                 print("Наказ захисту встановлено. Напрямок: " + direction);
+                AdvanceCommandDuty();
             }
             else
             {
                 print("Не вдалося встановити наказ захисту");
             }
+        }
+    }
+
+    private void AdvanceCommandDuty()
+    {
+        if (commandDuty < 2)
+        {
+            commandDuty++;
+            print("Наказ " + (commandDuty + 1));
         }
     }
 
@@ -191,7 +210,6 @@ public class BatalionManagerScr : MonoBehaviour
         regiment.Remove(regiments);
     }
 
-
     public void SelectBattalion(BattalionScr battalion)
     {
         commandType = CommandType.None;
@@ -200,12 +218,12 @@ public class BatalionManagerScr : MonoBehaviour
             if (selectBattalion == battalion)
             {
                 selectBattalion = null;
-                commandPanel.SetActive(false);
+                battalionUIManager.CommandPanel(false);
             }
             else
             {
                 selectBattalion = battalion;
-                commandPanel.SetActive(true);
+                battalionUIManager.CommandPanel(true);
             }
 
             print(battalion.nameBattalion);

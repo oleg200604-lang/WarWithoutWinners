@@ -108,23 +108,30 @@ public class BattalionVisualsScr : MonoBehaviour
         {
             if (orderArrows[slot] != null)
                 orderArrows[slot].SetActive(false);
+
             return;
         }
-
-        Vector3 dir = end - start;
-        float distance = dir.magnitude;
 
         if (orderArrows[slot] == null)
             orderArrows[slot] = Instantiate(arrowPrefab);
 
-        orderArrows[slot].SetActive(true);
-        orderArrows[slot].transform.position = (start + end) * 0.5f;
+        GameObject arrow = orderArrows[slot];
+        arrow.SetActive(true);
 
-        if (distance > 0.001f)
+        LineRenderer line = arrow.GetComponent<LineRenderer>();
+
+        if (line == null)
         {
-            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-            orderArrows[slot].transform.rotation = Quaternion.Euler(0, 0, angle);
+            Debug.LogError("arrowPrefab не має LineRenderer!", arrow);
+            return;
         }
-        orderArrows[slot].transform.localScale = new Vector3(distance, 1f, 1f);
+
+        // LineRenderer працює у світових координатах
+        line.useWorldSpace = true;
+
+        // Точно від початку до кінця
+        line.positionCount = 2;
+        line.SetPosition(0, start);
+        line.SetPosition(1, end);
     }
 }
