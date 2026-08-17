@@ -30,6 +30,9 @@ public class BattalionScr : MonoBehaviour
     [Tooltip("Фіксована дальність — НЕ залежить від того, скільки Speed вже витрачено іншими наказами в черзі.")]
     public float attackRange = 2.5f;
 
+    [Tooltip("У скільки разів рух під час атаки дорожчий за звичайний Move (Speed за ту саму дистанцію).")]
+    public float attackMoveCostMultiplier = 2f;
+
     private void Awake()
     {
         command[0] = new MoveCommand();
@@ -238,45 +241,59 @@ public class BattalionScr : MonoBehaviour
                 Vector3 start = transform.position;
                 Vector3 target = start + attack.direction * attack.moveDistance;
 
-                // Зона перевіряється ОДИН раз, до початку руху, від стартової
-                // позиції — на всю фіксовану attack.zoneRange. Вона НЕ залежить
-                // ні від Speed, ні від того, скільки юніт фактично пройде.
                 if (attackSystem == null)
                 {
                     Debug.LogWarning(nameBattalion + ": attackSystem не призначено — атака рухає батальйон, але не завдає шкоди.", this);
                 }
-                else
-                {
-                    BattalionScr hitTarget = attackSystem.FindTarget(this, attack.direction, attack.zoneRange);
-
-                    if (hitTarget != null)
-                    {
-                        float damage = ComputeAttackDamage();
-                        hitTarget.TakeDamage(damage);
-                        print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
-                    }
-                    else
-                    {
-                        print(nameBattalion + ": атака нікого не зачепила");
-                    }
-                }
 
                 // Рух — точно як у Move: та сама Lerp-анімація за orderDuration,
-                // лише дорожча по Speed (attackMoveCostMultiplier). Ніякої окремої
-                // "логіки руху атаки" більше немає.
+                // лише дорожча по Speed (attackMoveCostMultiplier).
+                //
+                // Перевірку на ворога робимо ЩОКАДРУ, поки триває весь наказ —
+                // а не один раз на старті. Інакше, якщо в момент кліку в зоні
+                // нікого не було (наприклад, ворог зайшов туди пізніше, поки
+                // батальйон ще рухався, або поки паралельно виконувались
+                // накази інших батальйонів того ж ходу), удар просто не
+                // рахувався б узагалі.
+                //
+                // Дальність зони (attack.zoneRange) лишається фіксованою і не
+                // залежить від Speed — але рахуємо її щоразу від ПОТОЧНОЇ
+                // (рухомої) позиції батальйона, а не від нерухомої точки
+                // старту, тож зона атаки "їде" разом з батальйоном під час
+                // штурму.
+                bool hasHit = false;
                 float t = 0f;
 
                 while (t < orderDuration)
                 {
                     t += Time.deltaTime;
                     transform.position = Vector3.Lerp(start, target, t / orderDuration);
+
+                    if (!hasHit && attackSystem != null)
+                    {
+                        BattalionScr hitTarget = attackSystem.FindTarget(this, attack.direction, attack.zoneRange);
+
+                        if (hitTarget != null)
+                        {
+                            float damage = ComputeAttackDamage();
+                            hitTarget.TakeDamage(damage);
+                            print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
+                            hasHit = true;
+                        }
+                    }
+
                     yield return null;
                 }
 
                 transform.position = target;
 
+                if (attackSystem != null && !hasHit)
+                {
+                    print(nameBattalion + ": атака нікого не зачепила");
+                }
+
                 print("Attack: direction = " + attack.direction +
-                      ", moveDistance = " + speed +
+                      ", moveDistance = " + attack.moveDistance +
                       ", zoneRange = " + attack.zoneRange);
             }
             else if (command[i] is DefendOrder defend && defend.isSet)

@@ -61,7 +61,7 @@ public class BattalionVisualsScr : MonoBehaviour
             if (hasAttack)
             {
                 AttackOrder attackOrder = (AttackOrder)battalion.command[i];
-                attackPoint = battalion.GetOrderOrigin(i) + attackOrder.direction * attackOrder.range;
+                attackPoint = battalion.GetOrderOrigin(i) + attackOrder.direction * attackOrder.moveDistance;
             }
 
             Vector3 defendPoint = default;
