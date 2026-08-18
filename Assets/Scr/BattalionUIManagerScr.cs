@@ -1,10 +1,15 @@
 using UnityEngine;
+using System.Collections.Generic;
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 public class BattalionUIManagerScr : MonoBehaviour
 {
 
     public GameObject commandPanel;
-    public GameObject noneButton, moveButton, attackButton, defendButton, createRegimentButton, addRegimentButton, removRegimentButton, destroyRegimentButton;
+    public GameObject noneButton, moveButton, attackButton, defendButton, addrRgiment, removeRegiment;
+
+    public List<Button> buttonSelectRegiment;
     public BatalionManagerScr batalionManager;
     public void CommandPanel(bool isActvie)
     {
@@ -34,34 +39,28 @@ public class BattalionUIManagerScr : MonoBehaviour
                 break;
         }
 
-        // Початковий стан кнопок роботи з полком
-        createRegimentButton.SetActive(true);
-        removRegimentButton.SetActive(false);
-        destroyRegimentButton.SetActive(false);
-        addRegimentButton.SetActive(false);
-
-        // Перевіряємо, чи батальйон вже знаходиться в якомусь полку
-        for (int i = 0; i < batalionManager.regiment.Count; i++)
+        if (batalionManager.regiments.Count>0)
         {
-            for (int j = 0; j < batalionManager.regiment[i].battalions.Count; j++)
+            if (battalionScr.regimentredID<0)
             {
-                if (batalionManager.regiment[i].battalions[j] == battalionScr)
-                {
-                    // Батальйон вже знаходиться в полку
-                    createRegimentButton.SetActive(false);
-                    removRegimentButton.SetActive(true);
-                    destroyRegimentButton.SetActive(true);
-                    addRegimentButton.SetActive(false);
-
-                    return;
-                }
+                addrRgiment.SetActive(true);
+            }
+            else
+            {
+                removeRegiment.SetActive(true);
             }
         }
-
-        // Батальйон не знаходиться в жодному полку
-        createRegimentButton.SetActive(true);
-        removRegimentButton.SetActive(false);
-        destroyRegimentButton.SetActive(false);
-        addRegimentButton.SetActive(true);
+        
     }
+
+    public void ChekRegiment(int regiment)
+    {
+        if (batalionManager.regiments[regiment] != null)
+        {
+            buttonSelectRegiment[regiment].gameObject.SetActive(true);
+            buttonSelectRegiment[regiment].onClick.AddListener(() => batalionManager.SelectRegiment(batalionManager.regiments[regiment]));
+        }
+    }
+
+
 }

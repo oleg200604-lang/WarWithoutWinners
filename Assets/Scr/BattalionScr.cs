@@ -2,44 +2,30 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Дані та логіка батальйону: черга наказів, дальність, виконання ходу.
-/// Жодної візуалізації тут немає — див. BattalionVisualsScr.
-/// </summary>
 public class BattalionScr : MonoBehaviour
 {
     public bool isRun;
     public string nameBattalion;
-
     public BatalionManagerScr batalionManager;
     public BattleManagerScr battleManager;
     public BattalionAttackSystemScr attackSystem;
-
     public Personnel personnel;
     public Battalion battalion;
-
     public Command[] command = new Command[3];
-
     public int teamID;
+    public int regimentredID = -1;
 
     [Header("Пересування")]
     public float speed = 5f;
-
     public float orderDuration = 1f;
-
     [Header("Атака / Захист")]
     [Tooltip("Фіксована дальність — НЕ залежить від того, скільки Speed вже витрачено іншими наказами в черзі.")]
     public float attackRange = 2.5f;
-
     [Tooltip("У скільки разів рух під час атаки дорожчий за звичайний Move (Speed за ту саму дистанцію).")]
     public float attackMoveCostMultiplier = 2f;
-
     [Header("Зайнятість клітинки")]
     [Tooltip("Мінімальна відстань до іншого батальйона — новий наказ (Move/Attack) не встановиться, якщо кінцева точка опиниться ближче цього значення до чужої кінцевої позиції.")]
     public float footprintRadius = 0.6f;
-
-    // Реєстр усіх батальйонів на сцені — потрібен, щоб перевіряти, чи
-    // клітинка вільна, не залежачи від того, хто саме там перебуватиме.
     private static readonly List<BattalionScr> AllBattalions = new List<BattalionScr>();
 
     private void OnEnable()
@@ -59,10 +45,6 @@ public class BattalionScr : MonoBehaviour
         command[2] = new MoveCommand();
     }
 
-    /// <summary>
-    /// Перевіряє, чи точка вільна від усіх ІНШИХ батальйонів — щоб накази
-    /// не призводили до накладання одного батальйона на інший.
-    /// </summary>
     private static bool IsPositionFree(Vector3 point, float radius, BattalionScr self)
     {
         foreach (BattalionScr other in AllBattalions)
@@ -79,11 +61,6 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
-    /// <summary>
-    /// Наказ на слоті slot змінився — усі НАСТУПНІ накази в черзі більше
-    /// не є коректними (вони могли розраховувати origin/дальність від
-    /// старого наказу), тож скидаємо їх до порожніх.
-    /// </summary>
     private void ClearOrdersAfter(int slot)
     {
         for (int i = slot + 1; i < command.Length; i++)
@@ -156,13 +133,9 @@ public class BattalionScr : MonoBehaviour
         if (slot < 0 || slot >= command.Length)
             return false;
 
-        // Не даємо поставити наказ так, щоб батальйон опинився впритул
-        // до іншого — інакше вони накладаються один на одного.
         if (!IsPositionFree(pos, footprintRadius, this))
             return false;
 
-        // Зміна наказу на цьому слоті скасовує все, що йшло далі в черзі —
-        // ті накази розраховувались відносно старої кінцевої точки.
         ClearOrdersAfter(slot);
 
         MoveCommand move = new MoveCommand();
@@ -186,10 +159,6 @@ public class BattalionScr : MonoBehaviour
         if (attackRange <= 0f)
             return false;
 
-        // Рух під час атаки — той самий рух, що й Move: витрачає спільний
-        // бюджет Speed, тільки дорожче (attackMoveCostMultiplier за одиницю
-        // дистанції). Тому обмежуємо moveDistance залишком Speed, а не
-        // фіксованим attackRange, як робили раніше.
         float remainingSpeed = GetRemainingRange(slot);
         float maxMoveDistance = attackMoveCostMultiplier > 0f
             ? remainingSpeed / attackMoveCostMultiplier
@@ -228,9 +197,6 @@ public class BattalionScr : MonoBehaviour
         if (attackRange <= 0f)
             return false;
 
-        // Захист не рухає батальйон, тож перевірка зайнятості клітинки
-        // тут не потрібна — але наступні накази в черзі так само
-        // скидаються, бо їхній origin міг залежати від старого наказу.
         ClearOrdersAfter(slot);
 
         DefendOrder defend = new DefendOrder();
@@ -260,7 +226,6 @@ public class BattalionScr : MonoBehaviour
         personnel.Losses(1, 9, damage);
     }
 
-    /// <summary>Спільна формула шкоди для Attack і Defend — щоб не дублювати той самий вираз двічі.</summary>
     private float ComputeAttackDamage()
     {
         return battalion.damage

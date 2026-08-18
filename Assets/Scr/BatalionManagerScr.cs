@@ -6,13 +6,14 @@ public class BatalionManagerScr : MonoBehaviour
 {
     public int teamID;
 
+    public RegimentSettings regimentSettings;
     public int[] teamEnemyID;
     public int[] teamAllyID;
     public BattalionScr selectBattalion;
     public BattleManagerScr battleManager;
 
     public BattalionUIManagerScr battalionUIManager;
-    public List<Regiment> regiment;
+    public List<Regiment> regiments;
 
     public CommandType commandType;
     private int commandDuty;
@@ -185,15 +186,35 @@ public class BatalionManagerScr : MonoBehaviour
 
         newRegiment.battalions.Add(selectBattalion);
 
-        regiment.Add(newRegiment);
+        regiments.Add(newRegiment);
 
+        for (int i = 0; i< regiments.Count; i++)
+        {
+            if (regiments[i] == newRegiment)
+            {
+                selectBattalion.regimentredID = i;
+                break;
+            }
+        }
         Debug.Log($"Створено полк: {newRegiment.nameRegiment}");
+
+        for (int i = 0; i < regiments.Count; i++)
+        {
+            battalionUIManager.ChekRegiment(i);
+        }
     }
 
     public void AddRegiment(BattalionScr battalion, Regiment regiment)
     {
         if (battalion.battalion.type == regiment.battalionType)
         {
+            for (int i =0; regiments.Count > i; i ++)
+            {
+                if (regiments[i]==regiment)
+                {
+                    battalion.regimentredID = i;
+                }
+            }
             regiment.battalions.Add(battalion);
         }
     }
@@ -205,11 +226,48 @@ public class BatalionManagerScr : MonoBehaviour
             regiment.battalions.Add(battalion);
         }
     }
-    public void DestroyRegiment(Regiment regiments)
+    public void DestroyRegiment(Regiment regiment)
     {
-        regiment.Remove(regiments);
+        regiments.Remove(regiment);
     }
 
+    public void SelectRegiment(Regiment regiment)
+    {
+        switch (regimentSettings)
+        {
+            case RegimentSettings.None:
+
+                break;
+
+            case RegimentSettings.Remove:
+                for (int i=0;i< regiment.battalions.Count; i ++)
+                {
+                    if (regiment.battalions[i] == selectBattalion)
+                    {
+                        RemovRegiment(selectBattalion, regiment);
+                        break;
+                    }
+                     
+                }
+                break;
+
+            case RegimentSettings.Add:
+                for (int i = 0; i < regiment.battalions.Count; i++)
+                {
+                    if (regiment.battalions[i] == selectBattalion)
+                    {
+                        AddRegiment(selectBattalion, regiment);
+                        break;
+                    }
+                }
+                break;
+        }
+        if (regiment.battalions.Count < 1)
+        {
+            DestroyRegiment(regiment);
+        }
+        print(regiment);
+    }
     public void SelectBattalion(BattalionScr battalion)
     {
         commandType = CommandType.None;
@@ -260,4 +318,9 @@ public class Regiment
     public string nameRegiment;
     public List<BattalionScr> battalions;
     public BattalionType battalionType;
+}
+
+public enum RegimentSettings
+{
+    None, Remove, Add
 }
