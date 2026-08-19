@@ -102,30 +102,91 @@ public class BattalionScr : MonoBehaviour
             }
         }
 
+        origin.z = 0f;
+
         return origin;
+    }
+
+    // Артилерія не заходить на клітинки, які їй заборонені ландшафтом (Mountains, River).
+    private static bool IsTerrainPassable(Vector3 point, BattalionType type)
+    {
+        if (TerrainManagerScr.Instance == null)
+            return true;
+
+        LandscapeType land = TerrainManagerScr.Instance.GetTypeAt(point);
+
+        if (type == BattalionType.artillery && TerrainManagerScr.Instance.BlocksArtillery(land))
+            return false;
+
+        return true;
+    }
+
+    public float GetEffectiveAttackRange(Vector3 origin)
+    {
+        if (TerrainManagerScr.Instance == null)
+        {
+            return attackRange;
+        }
+
+        LandscapeType terrain = TerrainManagerScr.Instance.GetTypeAt(origin);
+
+        return attackRange * TerrainManagerScr.Instance.GetAttackRangeMultiplier(terrain);
+    }
+
+    public float GetTerrainMoveCost(Vector3 from, Vector3 to)
+    {
+        float distance = Vector3.Distance(from, to);
+
+        if (distance <= 0f)
+            return 0f;
+
+        if (TerrainManagerScr.Instance == null)
+            return distance;
+
+        float multiplier =
+            TerrainManagerScr.Instance.GetMoveCostMultiplier(
+                TerrainManagerScr.Instance.GetTypeAt(to)
+            );
+
+        return distance * multiplier;
     }
 
     public float GetRemainingRange(int slot)
     {
+        if (slot < 0 || slot > command.Length)
+            return 0f;
+
         float used = 0f;
+
         Vector3 point = transform.position;
 
         for (int i = 0; i < slot; i++)
         {
             if (command[i] is MoveCommand move && move.isSet)
             {
-                used += Vector3.Distance(point, move.pos);
+                used += GetTerrainMoveCost(
+                    point,
+                    move.pos
+                );
+
                 point = move.pos;
             }
             else if (command[i] is AttackOrder attack && attack.isSet)
             {
-                // Той самий бюджет Speed, що й Move, тільки дорожчий множник.
-                used += attack.moveDistance * attackMoveCostMultiplier;
-                point += attack.direction * attack.moveDistance;
+                used +=
+                    attack.moveDistance *
+                    attackMoveCostMultiplier;
+
+                point +=
+                    attack.direction *
+                    attack.moveDistance;
             }
         }
 
-        return Mathf.Max(0f, speed - used);
+        return Mathf.Max(
+            0f,
+            speed - used
+        );
     }
 
     public bool SetMoveOrder(int slot, Vector3 pos)
@@ -133,12 +194,49 @@ public class BattalionScr : MonoBehaviour
         if (slot < 0 || slot >= command.Length)
             return false;
 
-        if (!IsPositionFree(pos, footprintRadius, this))
+        Vector3 origin = GetOrderOrigin(slot);
+
+        pos.z = 0f;
+
+        if (!IsPositionFree(
+            pos,
+            footprintRadius,
+            this))
+        {
             return false;
+        }
+
+        if (TerrainManagerScr.Instance != null)
+        {
+            if (!TerrainManagerScr.Instance.IsPassable(
+                pos,
+                battalion.type))
+            {
+                return false;
+            }
+        }
+
+        float movementCost =
+            GetTerrainMoveCost(origin, pos);
+
+        float remainingSpeed =
+            GetRemainingRange(slot);
+
+        if (movementCost > remainingSpeed)
+        {
+            Debug.Log(
+                $"{nameBattalion}: недостатньо Speed. " +
+                $"Cost = {movementCost:F2}, " +
+                $"Remaining = {remainingSpeed:F2}"
+            );
+
+            return false;
+        }
 
         ClearOrdersAfter(slot);
 
         MoveCommand move = new MoveCommand();
+
         move.pos = pos;
         move.commandType = CommandType.Move;
         move.isSet = true;
@@ -148,7 +246,10 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
-    public bool SetAttackOrder(int slot, Vector3 direction, float desiredMoveDistance)
+    public bool SetAttackOrder(
+        int slot,
+        Vector3 direction,
+        float desiredMoveDistance)
     {
         if (slot < 0 || slot >= command.Length)
             return false;
@@ -156,29 +257,66 @@ public class BattalionScr : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             return false;
 
-        if (attackRange <= 0f)
+        Vector3 origin =
+            GetOrderOrigin(slot);
+
+        float remainingSpeed =
+            GetRemainingRange(slot);
+
+        float maxMoveDistance =
+            attackMoveCostMultiplier > 0f
+                ? remainingSpeed / attackMoveCostMultiplier
+                : 0f;
+
+        float moveDistance =
+            Mathf.Clamp(
+                desiredMoveDistance,
+                0f,
+                maxMoveDistance
+            );
+
+        Vector3 targetPoint =
+            origin +
+            direction.normalized *
+            moveDistance;
+
+        targetPoint.z = 0f;
+
+        if (!IsPositionFree(
+            targetPoint,
+            footprintRadius,
+            this))
+        {
             return false;
+        }
 
-        float remainingSpeed = GetRemainingRange(slot);
-        float maxMoveDistance = attackMoveCostMultiplier > 0f
-            ? remainingSpeed / attackMoveCostMultiplier
-            : 0f;
-
-        float moveDistance = Mathf.Clamp(desiredMoveDistance, 0f, maxMoveDistance);
-
-        Vector3 targetPoint = GetOrderOrigin(slot) + direction.normalized * moveDistance;
-
-        if (!IsPositionFree(targetPoint, footprintRadius, this))
-            return false;
+        if (TerrainManagerScr.Instance != null)
+        {
+            if (!TerrainManagerScr.Instance.IsPassable(
+                targetPoint,
+                battalion.type))
+            {
+                return false;
+            }
+        }
 
         ClearOrdersAfter(slot);
 
-        AttackOrder attack = new AttackOrder();
+        AttackOrder attack =
+            new AttackOrder();
 
-        attack.direction = direction.normalized;
-        attack.moveDistance = moveDistance;
-        attack.zoneRange = attackRange; // фіксована, не залежить від Speed
-        attack.commandType = CommandType.Attack;
+        attack.direction =
+            direction.normalized;
+
+        attack.moveDistance =
+            moveDistance;
+
+        attack.zoneRange =
+            GetEffectiveAttackRange(origin);
+
+        attack.commandType =
+            CommandType.Attack;
+
         attack.isSet = true;
 
         command[slot] = attack;
@@ -186,7 +324,9 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
-    public bool SetDefendOrder(int slot, Vector3 direction)
+    public bool SetDefendOrder(
+    int slot,
+    Vector3 direction)
     {
         if (slot < 0 || slot >= command.Length)
             return false;
@@ -194,16 +334,23 @@ public class BattalionScr : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             return false;
 
-        if (attackRange <= 0f)
-            return false;
+        Vector3 origin =
+            GetOrderOrigin(slot);
 
         ClearOrdersAfter(slot);
 
-        DefendOrder defend = new DefendOrder();
+        DefendOrder defend =
+            new DefendOrder();
 
-        defend.direction = direction.normalized;
-        defend.range = attackRange;
-        defend.commandType = CommandType.Defend;
+        defend.direction =
+            direction.normalized;
+
+        defend.range =
+            GetEffectiveAttackRange(origin);
+
+        defend.commandType =
+            CommandType.Defend;
+
         defend.isSet = true;
 
         command[slot] = defend;
@@ -375,7 +522,7 @@ public class AttackOrder : Command
     public CommandType commandType;
     public Vector3 direction;
     public float moveDistance;
-    public float zoneRange;    
+    public float zoneRange;
     public bool isSet;
 }
 

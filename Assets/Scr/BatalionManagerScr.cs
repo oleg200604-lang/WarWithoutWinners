@@ -11,10 +11,8 @@ public class BatalionManagerScr : MonoBehaviour
     public int[] teamAllyID;
     public BattalionScr selectBattalion;
     public BattleManagerScr battleManager;
-
     public BattalionUIManagerScr battalionUIManager;
     public List<Regiment> regiments;
-
     public CommandType commandType;
     private int commandDuty;
     public bool isRedy;
@@ -68,30 +66,35 @@ public class BatalionManagerScr : MonoBehaviour
 
     private void Move()
     {
-        if (Mouse.current.rightButton.wasPressedThisFrame && selectBattalion != null)
+        if (!Mouse.current.rightButton.wasPressedThisFrame)
+            return;
+
+        if (selectBattalion == null)
+            return;
+
+        Vector3 mousePosition =
+            Mouse.current.position.ReadValue();
+
+        Vector3 worldPosition =
+            Camera.main.ScreenToWorldPoint(mousePosition);
+
+        worldPosition.z = 0f;
+
+        if (selectBattalion.SetMoveOrder(
+            commandDuty,
+            worldPosition))
         {
-            Vector3 mousePosition = Mouse.current.position.ReadValue();
-            Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
-            worldPosition.z = 0;
+            print(
+                "Наказ руху встановлено."
+            );
 
-            Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
-            float maxRange = selectBattalion.GetRemainingRange(commandDuty);
-            float dist = Vector3.Distance(origin, worldPosition);
-
-            if (dist > maxRange)
-            {
-                print("Точка поза межами дальності — наказ не встановлено");
-                return;
-            }
-
-            if (selectBattalion.SetMoveOrder(commandDuty, worldPosition))
-            {
-                AdvanceCommandDuty();
-            }
-            else
-            {
-                print("Точка зайнята іншим батальйоном — наказ не встановлено");
-            }
+            AdvanceCommandDuty();
+        }
+        else
+        {
+            print(
+                "Не вдалося встановити наказ руху."
+            );
         }
     }
 

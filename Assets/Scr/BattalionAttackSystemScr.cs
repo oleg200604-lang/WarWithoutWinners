@@ -14,48 +14,137 @@ public class BattalionAttackSystemScr : MonoBehaviour
     public float ConeAngle => coneAngle;
 
     public BattalionScr FindTarget(
-        BattalionScr attacker,
-        Vector3 direction,
-        float maxAttackRange)
+    BattalionScr attacker,
+    Vector3 direction,
+    float maxAttackRange)
     {
-        Vector3 origin = attacker.transform.position;
+        if (attacker == null)
+            return null;
 
-        float startAngle = -coneAngle * 0.5f;
-        float angleStep = rayCount > 1 ? coneAngle / (rayCount - 1) : 0f;
+        if (direction.sqrMagnitude < 0.001f)
+            return null;
+
+        direction.Normalize();
+
+        Vector3 origin =
+            attacker.transform.position;
+
+        TerrainManagerScr terrain =
+            TerrainManagerScr.Instance;
+
+        int attackerHeight =
+            terrain != null
+                ? terrain.GetHeightAt(origin)
+                : 0;
+
+        bool attackerIsArtillery =
+            attacker.battalion.type ==
+            BattalionType.artillery;
+
+        LayerMask combinedMask =
+            battalionLayer;
+
+        if (terrain != null)
+            combinedMask |= terrain.TerrainLayer;
+
+        float startAngle =
+            -coneAngle * 0.5f;
+
+        float angleStep =
+            rayCount > 1
+                ? coneAngle / (rayCount - 1)
+                : 0f;
 
         for (int i = 0; i < rayCount; i++)
         {
-            float angle = startAngle + angleStep * i;
+            float angle =
+                startAngle +
+                angleStep * i;
 
             Vector3 rayDirection =
-                Quaternion.Euler(0f, 0f, angle) * direction;
+                Quaternion.Euler(
+                    0f,
+                    0f,
+                    angle
+                ) * direction;
 
-            // RaycastAll, а не Raycast: origin лежить УСЕРЕДИНІ власного
-            // колайдера атакуючого батальйона, тож звичайний одиничний
-            // Raycast майже завжди впирається сам у себе на дистанції ~0
-            // і ніколи не долітає до цілі позаду. RaycastAll повертає всі
-            // перетини вздовж променя — власний колайдер просто
-            // пропускаємо (target == attacker) і перевіряємо далі.
-            RaycastHit2D[] hits = Physics2D.RaycastAll(
-                origin,
-                rayDirection,
-                maxAttackRange,
-                battalionLayer
+            RaycastHit2D[] hits =
+                Physics2D.RaycastAll(
+                    origin,
+                    rayDirection,
+                    maxAttackRange,
+                    combinedMask
+                );
+
+            System.Array.Sort(
+                hits,
+                (a, b) =>
+                    a.distance.CompareTo(
+                        b.distance
+                    )
             );
-
-            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
             foreach (RaycastHit2D hit in hits)
             {
-                BattalionScr target = hit.collider.GetComponent<BattalionScr>();
-
-                if (target == null || target == attacker)
+                if (hit.collider == null)
                     continue;
 
-                if (target.teamID == attacker.teamID)
+                TerrainTileScr tile =
+                    hit.collider.GetComponent<TerrainTileScr>();
+
+                if (tile != null)
+                {
+                    if (terrain != null &&
+                        terrain.BlocksLineOfSight(
+                            tile.type))
+                    {
+                        break;
+                    }
+
+                    continue;
+                }
+
+                BattalionScr target =
+                    hit.collider.GetComponent<BattalionScr>();
+
+                if (target == null)
                     continue;
 
-                return target;
+                if (target == attacker)
+                    continue;
+
+                if (target.teamID ==
+                    attacker.teamID)
+                {
+                    continue;
+                }
+
+                float allowedRange =
+                    maxAttackRange;
+
+                if (!attackerIsArtillery &&
+                    terrain != null)
+                {
+                    int targetHeight =
+                        terrain.GetHeightAt(
+                            target.transform.position
+                        );
+
+                    int heightDifference =
+                        attackerHeight -
+                        targetHeight;
+
+                    if (heightDifference > 0)
+                    {
+                        allowedRange *=
+                            1f +
+                            0.1f *
+                            heightDifference;
+                    }
+                }
+
+                if (hit.distance <= allowedRange)
+                    return target;
             }
         }
 

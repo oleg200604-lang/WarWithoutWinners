@@ -1888,6 +1888,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTileScr
   type: 2
   height: 0
+  gridPosition: {x: 0, y: 0}
 --- !u!61 &699230707
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2820,6 +2821,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTileScr
   type: 0
   height: 1
+  gridPosition: {x: 0, y: 0}
 --- !u!61 &976630861
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -4879,6 +4881,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTileScr
   type: 1
   height: 1
+  gridPosition: {x: 0, y: 0}
 --- !u!61 &1531888307
 BoxCollider2D:
   m_ObjectHideFlags: 0

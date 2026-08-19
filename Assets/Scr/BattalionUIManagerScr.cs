@@ -13,13 +13,24 @@ public class BattalionUIManagerScr : MonoBehaviour
     public BatalionManagerScr batalionManager;
     public void CommandPanel(bool isActvie)
     {
-        CheckButtalion();
-        commandPanel.SetActive(isActvie);
+        // CheckButtalion() читає selectBattalion.battalion.type — це має
+        // сенс лише коли панель показуємо (є вибраний батальйон). Коли
+        // ховаємо панель, selectBattalion уже може бути null (кінець
+        // ходу, повторний клік по батальйону) — виклик тут викликав
+        // NullReferenceException.
+        if (isActvie)
+        {
+            CheckButtalion();
+        }
 
+        commandPanel.SetActive(isActvie);
     }
     private void CheckButtalion()
     {
         BattalionScr battalionScr = batalionManager.selectBattalion;
+
+        if (battalionScr == null)
+            return;
 
         // Перевірка типу батальйону
         switch (battalionScr.battalion.type)
@@ -39,9 +50,9 @@ public class BattalionUIManagerScr : MonoBehaviour
                 break;
         }
 
-        if (batalionManager.regiments.Count>0)
+        if (batalionManager.regiments.Count > 0)
         {
-            if (battalionScr.regimentredID<0)
+            if (battalionScr.regimentredID < 0)
             {
                 addrRgiment.SetActive(true);
             }
@@ -50,7 +61,7 @@ public class BattalionUIManagerScr : MonoBehaviour
                 removeRegiment.SetActive(true);
             }
         }
-        
+
     }
 
     public void ChekRegiment(int regiment)
