@@ -142,7 +142,35 @@ public class TerrainManagerScr : MonoBehaviour
     // ---------------------------------------------------------
     // ATTACK RANGE
     // ---------------------------------------------------------
+    public float GetLineOfSightDistance(
+    Vector3 origin,
+    Vector3 direction,
+    float maxDistance,
+    float sampleStep = 0.15f)
+    {
+        if (maxDistance <= 0f || direction.sqrMagnitude < 0.001f)
+            return 0f;
 
+        if (Instance == null)
+            return maxDistance;
+
+        direction.Normalize();
+
+        int samples = Mathf.CeilToInt(maxDistance / sampleStep);
+
+        // i = 1: не блокуємо промінь terrain-тайлом,
+        // на якому стоїть сам батальйон.
+        for (int i = 1; i <= samples; i++)
+        {
+            float distance = maxDistance * i / samples;
+            Vector3 point = origin + direction * distance;
+
+            if (BlocksLineOfSight(GetTypeAt(point)))
+                return Mathf.Max(0f, distance - sampleStep);
+        }
+
+        return maxDistance;
+    }
     public float GetAttackRangeMultiplier(LandscapeType type)
     {
         if (type == LandscapeType.Forest)

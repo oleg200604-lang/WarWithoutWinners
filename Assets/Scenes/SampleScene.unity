@@ -1888,6 +1888,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTileScr
   type: 2
   height: 0
+  gridPosition: {x: 0, y: 0}
 --- !u!61 &699230707
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -2210,7 +2211,7 @@ SpriteRenderer:
   m_SortingOrder: 2
   m_MaskInteraction: 0
   m_Sprite: {fileID: 21300000, guid: 17789385efb985841ba7660fe670d6ff, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.33490568, g: 1, b: 0.97473574, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -2820,6 +2821,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTileScr
   type: 0
   height: 1
+  gridPosition: {x: 0, y: 0}
 --- !u!61 &976630861
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -3932,6 +3934,7 @@ MonoBehaviour:
   attackRange: 1.5
   attackMoveCostMultiplier: 2
   footprintRadius: 0.6
+  terrainSampleStep: 0.15
 --- !u!114 &1307456461
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4879,6 +4882,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TerrainTileScr
   type: 1
   height: 1
+  gridPosition: {x: 0, y: 0}
 --- !u!61 &1531888307
 BoxCollider2D:
   m_ObjectHideFlags: 0

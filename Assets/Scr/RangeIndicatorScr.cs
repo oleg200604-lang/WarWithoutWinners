@@ -57,20 +57,21 @@
             int slot = batalionManager.CommandDuty;
             Vector3 origin = selected.GetOrderOrigin(slot);
 
-            if (commandType == CommandType.Move)
+        if (commandType == CommandType.Move)
+        {
+            HideRayFan();
+
+            float remainingSpeed = selected.GetRemainingRange(slot);
+
+            if (remainingSpeed <= 0f)
             {
-                HideRayFan();
-
-                float radius = selected.GetRemainingRange(slot);
-                if (radius <= 0f)
-                {
-                    Hide();
-                    return;
-                }
-
-                Show();
-                BuildCircle(origin, radius, fillColor);
+                Hide();
+                return;
             }
+
+            Show();
+            BuildMoveArea(selected, origin, remainingSpeed, fillColor);
+        }
         else if (commandType == CommandType.Attack || commandType == CommandType.Defend)
         {
             bool isDefend = commandType == CommandType.Defend;
@@ -103,11 +104,11 @@
             );
         }
         else
-            {
-                // None — жодного прев'ю.
-                Hide();
-                HideRayFan();
-            }
+        {
+            // None — жодного прев'ю.
+            Hide();
+            HideRayFan();
+        }
         }
 
         private void ShowRayFan(BattalionScr selected, Vector3 origin, float range, Color color)
@@ -268,4 +269,79 @@
             mesh.colors = colors;
             mesh.triangles = triangles;
         }
+
+    private void BuildMoveArea(
+    BattalionScr selected,
+    Vector3 origin,
+    float remainingSpeed,
+    Color color)
+    {
+        int safeSegments = Mathf.Max(12, segments);
+
+        Vector3[] vertices = new Vector3[safeSegments + 1];
+        Color[] colors = new Color[vertices.Length];
+
+        // Подвійні трикутники, як у твоєму BuildCircle:
+        // область буде видна з обох сторін.
+        int[] triangles = new int[safeSegments * 6];
+
+        Transform t = meshFilter.transform;
+        vertices[0] = t.InverseTransformPoint(origin);
+        colors[0] = color;
+
+        // Road має множник 0.5, тому батальйон може пройти до Speed × 2.
+        // Значення також не може бути меншим за заданий у Inspector запас.
+        float testDistance = Mathf.Max(
+            0,
+            remainingSpeed * 2.05f
+        );
+
+        for (int i = 0; i < safeSegments; i++)
+        {
+            float angle = 2f * Mathf.PI * i / safeSegments;
+
+            Vector3 direction = new Vector3(
+                Mathf.Cos(angle),
+                Mathf.Sin(angle),
+                0f
+            );
+
+            // Той самий розрахунок terrain-вартості, що застосовується
+            // під час встановлення наказу.
+            float reachableDistance = selected.GetReachableDistance(
+                origin,
+                direction,
+                testDistance,
+                remainingSpeed
+            );
+
+            Vector3 worldPoint =
+                origin + direction * reachableDistance;
+
+            vertices[i + 1] =
+                t.InverseTransformPoint(worldPoint);
+
+            colors[i + 1] = color;
+        }
+
+        for (int i = 0; i < safeSegments; i++)
+        {
+            int next = (i + 1) % safeSegments;
+            int triangle = i * 6;
+
+            triangles[triangle] = 0;
+            triangles[triangle + 1] = i + 1;
+            triangles[triangle + 2] = next + 1;
+
+            triangles[triangle + 3] = 0;
+            triangles[triangle + 4] = next + 1;
+            triangles[triangle + 5] = i + 1;
+        }
+
+        mesh.Clear();
+        mesh.vertices = vertices;
+        mesh.colors = colors;
+        mesh.triangles = triangles;
+        mesh.RecalculateBounds();
     }
+}
