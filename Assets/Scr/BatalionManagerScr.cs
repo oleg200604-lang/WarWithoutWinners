@@ -51,6 +51,18 @@ public class BatalionManagerScr : MonoBehaviour
             case CommandType.Defend:
                 Defend();
                 break;
+
+            case CommandType.Deploy:
+                Deploy();
+                break;
+
+            case CommandType.Rotate:
+                Rotate();
+                break;
+
+            case CommandType.Bombard:
+                Bombard();
+                break;
         }
 
 
@@ -168,6 +180,81 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
+    private void Deploy()
+    {
+        if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
+            return;
+
+        Vector3 mousePosition = Mouse.current.position.ReadValue();
+        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
+        worldPosition.z = 0;
+
+        Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
+        Vector3 direction = worldPosition - origin;
+        direction.z = 0;
+
+        // Один і той самий наказ перемикає Deploy/Undeploy залежно від
+        // поточного isDeployed. Напрямок клацання потрібен лише коли
+        // РОЗКЛАДАЄМОСЬ — SetDeployOrder сам відхилить порожній напрямок,
+        // якщо він насправді потрібен, і сам ігнорує його при згортанні.
+        if (selectBattalion.SetDeployOrder(commandDuty, direction))
+        {
+            print("Наказ розкладання/згортання встановлено.");
+            AdvanceCommandDuty();
+        }
+        else
+        {
+            print("Не вдалося встановити наказ розкладання/згортання.");
+        }
+    }
+
+    private void Rotate()
+    {
+        if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
+            return;
+
+        Vector3 mousePosition = Mouse.current.position.ReadValue();
+        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
+        worldPosition.z = 0;
+
+        Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
+        Vector3 direction = worldPosition - origin;
+        direction.z = 0;
+
+        if (direction.sqrMagnitude < 0.001f)
+            return;
+
+        if (selectBattalion.SetRotateOrder(commandDuty, direction))
+        {
+            print("Наказ зміни кута наведення встановлено.");
+            AdvanceCommandDuty();
+        }
+        else
+        {
+            print("Не вдалося встановити наказ зміни кута.");
+        }
+    }
+
+    private void Bombard()
+    {
+        if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
+            return;
+
+        Vector3 mousePosition = Mouse.current.position.ReadValue();
+        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
+        worldPosition.z = 0;
+
+        if (selectBattalion.SetBombardOrder(commandDuty, worldPosition))
+        {
+            print("Наказ обстрілу встановлено.");
+            AdvanceCommandDuty();
+        }
+        else
+        {
+            print("Не вдалося встановити наказ обстрілу — точка поза зоною розкладки.");
+        }
+    }
+
     private void AdvanceCommandDuty()
     {
         if (commandDuty < 2)
@@ -191,7 +278,7 @@ public class BatalionManagerScr : MonoBehaviour
 
         regiments.Add(newRegiment);
 
-        for (int i = 0; i< regiments.Count; i++)
+        for (int i = 0; i < regiments.Count; i++)
         {
             if (regiments[i] == newRegiment)
             {
@@ -211,9 +298,9 @@ public class BatalionManagerScr : MonoBehaviour
     {
         if (battalion.battalion.type == regiment.battalionType)
         {
-            for (int i =0; regiments.Count > i; i ++)
+            for (int i = 0; regiments.Count > i; i++)
             {
-                if (regiments[i]==regiment)
+                if (regiments[i] == regiment)
                 {
                     battalion.regimentredID = i;
                 }
@@ -243,14 +330,14 @@ public class BatalionManagerScr : MonoBehaviour
                 break;
 
             case RegimentSettings.Remove:
-                for (int i=0;i< regiment.battalions.Count; i ++)
+                for (int i = 0; i < regiment.battalions.Count; i++)
                 {
                     if (regiment.battalions[i] == selectBattalion)
                     {
                         RemovRegiment(selectBattalion, regiment);
                         break;
                     }
-                     
+
                 }
                 break;
 
@@ -309,6 +396,18 @@ public class BatalionManagerScr : MonoBehaviour
 
             case 3:
                 commandType = CommandType.Defend;
+                break;
+
+            case 4:
+                commandType = CommandType.Deploy;
+                break;
+
+            case 5:
+                commandType = CommandType.Rotate;
+                break;
+
+            case 6:
+                commandType = CommandType.Bombard;
                 break;
         }
 

@@ -26,6 +26,17 @@ public class BattalionScr : MonoBehaviour
     [Header("Зайнятість клітинки")]
     [Tooltip("Мінімальна відстань до іншого батальйона — новий наказ (Move/Attack) не встановиться, якщо кінцева точка опиниться ближче цього значення до чужої кінцевої позиції.")]
     public float footprintRadius = 0.6f;
+    [Header("Артилерія: розкладка / обстріл")]
+    [Tooltip("Стосується лише BattalionType.artillery. Поки true — Move і звичайний Attack недоступні (спершу Undeploy). Доступні Defend (лише в deployDirection), Bombard і Rotate.")]
+    public bool isDeployed;
+    [Tooltip("Напрямок фронту, зафіксований останнім Deploy/Rotate. Defend і Bombard, поки розкладена, прив'язані до цього напрямку.")]
+    public Vector3 deployDirection = Vector3.right;
+    [Tooltip("Дальність зони ураження в розкладеному стані. ОКРЕМЕ поле від attackRange (той діє лише під час руху/звичайної Attack).")]
+    public float deployRange = 4f;
+    [Tooltip("Ширина конуса зони розкладки (градуси) — Bombard має влучати в цей конус навколо deployDirection. Щоб обстріляти щось поза конусом — потрібен окремий наказ Rotate.")]
+    public float deployConeAngle = 90f;
+    [Tooltip("Радіус ураження одного обстрілу (Bombard) — б'є по ВСІХ ворожих батальйонах у цьому колі навколо точки влучення, а не лише по першому на промені.")]
+    public float bombardRadius = 1.5f;
     [Header("Terrain sampling")]
     [SerializeField, Min(0.05f)]
     private float terrainSampleStep = 0.15f;
@@ -87,6 +98,28 @@ public class BattalionScr : MonoBehaviour
     public float GetEffectiveAttackRange()
     {
         return GetEffectiveAttackRange(transform.position);
+    }
+
+    // Зона розкладки: коло deployRange + конус deployConeAngle навколо
+    // deployDirection. ОКРЕМА від attackRange/ConeAngle звичайної атаки.
+    // Використовується для валідації точки Bombard. Щоб обстріляти щось
+    // поза цим конусом — потрібен окремий наказ Rotate.
+    public bool IsWithinDeployZone(Vector3 origin, Vector3 point)
+    {
+        Vector3 toPoint = point - origin;
+        toPoint.z = 0f;
+
+        float distance = toPoint.magnitude;
+
+        if (distance > deployRange)
+            return false;
+
+        if (distance < 0.001f)
+            return true;
+
+        float angle = Vector3.Angle(deployDirection, toPoint);
+
+        return angle <= deployConeAngle * 0.5f;
     }
 
     // Вартість ВСЬОГО прямого маршруту, а не тільки terrain у точці to.
@@ -219,6 +252,10 @@ public class BattalionScr : MonoBehaviour
         if (command == null || slot < 0 || slot >= command.Length)
             return false;
 
+        // Розкладена артилерія не рухається — спершу Undeploy.
+        if (isDeployed)
+            return false;
+
         Vector3 origin = GetOrderOrigin(slot);
         pos.z = 0f;
 
@@ -251,6 +288,11 @@ public class BattalionScr : MonoBehaviour
         float desiredMoveDistance)
     {
         if (command == null || slot < 0 || slot >= command.Length)
+            return false;
+
+        // Attack вимагає можливості рухатись — розкладена артилерія
+        // нерухома, для атаки на місці в неї є окремий наказ Bombard.
+        if (isDeployed)
             return false;
 
         if (direction.sqrMagnitude < 0.001f || attackRange <= 0f)
@@ -295,23 +337,128 @@ public class BattalionScr : MonoBehaviour
         if (command == null || slot < 0 || slot >= command.Length)
             return false;
 
-        if (direction.sqrMagnitude < 0.001f || attackRange <= 0f)
-            return false;
+        Vector3 finalDirection;
+        float finalRange;
 
-        Vector3 origin = GetOrderOrigin(slot);
+        if (isDeployed)
+        {
+            // Розкладена артилерія захищається лише в напрямок, куди
+            // вже наведена гармата — клік гравця напрямок НЕ змінює.
+            // Щоб захищати інший напрямок — спершу наказ Rotate.
+            finalDirection = deployDirection;
+            finalRange = deployRange;
+        }
+        else
+        {
+            if (direction.sqrMagnitude < 0.001f || attackRange <= 0f)
+                return false;
+
+            Vector3 origin = GetOrderOrigin(slot);
+            finalDirection = direction.normalized;
+            finalRange = GetEffectiveAttackRange(origin);
+        }
 
         ClearOrdersAfter(slot);
 
         command[slot] = new DefendOrder
         {
-            direction = direction.normalized,
-            range = GetEffectiveAttackRange(origin),
+            direction = finalDirection,
+            range = finalRange,
             commandType = CommandType.Defend,
             isSet = true
         };
 
         return true;
     }
+
+    // Зміна напрямку наведення гармати без повного згортання — доступно
+    // лише поки артилерія вже розкладена. На відміну від Deploy, тут
+    // конус старого deployDirection НЕ перевіряється — саме для цього
+    // й потрібен цей наказ, коли ціль поза поточним конусом.
+    public bool SetRotateOrder(int slot, Vector3 direction)
+    {
+        if (command == null || slot < 0 || slot >= command.Length)
+            return false;
+
+        if (battalion.type != BattalionType.artillery || !isDeployed)
+            return false;
+
+        if (direction.sqrMagnitude < 0.001f)
+            return false;
+
+        ClearOrdersAfter(slot);
+
+        command[slot] = new RotateOrder
+        {
+            direction = direction.normalized,
+            commandType = CommandType.Rotate,
+            isSet = true
+        };
+
+        return true;
+    }
+
+    // Розкладка / згортання артилерії. Один виклик перемикає стан навпаки
+    // тому, що зафіксовано на момент видачі наказу (не виконання) —
+    // за один хід можна встановити лише один такий наказ поспіль.
+    // direction має значення тільки коли розкладаємось (задає фронт),
+    // при згортанні він ігнорується.
+    public bool SetDeployOrder(int slot, Vector3 direction)
+    {
+        if (command == null || slot < 0 || slot >= command.Length)
+            return false;
+
+        if (battalion.type != BattalionType.artillery)
+            return false;
+
+        bool willDeploy = !isDeployed;
+
+        if (willDeploy && direction.sqrMagnitude < 0.001f)
+            return false;
+
+        ClearOrdersAfter(slot);
+
+        command[slot] = new DeployOrder
+        {
+            deploy = willDeploy,
+            direction = willDeploy ? direction.normalized : deployDirection,
+            commandType = CommandType.Deploy,
+            isSet = true
+        };
+
+        return true;
+    }
+
+    // Обстріл: б'є по ВСІХ ворожих батальйонах у bombardRadius навколо
+    // targetPoint (не по першому на промені). Доступно лише розкладеній
+    // артилерії, і лише в межах її зони розкладки.
+    public bool SetBombardOrder(int slot, Vector3 targetPoint)
+    {
+        if (command == null || slot < 0 || slot >= command.Length)
+            return false;
+
+        if (battalion.type != BattalionType.artillery || !isDeployed)
+            return false;
+
+        Vector3 origin = GetOrderOrigin(slot);
+        targetPoint.z = 0f;
+
+        if (!IsWithinDeployZone(origin, targetPoint))
+            return false;
+
+        ClearOrdersAfter(slot);
+
+        command[slot] = new BombardOrder
+        {
+            targetPoint = targetPoint,
+            radius = bombardRadius,
+            commandType = CommandType.Bombard,
+            isSet = true
+        };
+
+        return true;
+    }
+
     private static bool IsPositionFree(Vector3 point, float radius, BattalionScr self)
     {
         foreach (BattalionScr other in AllBattalions)
@@ -507,6 +654,56 @@ public class BattalionScr : MonoBehaviour
                     print(nameBattalion + ": захист нікого не побачив");
                 }
             }
+            else if (command[i] is DeployOrder deployOrder && deployOrder.isSet)
+            {
+                isDeployed = deployOrder.deploy;
+                deployDirection = deployOrder.direction;
+
+                print(nameBattalion + (isDeployed
+                    ? ": розклалась, напрямок " + deployDirection
+                    : ": згорнулась"));
+
+                yield return new WaitForSeconds(orderDuration);
+            }
+            else if (command[i] is RotateOrder rotateOrder && rotateOrder.isSet)
+            {
+                deployDirection = rotateOrder.direction;
+
+                print(nameBattalion + ": змінила напрямок наведення на " + deployDirection);
+
+                yield return new WaitForSeconds(orderDuration);
+            }
+            else if (command[i] is BombardOrder bombardOrder && bombardOrder.isSet)
+            {
+                if (attackSystem == null)
+                {
+                    Debug.LogWarning(nameBattalion + ": attackSystem не призначено — обстріл не завдає шкоди.", this);
+                }
+                else
+                {
+                    List<BattalionScr> hitTargets = attackSystem.FindTargetsInRadius(
+                        bombardOrder.targetPoint,
+                        bombardOrder.radius,
+                        teamID);
+
+                    if (hitTargets.Count > 0)
+                    {
+                        float damage = ComputeAttackDamage();
+
+                        foreach (BattalionScr hitTarget in hitTargets)
+                        {
+                            hitTarget.TakeDamage(damage);
+                            print(nameBattalion + ": обстріл влучив по " + hitTarget.nameBattalion);
+                        }
+                    }
+                    else
+                    {
+                        print(nameBattalion + ": обстріл нікого не зачепив");
+                    }
+                }
+
+                yield return new WaitForSeconds(orderDuration);
+            }
             else
             {
                 yield return new WaitForSeconds(orderDuration);
@@ -539,8 +736,34 @@ public class AttackOrder : Command
 public class DefendOrder : Command
 {
     public CommandType commandType;
-    public Vector3 direction; // гравець визначає лише напрямок
-    public float range;       // та сама фіксована attackRange, що й в атаки
+    public Vector3 direction; // гравець визначає лише напрямок (окрім розкладеної артилерії — там deployDirection)
+    public float range;
+    public bool isSet;
+}
+
+[System.Serializable]
+public class DeployOrder : Command
+{
+    public CommandType commandType;
+    public bool deploy;       // true = розкладаємось, false = згортаємось (Undeploy)
+    public Vector3 direction; // напрямок фронту; має значення лише коли deploy == true
+    public bool isSet;
+}
+
+[System.Serializable]
+public class RotateOrder : Command
+{
+    public CommandType commandType;
+    public Vector3 direction; // новий напрямок наведення розкладеної гармати
+    public bool isSet;
+}
+
+[System.Serializable]
+public class BombardOrder : Command
+{
+    public CommandType commandType;
+    public Vector3 targetPoint;
+    public float radius;
     public bool isSet;
 }
 
@@ -608,7 +831,10 @@ public enum CommandType
     None,
     Move,
     Attack,
-    Defend
+    Defend,
+    Deploy,
+    Rotate,
+    Bombard
 }
 
 public interface Command

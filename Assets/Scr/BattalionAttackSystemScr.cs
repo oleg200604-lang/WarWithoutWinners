@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class BattalionAttackSystemScr : MonoBehaviour
@@ -149,5 +150,37 @@ public class BattalionAttackSystemScr : MonoBehaviour
         }
 
         return null;
+    }
+
+    // Обстріл (Bombard): б'є по ВСІХ ворожих батальйонах у колі радіусом
+    // radius навколо center — на відміну від FindTarget, тут не йдеться
+    // про промінь/першу ціль і лінія видимості не перевіряється (непрямий
+    // вогонь артилерії).
+    public List<BattalionScr> FindTargetsInRadius(
+        Vector3 center,
+        float radius,
+        int attackerTeamID)
+    {
+        List<BattalionScr> results = new List<BattalionScr>();
+
+        Collider2D[] hits = Physics2D.OverlapCircleAll(center, radius, battalionLayer);
+
+        foreach (Collider2D hit in hits)
+        {
+            if (hit == null)
+                continue;
+
+            BattalionScr target = hit.GetComponent<BattalionScr>();
+
+            if (target == null)
+                continue;
+
+            if (target.teamID == attackerTeamID)
+                continue;
+
+            results.Add(target);
+        }
+
+        return results;
     }
 }

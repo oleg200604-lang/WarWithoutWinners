@@ -8,6 +8,8 @@ public class BattalionUIManagerScr : MonoBehaviour
 
     public GameObject commandPanel;
     public GameObject noneButton, moveButton, attackButton, defendButton, addrRgiment, removeRegiment;
+    [Header("Артилерія: розкладка / обстріл")]
+    public GameObject deployButton, undeployButton, rotateButton, bombardButton;
 
     public List<Button> buttonSelectRegiment;
     public BatalionManagerScr batalionManager;
@@ -32,23 +34,27 @@ public class BattalionUIManagerScr : MonoBehaviour
         if (battalionScr == null)
             return;
 
-        // Перевірка типу батальйону
-        switch (battalionScr.battalion.type)
-        {
-            case BattalionType.none:
-                noneButton.SetActive(false);
-                moveButton.SetActive(false);
-                attackButton.SetActive(false);
-                defendButton.SetActive(false);
-                break;
+        // Було: switch лише на infantry/none — для cavalry, artillery,
+        // mechanically кнопки лишались у попередньому стані (звідси
+        // враження, що "все показується"). Тепер стан кнопок рахується
+        // з реальних даних батальйону для БУДЬ-ЯКОГО типу.
+        bool isNone = battalionScr.battalion.type == BattalionType.none;
+        bool isArtillery = battalionScr.battalion.type == BattalionType.artillery;
+        bool isDeployed = isArtillery && battalionScr.isDeployed;
 
-            case BattalionType.infantry:
-                noneButton.SetActive(true);
-                moveButton.SetActive(true);
-                attackButton.SetActive(true);
-                defendButton.SetActive(true);
-                break;
-        }
+        noneButton.SetActive(!isNone);
+        moveButton.SetActive(!isNone && !isDeployed);
+        attackButton.SetActive(!isNone && !isDeployed);
+        defendButton.SetActive(!isNone);
+
+        // Накази, специфічні для розкладеної артилерії.
+        deployButton.SetActive(isArtillery && !isDeployed);
+        undeployButton.SetActive(isDeployed);
+        rotateButton.SetActive(isDeployed);
+        bombardButton.SetActive(isDeployed);
+
+        addrRgiment.SetActive(false);
+        removeRegiment.SetActive(false);
 
         if (batalionManager.regiments.Count > 0)
         {
