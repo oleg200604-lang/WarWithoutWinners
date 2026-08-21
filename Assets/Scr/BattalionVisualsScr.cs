@@ -256,18 +256,18 @@ public class BattalionVisualsScr : MonoBehaviour
          * Тут не рахуємо terrain вручну.
          *
          * Використовуємо той самий GetReachableDistance(),
-         * який використовується системою наказів.
+         * який використовується системою наказів. Передаємо
+         * базовий (terrain-незалежний) battalion.speed — сам
+         * GetReachableDistance тепер рахує вартість шляху по
+         * ВСЬОМУ маршруту через GetTerrainMoveCost.
          */
-
-        float availableSpeed =
-            battalion.GetEffectiveSpeed(origin);
 
         float reachableDistance =
             battalion.GetReachableDistance(
                 origin,
                 direction,
                 desiredDistance,
-                availableSpeed,
+                battalion.speed,
                 1f
             );
 

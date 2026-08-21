@@ -39,6 +39,8 @@ public class BattalionScr : MonoBehaviour
     [Tooltip("Радіус ураження одного обстрілу (Bombard) — б'є по ВСІХ ворожих батальйонах у цьому колі навколо точки влучення, а не лише по першому на промені.")]
     public float bombardRadius = 1.5f;
     [Header("Terrain sampling")]
+    [SerializeField, Min(0.05f)]
+    private float terrainSampleStep = 0.15f;
     private static readonly List<BattalionScr> AllBattalions = new List<BattalionScr>();
 
     private void OnEnable()
@@ -135,6 +137,43 @@ public class BattalionScr : MonoBehaviour
         return angle <= deployConeAngle * 0.5f;
     }
 
+    // Вартість ВСЬОГО прямого маршруту (з урахуванням terrain-мультиплікатора
+    // кожного сегмента), а не тільки terrain у кінцевій точці to.
+    // Це відновлює бафи/дебафи ландшафту (дороги, ліс, гори, річка) для
+    // будь-якої точки на шляху, а не лише для origin.
+    public float GetTerrainMoveCost(Vector3 from, Vector3 to)
+    {
+        float distance = Vector3.Distance(from, to);
+
+        if (distance <= 0.001f)
+            return 0f;
+
+        if (TerrainManagerScr.Instance == null)
+            return distance;
+
+        int samples = Mathf.CeilToInt(distance / terrainSampleStep);
+        float segmentLength = distance / samples;
+        Vector3 direction = (to - from).normalized;
+
+        float cost = 0f;
+
+        for (int i = 0; i < samples; i++)
+        {
+            // Беремо середину маленького відрізка, щоб не рахувати
+            // стартовий і кінцевий terrain двічі.
+            Vector3 samplePoint =
+                from + direction * (segmentLength * (i + 0.5f));
+
+            LandscapeType terrain =
+                TerrainManagerScr.Instance.GetTypeAt(samplePoint);
+
+            cost += segmentLength *
+                    TerrainManagerScr.Instance.GetMoveCostMultiplier(terrain);
+        }
+
+        return cost;
+    }
+
     // Перевіряє не тільки кінцеву точку, а весь маршрут.
     public bool IsRoutePassable(Vector3 from, Vector3 to)
     {
@@ -146,7 +185,7 @@ public class BattalionScr : MonoBehaviour
         if (distance <= 0.001f)
             return TerrainManagerScr.Instance.IsPassable(from, battalion.type);
 
-        int samples = Mathf.CeilToInt(distance);
+        int samples = Mathf.CeilToInt(distance / terrainSampleStep);
         Vector3 direction = (to - from).normalized;
 
         for (int i = 1; i <= samples; i++)
@@ -181,30 +220,23 @@ public class BattalionScr : MonoBehaviour
         direction.Normalize();
 
         /*
-         * availableSpeed — реальна швидкість батальйону
-         * на terrain у точці origin.
+         * availableSpeed — базова (terrain-незалежна) швидкість
+         * батальйону. Бюджет наказу = availableSpeed * orderDuration.
          *
          * costMultiplier використовується для Attack.
+         *
+         * Реальна вартість шляху рахується по ВСЬОМУ маршруту через
+         * GetTerrainMoveCost — тому дороги/ліс/гори/річка впливають
+         * на дальність незалежно від того, де саме на шляху вони
+         * зустрічаються, а не лише в origin.
          */
 
-        float reachableDistance =
+        float budget =
             availableSpeed *
-            orderDuration /
-            costMultiplier;
-
-        reachableDistance =
-            Mathf.Min(
-                desiredDistance,
-                reachableDistance
-            );
-
-        /*
-         * Не дозволяємо наказу закінчитися
-         * на непрохідній місцевості.
-         */
+            orderDuration;
 
         float low = 0f;
-        float high = reachableDistance;
+        float high = desiredDistance;
 
         for (int i = 0; i < 16; i++)
         {
@@ -214,7 +246,12 @@ public class BattalionScr : MonoBehaviour
             Vector3 point =
                 origin + direction * middle;
 
-            if (IsRoutePassable(origin, point))
+            float cost =
+                GetTerrainMoveCost(origin, point) *
+                costMultiplier;
+
+            if (cost <= budget &&
+                IsRoutePassable(origin, point))
             {
                 low = middle;
             }
@@ -236,13 +273,11 @@ public class BattalionScr : MonoBehaviour
             return 0f;
         }
 
-        Vector3 origin =
-            GetOrderOrigin(slot);
-
-        float effectiveSpeed =
-            GetEffectiveSpeed(origin);
-
-        return effectiveSpeed * orderDuration;
+        // Бюджет наказу без знання кінцевої точки не може врахувати
+        // terrain по шляху (це залежить від напрямку) — тому тут
+        // повертаємо базовий бюджет; реальна вартість рахується під
+        // час GetReachableDistance / SetMoveOrder, де відома ціль.
+        return speed * orderDuration;
     }
 
     public bool SetMoveOrder(int slot, Vector3 pos)
@@ -277,23 +312,22 @@ public class BattalionScr : MonoBehaviour
         }
 
         /*
-         * Terrain визначає швидкість батальйону
-         * в момент початку наказу.
+         * Вартість рахується по ВСЬОМУ маршруту (кожен сегмент
+         * зважений на terrain-мультиплікатор у цій точці), а не лише
+         * по terrain у origin — інакше дорога/ліс/гори/річка на
+         * середині шляху ніяк не впливають на результат.
          */
-        float effectiveSpeed =
-            GetEffectiveSpeed(origin);
+        float movementCost =
+            GetTerrainMoveCost(origin, pos);
 
-        float availableMovement =
-            effectiveSpeed * orderDuration;
-
-        float distance =
-            Vector3.Distance(origin, pos);
+        float budget =
+            speed * orderDuration;
 
         /*
          * Не можна пройти далі,
-         * ніж дозволяє terrain-adjusted speed.
+         * ніж дозволяє terrain-adjusted бюджет.
          */
-        if (distance > availableMovement)
+        if (movementCost > budget)
             return false;
 
         ClearOrdersAfter(slot);
@@ -336,15 +370,12 @@ public class BattalionScr : MonoBehaviour
 
         direction.Normalize();
 
-        float effectiveSpeed =
-            GetEffectiveSpeed(origin);
-
         float moveDistance =
             GetReachableDistance(
                 origin,
                 direction,
                 desiredMoveDistance,
-                effectiveSpeed,
+                speed,
                 attackMoveCostMultiplier
             );
 
