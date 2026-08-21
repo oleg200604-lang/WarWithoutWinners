@@ -24,16 +24,22 @@ public class BatalionManagerScr : MonoBehaviour
         {
             commandDuty = 0;
             print("Наказ 1");
+            if (battalionUIManager != null)
+                battalionUIManager.CheckButtalion();
         }
         if (Keyboard.current.digit2Key.wasPressedThisFrame)
         {
             commandDuty = 1;
             print("Наказ 2");
+            if (battalionUIManager != null)
+                battalionUIManager.CheckButtalion();
         }
         if (Keyboard.current.digit3Key.wasPressedThisFrame)
         {
             commandDuty = 2;
             print("Наказ 3");
+            if (battalionUIManager != null)
+                battalionUIManager.CheckButtalion();
         }
         switch (commandType)
         {
@@ -261,6 +267,12 @@ public class BatalionManagerScr : MonoBehaviour
         {
             commandDuty++;
             print("Наказ " + (commandDuty + 1));
+
+            // Без цього кнопки лишаються від стану ПОПЕРЕДНЬОГО слота —
+            // саме тому Bombard/Undeploy/Rotate ставали доступні лише
+            // наступного ходу, хоча Deploy вже стояв у черзі цього ходу.
+            if (battalionUIManager != null)
+                battalionUIManager.CheckButtalion();
         }
     }
 

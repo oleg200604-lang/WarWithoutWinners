@@ -39,8 +39,6 @@ public class BattalionScr : MonoBehaviour
     [Tooltip("Радіус ураження одного обстрілу (Bombard) — б'є по ВСІХ ворожих батальйонах у цьому колі навколо точки влучення, а не лише по першому на промені.")]
     public float bombardRadius = 1.5f;
     [Header("Terrain sampling")]
-    [SerializeField, Min(0.05f)]
-    private float terrainSampleStep = 0.15f;
     private static readonly List<BattalionScr> AllBattalions = new List<BattalionScr>();
 
     private void OnEnable()
@@ -62,26 +60,39 @@ public class BattalionScr : MonoBehaviour
     // Клас: BattalionScr
     public Vector3 GetOrderOrigin(int slot)
     {
-        if (command == null || command.Length == 0)
+        if (command == null ||
+            command.Length == 0)
+        {
             return transform.position;
+        }
 
-        slot = Mathf.Clamp(slot, 0, command.Length);
+        if (slot < 0 ||
+            slot >= command.Length)
+        {
+            return transform.position;
+        }
 
-        Vector3 origin = transform.position;
+        Vector3 origin =
+            transform.position;
 
         for (int i = 0; i < slot; i++)
         {
-            if (command[i] is MoveCommand move && move.isSet)
+            if (command[i] is MoveCommand move &&
+                move.isSet)
             {
                 origin = move.pos;
             }
-            else if (command[i] is AttackOrder attack && attack.isSet)
+            else if (command[i] is AttackOrder attack &&
+                     attack.isSet)
             {
-                origin += attack.direction * attack.moveDistance;
+                origin +=
+                    attack.direction *
+                    attack.moveDistance;
             }
         }
 
         origin.z = 0f;
+
         return origin;
     }
 
@@ -124,40 +135,6 @@ public class BattalionScr : MonoBehaviour
         return angle <= deployConeAngle * 0.5f;
     }
 
-    // Вартість ВСЬОГО прямого маршруту, а не тільки terrain у точці to.
-    public float GetTerrainMoveCost(Vector3 from, Vector3 to)
-    {
-        float distance = Vector3.Distance(from, to);
-
-        if (distance <= 0.001f)
-            return 0f;
-
-        if (TerrainManagerScr.Instance == null)
-            return distance;
-
-        int samples = Mathf.CeilToInt(distance / terrainSampleStep);
-        float segmentLength = distance / samples;
-        Vector3 direction = (to - from).normalized;
-
-        float cost = 0f;
-
-        for (int i = 0; i < samples; i++)
-        {
-            // Беремо середину маленького відрізка, щоб не рахувати
-            // стартовий і кінцевий terrain двічі.
-            Vector3 samplePoint =
-                from + direction * (segmentLength * (i + 0.5f));
-
-            LandscapeType terrain =
-                TerrainManagerScr.Instance.GetTypeAt(samplePoint);
-
-            cost += segmentLength *
-                    TerrainManagerScr.Instance.GetMoveCostMultiplier(terrain);
-        }
-
-        return cost;
-    }
-
     // Перевіряє не тільки кінцеву точку, а весь маршрут.
     public bool IsRoutePassable(Vector3 from, Vector3 to)
     {
@@ -169,7 +146,7 @@ public class BattalionScr : MonoBehaviour
         if (distance <= 0.001f)
             return TerrainManagerScr.Instance.IsPassable(from, battalion.type);
 
-        int samples = Mathf.CeilToInt(distance / terrainSampleStep);
+        int samples = Mathf.CeilToInt(distance);
         Vector3 direction = (to - from).normalized;
 
         for (int i = 1; i <= samples; i++)
@@ -185,34 +162,66 @@ public class BattalionScr : MonoBehaviour
 
     // Найдальша точка в заданому напрямку, яку реально можна досягти.
     // Метод використовується і SetAttackOrder, і RangeIndicatorScr.
-    public float GetReachableDistance(Vector3 origin, Vector3 direction, float desiredDistance, float availableSpeed, float costMultiplier = 1f)
+    public float GetReachableDistance(
+        Vector3 origin,
+        Vector3 direction,
+        float desiredDistance,
+        float availableSpeed,
+        float costMultiplier = 1f)
     {
-        if (direction.sqrMagnitude < 0.001f ||
-            desiredDistance <= 0f ||
-            availableSpeed <= 0f)
-        {
+        if (direction.sqrMagnitude < 0.001f)
             return 0f;
-        }
+
+        if (desiredDistance <= 0f)
+            return 0f;
+
+        if (availableSpeed <= 0f)
+            return 0f;
 
         direction.Normalize();
 
+        /*
+         * availableSpeed — реальна швидкість батальйону
+         * на terrain у точці origin.
+         *
+         * costMultiplier використовується для Attack.
+         */
+
+        float reachableDistance =
+            availableSpeed *
+            orderDuration /
+            costMultiplier;
+
+        reachableDistance =
+            Mathf.Min(
+                desiredDistance,
+                reachableDistance
+            );
+
+        /*
+         * Не дозволяємо наказу закінчитися
+         * на непрохідній місцевості.
+         */
+
         float low = 0f;
-        float high = desiredDistance;
+        float high = reachableDistance;
 
-        // Шукаємо найбільшу відстань, для якої вистачає Speed
-        // і весь прямий маршрут прохідний.
-        for (int i = 0; i < 14; i++)
+        for (int i = 0; i < 16; i++)
         {
-            float middle = (low + high) * 0.5f;
-            Vector3 point = origin + direction * middle;
+            float middle =
+                (low + high) * 0.5f;
 
-            float cost =
-                GetTerrainMoveCost(origin, point) * costMultiplier;
+            Vector3 point =
+                origin + direction * middle;
 
-            if (cost <= availableSpeed && IsRoutePassable(origin, point))
+            if (IsRoutePassable(origin, point))
+            {
                 low = middle;
+            }
             else
+            {
                 high = middle;
+            }
         }
 
         return low;
@@ -220,64 +229,75 @@ public class BattalionScr : MonoBehaviour
 
     public float GetRemainingRange(int slot)
     {
-        // Було slot > command.Length — це помилка.
-        // При slot == command.Length звернення до command[slot] уже небезпечне.
-        if (command == null || slot < 0 || slot >= command.Length)
-            return 0f;
-
-        float used = 0f;
-        Vector3 point = transform.position;
-
-        for (int i = 0; i < slot; i++)
+        if (command == null ||
+            slot < 0 ||
+            slot >= command.Length)
         {
-            if (command[i] is MoveCommand move && move.isSet)
-            {
-                used += GetTerrainMoveCost(point, move.pos);
-                point = move.pos;
-            }
-            else if (command[i] is AttackOrder attack && attack.isSet)
-            {
-                Vector3 target = point + attack.direction * attack.moveDistance;
-
-                used += GetTerrainMoveCost(point, target) *
-                        attackMoveCostMultiplier;
-
-                point = target;
-            }
+            return 0f;
         }
 
-        return Mathf.Max(0f, speed - used);
+        Vector3 origin =
+            GetOrderOrigin(slot);
+
+        float effectiveSpeed =
+            GetEffectiveSpeed(origin);
+
+        return effectiveSpeed * orderDuration;
     }
 
     public bool SetMoveOrder(int slot, Vector3 pos)
     {
-        if (command == null || slot < 0 || slot >= command.Length)
+        if (command == null ||
+            slot < 0 ||
+            slot >= command.Length)
+        {
             return false;
+        }
 
         // Розкладена артилерія не рухається.
         if (GetProjectedDeployedState(slot))
             return false;
 
-        Vector3 origin = GetOrderOrigin(slot);
+        Vector3 origin =
+            GetOrderOrigin(slot);
 
         pos.z = 0f;
 
+        // Перевіряємо весь маршрут на прохідність.
         if (!IsRoutePassable(origin, pos))
             return false;
 
-        if (!IsPositionFree(pos, footprintRadius, this))
+        // Перевіряємо зайнятість кінцевої точки.
+        if (!IsPositionFree(
+            pos,
+            footprintRadius,
+            this))
+        {
             return false;
+        }
 
-        float movementCost = GetTerrainMoveCost(origin, pos);
+        /*
+         * Terrain визначає швидкість батальйону
+         * в момент початку наказу.
+         */
+        float effectiveSpeed =
+            GetEffectiveSpeed(origin);
 
-        // SPEED тепер є швидкістю ОДНОГО наказу,
-        // а не запасом на весь хід.
-        if (movementCost > speed)
+        float availableMovement =
+            effectiveSpeed * orderDuration;
+
+        float distance =
+            Vector3.Distance(origin, pos);
+
+        /*
+         * Не можна пройти далі,
+         * ніж дозволяє terrain-adjusted speed.
+         */
+        if (distance > availableMovement)
             return false;
 
         ClearOrdersAfter(slot);
 
-        // Якщо новий наказ замінює постійний захист.
         isDefending = false;
 
         command[slot] = new MoveCommand
@@ -295,37 +315,55 @@ public class BattalionScr : MonoBehaviour
         Vector3 direction,
         float desiredMoveDistance)
     {
-        if (command == null || slot < 0 || slot >= command.Length)
+        if (command == null ||
+            slot < 0 ||
+            slot >= command.Length)
+        {
             return false;
+        }
 
         if (GetProjectedDeployedState(slot))
             return false;
 
-        if (direction.sqrMagnitude < 0.001f || attackRange <= 0f)
+        if (direction.sqrMagnitude < 0.001f)
             return false;
 
-        Vector3 origin = GetOrderOrigin(slot);
+        if (attackRange <= 0f)
+            return false;
+
+        Vector3 origin =
+            GetOrderOrigin(slot);
 
         direction.Normalize();
 
-        float moveDistance = GetReachableDistance(
-            origin,
-            direction,
-            desiredMoveDistance,
-            speed,
-            attackMoveCostMultiplier
-        );
+        float effectiveSpeed =
+            GetEffectiveSpeed(origin);
+
+        float moveDistance =
+            GetReachableDistance(
+                origin,
+                direction,
+                desiredMoveDistance,
+                effectiveSpeed,
+                attackMoveCostMultiplier
+            );
 
         if (moveDistance <= 0.001f)
             return false;
 
         Vector3 targetPoint =
-            origin + direction * moveDistance;
+            origin +
+            direction * moveDistance;
 
         targetPoint.z = 0f;
 
-        if (!IsPositionFree(targetPoint, footprintRadius, this))
+        if (!IsPositionFree(
+            targetPoint,
+            footprintRadius,
+            this))
+        {
             return false;
+        }
 
         ClearOrdersAfter(slot);
 
@@ -434,48 +472,63 @@ public class BattalionScr : MonoBehaviour
 
     public bool GetProjectedDeployedState(int slot)
     {
-        bool projectedDeployed = isDeployed;
+        bool projectedDeployed =
+            isDeployed;
 
         if (command == null)
             return projectedDeployed;
 
-        slot = Mathf.Clamp(slot, 0, command.Length);
+        if (slot < 0 ||
+            slot >= command.Length)
+        {
+            return projectedDeployed;
+        }
 
         for (int i = 0; i < slot; i++)
         {
-            if (command[i] is DeployOrder deployOrder && deployOrder.isSet)
+            if (command[i] is DeployOrder deployOrder &&
+                deployOrder.isSet)
             {
-                projectedDeployed = deployOrder.deploy;
+                projectedDeployed =
+                    deployOrder.deploy;
             }
         }
 
         return projectedDeployed;
     }
-
     public Vector3 GetProjectedDeployDirection(int slot)
     {
-        Vector3 projectedDirection = deployDirection;
+        Vector3 projectedDirection =
+            deployDirection;
 
         if (command == null)
             return projectedDirection;
 
-        slot = Mathf.Clamp(slot, 0, command.Length);
+        if (slot < 0 ||
+            slot >= command.Length)
+        {
+            return projectedDirection.normalized;
+        }
 
         for (int i = 0; i < slot; i++)
         {
-            if (command[i] is DeployOrder deployOrder && deployOrder.isSet)
+            if (command[i] is DeployOrder deployOrder &&
+                deployOrder.isSet)
             {
                 if (deployOrder.deploy &&
                     deployOrder.direction.sqrMagnitude > 0.001f)
                 {
-                    projectedDirection = deployOrder.direction.normalized;
+                    projectedDirection =
+                        deployOrder.direction.normalized;
                 }
             }
-            else if (command[i] is RotateOrder rotateOrder && rotateOrder.isSet)
+            else if (command[i] is RotateOrder rotateOrder &&
+                     rotateOrder.isSet)
             {
                 if (rotateOrder.direction.sqrMagnitude > 0.001f)
                 {
-                    projectedDirection = rotateOrder.direction.normalized;
+                    projectedDirection =
+                        rotateOrder.direction.normalized;
                 }
             }
         }
@@ -601,7 +654,24 @@ public class BattalionScr : MonoBehaviour
 
         return true;
     }
+    public float GetEffectiveSpeed(Vector3 origin)
+    {
+        float baseSpeed = speed;
 
+        if (TerrainManagerScr.Instance == null)
+            return baseSpeed;
+
+        LandscapeType terrain =
+            TerrainManagerScr.Instance.GetTypeAt(origin);
+
+        float multiplier =
+            TerrainManagerScr.Instance.GetMoveCostMultiplier(terrain);
+
+        if (multiplier <= 0.001f)
+            return baseSpeed;
+
+        return baseSpeed / multiplier;
+    }
     private void ClearOrdersAfter(int slot)
     {
         for (int i = slot + 1; i < command.Length; i++)
@@ -940,7 +1010,7 @@ public class BattalionScr : MonoBehaviour
                         attackSystem.FindTargetsInRadius(
                             bombardOrder.targetPoint,
                             bombardOrder.radius,
-                            teamID
+                            this
                         );
 
                     if (hitTargets.Count > 0)

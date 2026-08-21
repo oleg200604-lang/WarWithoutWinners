@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 
 public class BattalionUIManagerScr : MonoBehaviour
 {
@@ -31,25 +30,8 @@ public class BattalionUIManagerScr : MonoBehaviour
 
         bool isNone = battalionScr.battalion.type == BattalionType.none;
         bool isArtillery = battalionScr.battalion.type == BattalionType.artillery;
-        bool isDeployed = isArtillery && battalionScr.isDeployed;
+        bool isDeployed = isArtillery &&  battalionScr.GetProjectedDeployedState(batalionManager.CommandDuty);
 
-        print(isDeployed+ " " + isArtillery + " " + battalionScr.isDeployed);
-        switch (battalionScr.battalion.type)
-        {
-            case BattalionType.none:
-
-                break;
-
-
-            case BattalionType.infantry:
-
-                break;
-
-
-            case BattalionType.artillery:
-
-                break;
-        }
         noneButton.SetActive(!isNone);
         moveButton.SetActive(!isNone && !isDeployed);
         attackButton.SetActive(!isNone && !isDeployed);

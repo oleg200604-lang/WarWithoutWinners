@@ -156,10 +156,13 @@ public class BattalionAttackSystemScr : MonoBehaviour
     // radius навколо center — на відміну від FindTarget, тут не йдеться
     // про промінь/першу ціль і лінія видимості не перевіряється (непрямий
     // вогонь артилерії).
+    // Обстріл (Bombard): б'є по ВСІХ батальйонах у колі радіусом radius
+    // навколо center — включно із союзниками. Снаряд не розрізняє форму,
+    // виключаємо тільки саму батарею, що стріляє.
     public List<BattalionScr> FindTargetsInRadius(
         Vector3 center,
         float radius,
-        int attackerTeamID)
+        BattalionScr attacker)
     {
         List<BattalionScr> results = new List<BattalionScr>();
 
@@ -175,7 +178,7 @@ public class BattalionAttackSystemScr : MonoBehaviour
             if (target == null)
                 continue;
 
-            if (target.teamID == attackerTeamID)
+            if (target == attacker)
                 continue;
 
             results.Add(target);
