@@ -14,7 +14,8 @@ public class BattalionScr : MonoBehaviour
     public Command[] command = new Command[3];
     public int teamID;
     public int regimentredID = -1;
-
+    public bool isDefending;
+    public Vector3 defendDirection = Vector3.right;
     [Header("Пересування")]
     public float speed = 5f;
     public float orderDuration = 1f;
@@ -58,9 +59,10 @@ public class BattalionScr : MonoBehaviour
         command[1] = new MoveCommand();
         command[2] = new MoveCommand();
     }
+    // Клас: BattalionScr
     public Vector3 GetOrderOrigin(int slot)
     {
-        if (command == null)
+        if (command == null || command.Length == 0)
             return transform.position;
 
         slot = Mathf.Clamp(slot, 0, command.Length);
@@ -252,11 +254,12 @@ public class BattalionScr : MonoBehaviour
         if (command == null || slot < 0 || slot >= command.Length)
             return false;
 
-        // Розкладена артилерія не рухається — спершу Undeploy.
-        if (isDeployed)
+        // Розкладена артилерія не рухається.
+        if (GetProjectedDeployedState(slot))
             return false;
 
         Vector3 origin = GetOrderOrigin(slot);
+
         pos.z = 0f;
 
         if (!IsRoutePassable(origin, pos))
@@ -267,10 +270,15 @@ public class BattalionScr : MonoBehaviour
 
         float movementCost = GetTerrainMoveCost(origin, pos);
 
-        if (movementCost > GetRemainingRange(slot))
+        // SPEED тепер є швидкістю ОДНОГО наказу,
+        // а не запасом на весь хід.
+        if (movementCost > speed)
             return false;
 
         ClearOrdersAfter(slot);
+
+        // Якщо новий наказ замінює постійний захист.
+        isDefending = false;
 
         command[slot] = new MoveCommand
         {
@@ -290,26 +298,30 @@ public class BattalionScr : MonoBehaviour
         if (command == null || slot < 0 || slot >= command.Length)
             return false;
 
-        // Attack вимагає можливості рухатись — розкладена артилерія
-        // нерухома, для атаки на місці в неї є окремий наказ Bombard.
-        if (isDeployed)
+        if (GetProjectedDeployedState(slot))
             return false;
 
         if (direction.sqrMagnitude < 0.001f || attackRange <= 0f)
             return false;
 
         Vector3 origin = GetOrderOrigin(slot);
+
         direction.Normalize();
 
         float moveDistance = GetReachableDistance(
             origin,
             direction,
             desiredMoveDistance,
-            GetRemainingRange(slot),
+            speed,
             attackMoveCostMultiplier
         );
 
-        Vector3 targetPoint = origin + direction * moveDistance;
+        if (moveDistance <= 0.001f)
+            return false;
+
+        Vector3 targetPoint =
+            origin + direction * moveDistance;
+
         targetPoint.z = 0f;
 
         if (!IsPositionFree(targetPoint, footprintRadius, this))
@@ -317,13 +329,15 @@ public class BattalionScr : MonoBehaviour
 
         ClearOrdersAfter(slot);
 
+        isDefending = false;
+
         command[slot] = new AttackOrder
         {
             direction = direction,
             moveDistance = moveDistance,
 
-            // Дальність береться в точці, де батальйон ЗАКІНЧИТЬ атаку-рух.
-            zoneRange = GetEffectiveAttackRange(targetPoint),
+            zoneRange =
+                GetEffectiveAttackRange(targetPoint),
 
             commandType = CommandType.Attack,
             isSet = true
@@ -340,25 +354,40 @@ public class BattalionScr : MonoBehaviour
         Vector3 finalDirection;
         float finalRange;
 
-        if (isDeployed)
+        bool projectedDeployed =
+            GetProjectedDeployedState(slot);
+
+        if (projectedDeployed)
         {
-            // Розкладена артилерія захищається лише в напрямок, куди
-            // вже наведена гармата — клік гравця напрямок НЕ змінює.
-            // Щоб захищати інший напрямок — спершу наказ Rotate.
-            finalDirection = deployDirection;
+            // Розкладена артилерія захищається
+            // тільки в напрямку наведення.
+            finalDirection =
+                GetProjectedDeployDirection(slot);
+
             finalRange = deployRange;
         }
         else
         {
-            if (direction.sqrMagnitude < 0.001f || attackRange <= 0f)
+            if (direction.sqrMagnitude < 0.001f ||
+                attackRange <= 0f)
+            {
                 return false;
+            }
 
-            Vector3 origin = GetOrderOrigin(slot);
-            finalDirection = direction.normalized;
-            finalRange = GetEffectiveAttackRange(origin);
+            Vector3 origin =
+                GetOrderOrigin(slot);
+
+            finalDirection =
+                direction.normalized;
+
+            finalRange =
+                GetEffectiveAttackRange(origin);
         }
 
         ClearOrdersAfter(slot);
+
+        isDefending = true;
+        defendDirection = finalDirection;
 
         command[slot] = new DefendOrder
         {
@@ -380,13 +409,18 @@ public class BattalionScr : MonoBehaviour
         if (command == null || slot < 0 || slot >= command.Length)
             return false;
 
-        if (battalion.type != BattalionType.artillery || !isDeployed)
+        if (battalion.type != BattalionType.artillery)
+            return false;
+
+        if (!GetProjectedDeployedState(slot))
             return false;
 
         if (direction.sqrMagnitude < 0.001f)
             return false;
 
         ClearOrdersAfter(slot);
+
+        isDefending = false;
 
         command[slot] = new RotateOrder
         {
@@ -398,11 +432,57 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
-    // Розкладка / згортання артилерії. Один виклик перемикає стан навпаки
-    // тому, що зафіксовано на момент видачі наказу (не виконання) —
-    // за один хід можна встановити лише один такий наказ поспіль.
-    // direction має значення тільки коли розкладаємось (задає фронт),
-    // при згортанні він ігнорується.
+    public bool GetProjectedDeployedState(int slot)
+    {
+        bool projectedDeployed = isDeployed;
+
+        if (command == null)
+            return projectedDeployed;
+
+        slot = Mathf.Clamp(slot, 0, command.Length);
+
+        for (int i = 0; i < slot; i++)
+        {
+            if (command[i] is DeployOrder deployOrder && deployOrder.isSet)
+            {
+                projectedDeployed = deployOrder.deploy;
+            }
+        }
+
+        return projectedDeployed;
+    }
+
+    public Vector3 GetProjectedDeployDirection(int slot)
+    {
+        Vector3 projectedDirection = deployDirection;
+
+        if (command == null)
+            return projectedDirection;
+
+        slot = Mathf.Clamp(slot, 0, command.Length);
+
+        for (int i = 0; i < slot; i++)
+        {
+            if (command[i] is DeployOrder deployOrder && deployOrder.isSet)
+            {
+                if (deployOrder.deploy &&
+                    deployOrder.direction.sqrMagnitude > 0.001f)
+                {
+                    projectedDirection = deployOrder.direction.normalized;
+                }
+            }
+            else if (command[i] is RotateOrder rotateOrder && rotateOrder.isSet)
+            {
+                if (rotateOrder.direction.sqrMagnitude > 0.001f)
+                {
+                    projectedDirection = rotateOrder.direction.normalized;
+                }
+            }
+        }
+
+        return projectedDirection.normalized;
+    }
+
     public bool SetDeployOrder(int slot, Vector3 direction)
     {
         if (command == null || slot < 0 || slot >= command.Length)
@@ -411,17 +491,32 @@ public class BattalionScr : MonoBehaviour
         if (battalion.type != BattalionType.artillery)
             return false;
 
-        bool willDeploy = !isDeployed;
+        // Дивимося не на фактичний стан,
+        // а на стан після попередніх наказів.
+        bool currentlyDeployed =
+            GetProjectedDeployedState(slot);
 
-        if (willDeploy && direction.sqrMagnitude < 0.001f)
+        bool willDeploy = !currentlyDeployed;
+
+        if (willDeploy &&
+            direction.sqrMagnitude < 0.001f)
+        {
             return false;
+        }
 
         ClearOrdersAfter(slot);
+
+        isDefending = false;
 
         command[slot] = new DeployOrder
         {
             deploy = willDeploy,
-            direction = willDeploy ? direction.normalized : deployDirection,
+
+            direction =
+                willDeploy
+                    ? direction.normalized
+                    : GetProjectedDeployDirection(slot),
+
             commandType = CommandType.Deploy,
             isSet = true
         };
@@ -437,16 +532,48 @@ public class BattalionScr : MonoBehaviour
         if (command == null || slot < 0 || slot >= command.Length)
             return false;
 
-        if (battalion.type != BattalionType.artillery || !isDeployed)
+        if (battalion.type != BattalionType.artillery)
             return false;
 
-        Vector3 origin = GetOrderOrigin(slot);
+        // ВАЖЛИВО:
+        // перевіряємо стан після попередніх наказів.
+        if (!GetProjectedDeployedState(slot))
+            return false;
+
+        Vector3 origin =
+            GetOrderOrigin(slot);
+
         targetPoint.z = 0f;
 
-        if (!IsWithinDeployZone(origin, targetPoint))
+        Vector3 projectedDirection =
+            GetProjectedDeployDirection(slot);
+
+        Vector3 toTarget =
+            targetPoint - origin;
+
+        toTarget.z = 0f;
+
+        float distance =
+            toTarget.magnitude;
+
+        if (distance > deployRange)
             return false;
 
+        if (distance > 0.001f)
+        {
+            float angle =
+                Vector3.Angle(
+                    projectedDirection,
+                    toTarget.normalized
+                );
+
+            if (angle > deployConeAngle * 0.5f)
+                return false;
+        }
+
         ClearOrdersAfter(slot);
+
+        isDefending = false;
 
         command[slot] = new BombardOrder
         {
@@ -487,7 +614,15 @@ public class BattalionScr : MonoBehaviour
 
     private void Start()
     {
-        nameBattalion = "Infantry " + Random.Range(0, 100);
+        switch (battalion.type)
+        {
+            case BattalionType.infantry:
+                nameBattalion = "Infantry " + Random.Range(0, 100);
+                break;
+            case BattalionType.artillery:
+                nameBattalion = "Artillery " + Random.Range(0, 100);
+                break;
+        }
 
         if (battleManager != null)
         {
@@ -516,9 +651,30 @@ public class BattalionScr : MonoBehaviour
 
     private void ClearAllOrders()
     {
+        DefendOrder persistentDefend = null;
+
+        for (int i = 0; i < command.Length; i++)
+        {
+            if (command[i] is DefendOrder defend &&
+                defend.isSet)
+            {
+                persistentDefend = defend;
+                break;
+            }
+        }
+
         for (int i = 0; i < command.Length; i++)
         {
             command[i] = new MoveCommand();
+        }
+
+        if (persistentDefend != null)
+        {
+            command[0] = persistentDefend;
+
+            isDefending = true;
+            defendDirection =
+                persistentDefend.direction.normalized;
         }
     }
 
@@ -549,15 +705,18 @@ public class BattalionScr : MonoBehaviour
     {
         for (int i = 0; i < command.Length; i++)
         {
-            if (command[i] is MoveCommand move && move.isSet)
+            if (command[i] is MoveCommand move &&
+                move.isSet)
             {
-                Vector3 start = transform.position;
+                Vector3 start =
+                    transform.position;
 
-                Vector3 target = new Vector3(
-                    move.pos.x,
-                    move.pos.y,
-                    0
-                );
+                Vector3 target =
+                    new Vector3(
+                        move.pos.x,
+                        move.pos.y,
+                        0f
+                    );
 
                 float t = 0f;
 
@@ -575,37 +734,74 @@ public class BattalionScr : MonoBehaviour
                     yield return null;
                 }
 
-                transform.position = target;
+                transform.position =
+                    target;
 
-                print("Move: " + target);
+                print(
+                    "Move: " +
+                    target
+                );
             }
-            else if (command[i] is AttackOrder attack && attack.isSet)
+            else if (command[i] is AttackOrder attack &&
+                     attack.isSet)
             {
-                Vector3 start = transform.position;
-                Vector3 target = start + attack.direction * attack.moveDistance;
+                Vector3 start =
+                    transform.position;
+
+                Vector3 target =
+                    start +
+                    attack.direction *
+                    attack.moveDistance;
 
                 if (attackSystem == null)
                 {
-                    Debug.LogWarning(nameBattalion + ": attackSystem не призначено — атака рухає батальйон, але не завдає шкоди.", this);
+                    Debug.LogWarning(
+                        nameBattalion +
+                        ": attackSystem не призначено.",
+                        this
+                    );
                 }
 
                 bool hasHit = false;
+
                 float t = 0f;
 
                 while (t < orderDuration)
                 {
                     t += Time.deltaTime;
-                    transform.position = Vector3.Lerp(start, target, t / orderDuration);
 
-                    if (!hasHit && attackSystem != null)
+                    transform.position =
+                        Vector3.Lerp(
+                            start,
+                            target,
+                            t / orderDuration
+                        );
+
+                    if (!hasHit &&
+                        attackSystem != null)
                     {
-                        BattalionScr hitTarget = attackSystem.FindTarget(this, attack.direction, attack.zoneRange);
+                        BattalionScr hitTarget =
+                            attackSystem.FindTarget(
+                                this,
+                                attack.direction,
+                                attack.zoneRange
+                            );
 
                         if (hitTarget != null)
                         {
-                            float damage = ComputeAttackDamage();
-                            hitTarget.TakeDamage(damage);
-                            print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
+                            float damage =
+                                ComputeAttackDamage();
+
+                            hitTarget.TakeDamage(
+                                damage
+                            );
+
+                            print(
+                                nameBattalion +
+                                ": атака влучила по " +
+                                hitTarget.nameBattalion
+                            );
+
                             hasHit = true;
                         }
                     }
@@ -613,35 +809,58 @@ public class BattalionScr : MonoBehaviour
                     yield return null;
                 }
 
-                transform.position = target;
+                transform.position =
+                    target;
 
-                if (attackSystem != null && !hasHit)
+                if (attackSystem != null &&
+                    !hasHit)
                 {
-                    print(nameBattalion + ": атака нікого не зачепила");
+                    print(
+                        nameBattalion +
+                        ": атака нікого не зачепила"
+                    );
                 }
-
-                print("Attack: direction = " + attack.direction +
-                      ", moveDistance = " + attack.moveDistance +
-                      ", zoneRange = " + attack.zoneRange);
             }
-            else if (command[i] is DefendOrder defend && defend.isSet)
+            else if (command[i] is DefendOrder defend &&
+                     defend.isSet)
             {
+                isDefending = true;
+                defendDirection =
+                    defend.direction.normalized;
+
                 bool hasFired = false;
+
                 float t = 0f;
 
                 while (t < orderDuration)
                 {
                     t += Time.deltaTime;
 
-                    if (!hasFired && attackSystem != null)
+                    if (!hasFired &&
+                        attackSystem != null)
                     {
-                        BattalionScr hitTarget = attackSystem.FindTarget(this, defend.direction, defend.range);
+                        BattalionScr hitTarget =
+                            attackSystem.FindTarget(
+                                this,
+                                defendDirection,
+                                defend.range
+                            );
 
                         if (hitTarget != null)
                         {
-                            float damage = ComputeAttackDamage();
-                            hitTarget.TakeDamage(damage);
-                            print(nameBattalion + ": захист влучив по " + hitTarget.nameBattalion);
+                            float damage =
+                                ComputeAttackDamage();
+
+                            hitTarget.TakeDamage(
+                                damage
+                            );
+
+                            print(
+                                nameBattalion +
+                                ": захист влучив по " +
+                                hitTarget.nameBattalion
+                            );
+
                             hasFired = true;
                         }
                     }
@@ -651,67 +870,126 @@ public class BattalionScr : MonoBehaviour
 
                 if (!hasFired)
                 {
-                    print(nameBattalion + ": захист нікого не побачив");
+                    print(
+                        nameBattalion +
+                        ": захист нікого не побачив"
+                    );
                 }
+
+                // НЕ видаляємо DefendOrder.
+                // Він залишається активним між ходами.
             }
-            else if (command[i] is DeployOrder deployOrder && deployOrder.isSet)
+            else if (command[i] is DeployOrder deployOrder &&
+                     deployOrder.isSet)
             {
-                isDeployed = deployOrder.deploy;
-                deployDirection = deployOrder.direction;
+                isDeployed =
+                    deployOrder.deploy;
 
-                print(nameBattalion + (isDeployed
-                    ? ": розклалась, напрямок " + deployDirection
-                    : ": згорнулась"));
+                if (deployOrder.deploy)
+                {
+                    deployDirection =
+                        deployOrder.direction.normalized;
+                }
 
-                yield return new WaitForSeconds(orderDuration);
+                print(
+                    nameBattalion +
+                    (
+                        isDeployed
+                            ? ": розклалась, напрямок " +
+                              deployDirection
+                            : ": згорнулась"
+                    )
+                );
+
+                yield return
+                    new WaitForSeconds(
+                        orderDuration
+                    );
             }
-            else if (command[i] is RotateOrder rotateOrder && rotateOrder.isSet)
+            else if (command[i] is RotateOrder rotateOrder &&
+                     rotateOrder.isSet)
             {
-                deployDirection = rotateOrder.direction;
+                deployDirection =
+                    rotateOrder.direction.normalized;
 
-                print(nameBattalion + ": змінила напрямок наведення на " + deployDirection);
+                print(
+                    nameBattalion +
+                    ": змінила напрямок наведення на " +
+                    deployDirection
+                );
 
-                yield return new WaitForSeconds(orderDuration);
+                yield return
+                    new WaitForSeconds(
+                        orderDuration
+                    );
             }
-            else if (command[i] is BombardOrder bombardOrder && bombardOrder.isSet)
+            else if (command[i] is BombardOrder bombardOrder &&
+                     bombardOrder.isSet)
             {
                 if (attackSystem == null)
                 {
-                    Debug.LogWarning(nameBattalion + ": attackSystem не призначено — обстріл не завдає шкоди.", this);
+                    Debug.LogWarning(
+                        nameBattalion +
+                        ": attackSystem не призначено — обстріл не завдає шкоди.",
+                        this
+                    );
                 }
                 else
                 {
-                    List<BattalionScr> hitTargets = attackSystem.FindTargetsInRadius(
-                        bombardOrder.targetPoint,
-                        bombardOrder.radius,
-                        teamID);
+                    List<BattalionScr> hitTargets =
+                        attackSystem.FindTargetsInRadius(
+                            bombardOrder.targetPoint,
+                            bombardOrder.radius,
+                            teamID
+                        );
 
                     if (hitTargets.Count > 0)
                     {
-                        float damage = ComputeAttackDamage();
+                        float damage =
+                            ComputeAttackDamage();
 
-                        foreach (BattalionScr hitTarget in hitTargets)
+                        foreach (
+                            BattalionScr hitTarget
+                            in hitTargets)
                         {
-                            hitTarget.TakeDamage(damage);
-                            print(nameBattalion + ": обстріл влучив по " + hitTarget.nameBattalion);
+                            hitTarget.TakeDamage(
+                                damage
+                            );
+
+                            print(
+                                nameBattalion +
+                                ": обстріл влучив по " +
+                                hitTarget.nameBattalion
+                            );
                         }
                     }
                     else
                     {
-                        print(nameBattalion + ": обстріл нікого не зачепив");
+                        print(
+                            nameBattalion +
+                            ": обстріл нікого не зачепив"
+                        );
                     }
                 }
 
-                yield return new WaitForSeconds(orderDuration);
+                yield return
+                    new WaitForSeconds(
+                        orderDuration
+                    );
             }
             else
             {
-                yield return new WaitForSeconds(orderDuration);
+                yield return
+                    new WaitForSeconds(
+                        orderDuration
+                    );
             }
         }
 
         ClearAllOrders();
     }
+
+
 }
 
 [System.Serializable]

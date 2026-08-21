@@ -378,6 +378,7 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
+    // Клас: BatalionManagerScr
     public void SetCommandType(int type)
     {
         switch (type)
@@ -409,8 +410,14 @@ public class BatalionManagerScr : MonoBehaviour
             case 6:
                 commandType = CommandType.Bombard;
                 break;
+
+            default:
+                commandType = CommandType.None;
+                break;
         }
 
+        if (battalionUIManager != null)
+            battalionUIManager.CheckButtalion();
     }
 }
 

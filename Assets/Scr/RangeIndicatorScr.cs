@@ -26,60 +26,101 @@
         public Color rayColor = new Color(1f, 0.3f, 0.3f, 0.6f);
         public Color defendRayColor = new Color(0.3f, 0.5f, 1f, 0.6f);
 
-        private Mesh mesh;
+    [Header("Bombard preview")]
+    public MeshFilter bombardRadiusMeshFilter;
+    public GameObject bombardCenterPrefab;
+
+    private Mesh bombardRadiusMesh;
+    private MeshRenderer bombardRadiusRenderer;
+    private GameObject bombardCenterMarker;
+    private Mesh mesh;
         private MeshRenderer meshRenderer;
 
-        private void Update()
+    // Клас: RangeIndicatorScr
+    private void Update()
+    {
+        if (meshFilter == null)
         {
-            if (meshFilter == null)
-            {
-                Debug.LogWarning("RangeIndicatorScr: не призначено meshFilter.", this);
-                return;
-            }
-            if (batalionManager == null)
-            {
-                Debug.LogWarning("RangeIndicatorScr: не призначено batalionManager.", this);
-                return;
-            }
+            Debug.LogWarning(
+                "RangeIndicatorScr: не призначено meshFilter.",
+                this
+            );
 
-            EnsureMesh();
+            return;
+        }
 
-            BattalionScr selected = batalionManager.selectBattalion;
-            CommandType commandType = batalionManager.commandType;
+        if (batalionManager == null)
+        {
+            Debug.LogWarning(
+                "RangeIndicatorScr: не призначено batalionManager.",
+                this
+            );
 
-            if (selected == null)
-            {
-                Hide();
-                HideRayFan();
-                return;
-            }
+            return;
+        }
 
-            int slot = batalionManager.CommandDuty;
-            Vector3 origin = selected.GetOrderOrigin(slot);
+        EnsureMesh();
+
+        BattalionScr selected =
+            batalionManager.selectBattalion;
+
+        CommandType commandType =
+            batalionManager.commandType;
+
+        if (selected == null)
+        {
+            Hide();
+            HideRayFan();
+            HideBombardRadius();
+            return;
+        }
+
+        int slot =
+            batalionManager.CommandDuty;
+
+        Vector3 origin =
+            selected.GetOrderOrigin(slot);
 
         if (commandType == CommandType.Move)
         {
             HideRayFan();
+            HideBombardRadius();
 
-            float remainingSpeed = selected.GetRemainingRange(slot);
+            // Кожен Move отримує повний speed.
+            float availableSpeed =
+                selected.speed;
 
-            if (remainingSpeed <= 0f)
+            if (availableSpeed <= 0f)
             {
                 Hide();
                 return;
             }
 
             Show();
-            BuildMoveArea(selected, origin, remainingSpeed, fillColor);
-        }
-        else if (commandType == CommandType.Attack || commandType == CommandType.Defend)
-        {
-            bool isDefend = commandType == CommandType.Defend;
 
-            // Дальність розраховується від позиції,
-            // де батальйон буде виконувати цей наказ.
-            // Це важливо для 2-го та 3-го наказу в черзі.
-            float maxRange = selected.GetEffectiveAttackRange(origin);
+            BuildMoveArea(
+                selected,
+                origin,
+                availableSpeed,
+                fillColor
+            );
+
+            return;
+        }
+
+        if (commandType == CommandType.Attack)
+        {
+            HideBombardRadius();
+
+            if (selected.GetProjectedDeployedState(slot))
+            {
+                Hide();
+                HideRayFan();
+                return;
+            }
+
+            float maxRange =
+                selected.GetEffectiveAttackRange(origin);
 
             if (maxRange <= 0f)
             {
@@ -93,25 +134,494 @@
             BuildCircle(
                 origin,
                 maxRange,
-                isDefend ? defendFillColor : attackFillColor
+                attackFillColor
             );
 
             ShowRayFan(
                 selected,
                 origin,
                 maxRange,
-                isDefend ? defendRayColor : rayColor
+                rayColor
             );
-        }
-        else
-        {
-            // None — жодного прев'ю.
-            Hide();
-            HideRayFan();
-        }
+
+            return;
         }
 
-        private void ShowRayFan(BattalionScr selected, Vector3 origin, float range, Color color)
+        if (commandType == CommandType.Defend)
+        {
+            HideBombardRadius();
+
+            bool isDeployed =
+                selected.GetProjectedDeployedState(slot);
+
+            float maxRange;
+            Vector3 direction;
+
+            if (isDeployed)
+            {
+                maxRange =
+                    selected.deployRange;
+
+                direction =
+                    selected.GetProjectedDeployDirection(slot);
+            }
+            else
+            {
+                maxRange =
+                    selected.GetEffectiveAttackRange(origin);
+
+                direction =
+                    GetAimDirection(origin);
+            }
+
+            if (maxRange <= 0f)
+            {
+                Hide();
+                HideRayFan();
+                return;
+            }
+
+            Show();
+
+            BuildCircle(
+                origin,
+                maxRange,
+                defendFillColor
+            );
+
+            ShowRayFan(
+                selected,
+                origin,
+                maxRange,
+                defendRayColor
+            );
+
+            return;
+        }
+
+        if (commandType == CommandType.Bombard)
+        {
+            HideRayFan();
+
+            if (!selected.GetProjectedDeployedState(slot))
+            {
+                Hide();
+                HideBombardRadius();
+                return;
+            }
+
+            float range =
+                selected.deployRange;
+
+            Vector3 deployDirection =
+                selected.GetProjectedDeployDirection(slot);
+
+            // Основна зона дії артилерії.
+            Show();
+
+            BuildSector(
+                origin,
+                range,
+                deployDirection,
+                selected.deployConeAngle,
+                attackFillColor
+            );
+
+            // Центр і радіус вибуху навколо курсора.
+            Vector3 mouseWorld =
+                GetMouseWorldPosition();
+
+            ShowBombardRadius(
+                mouseWorld,
+                selected.bombardRadius
+            );
+
+            return;
+        }
+
+        if (commandType == CommandType.Rotate)
+        {
+            HideBombardRadius();
+
+            if (!selected.GetProjectedDeployedState(slot))
+            {
+                Hide();
+                HideRayFan();
+                return;
+            }
+
+            Show();
+
+            BuildSector(
+                origin,
+                selected.deployRange,
+                selected.GetProjectedDeployDirection(slot),
+                selected.deployConeAngle,
+                defendFillColor
+            );
+
+            ShowRayFan(
+                selected,
+                origin,
+                selected.deployRange,
+                defendRayColor
+            );
+
+            return;
+        }
+
+        if (commandType == CommandType.Deploy)
+        {
+            HideBombardRadius();
+            HideRayFan();
+
+            bool willDeploy =
+                !selected.GetProjectedDeployedState(slot);
+
+            if (!willDeploy)
+            {
+                Hide();
+                return;
+            }
+
+            Show();
+
+            Vector3 direction =
+                GetAimDirection(origin);
+
+            BuildSector(
+                origin,
+                selected.deployRange,
+                direction,
+                selected.deployConeAngle,
+                attackFillColor
+            );
+
+            return;
+        }
+
+        Hide();
+        HideRayFan();
+        HideBombardRadius();
+    }
+
+    private void HideBombardRadius()
+    {
+        if (bombardRadiusRenderer != null)
+            bombardRadiusRenderer.enabled = false;
+
+        if (bombardCenterMarker != null)
+            bombardCenterMarker.SetActive(false);
+    }
+
+    private Vector3 GetMouseWorldPosition()
+    {
+        if (Mouse.current == null ||
+            Camera.main == null)
+        {
+            return Vector3.zero;
+        }
+
+        Vector3 mouseWorld =
+            Camera.main.ScreenToWorldPoint(
+                Mouse.current.position.ReadValue()
+            );
+
+        mouseWorld.z = 0f;
+
+        return mouseWorld;
+    }
+
+    private void BuildSector(
+    Vector3 origin,
+    float radius,
+    Vector3 direction,
+    float coneAngle,
+    Color color)
+    {
+        int safeSegments =
+            Mathf.Max(8, segments);
+
+        Vector3[] vertices =
+            new Vector3[safeSegments + 2];
+
+        Color[] colors =
+            new Color[vertices.Length];
+
+        int[] triangles =
+            new int[safeSegments * 6];
+
+        Transform t =
+            meshFilter.transform;
+
+        vertices[0] =
+            t.InverseTransformPoint(origin);
+
+        colors[0] = color;
+
+        direction.z = 0f;
+
+        if (direction.sqrMagnitude < 0.001f)
+            direction = Vector3.right;
+
+        direction.Normalize();
+
+        float startAngle =
+            -coneAngle * 0.5f;
+
+        float step =
+            coneAngle / safeSegments;
+
+        for (int i = 0; i <= safeSegments; i++)
+        {
+            float angle =
+                startAngle + step * i;
+
+            Vector3 pointDirection =
+                Quaternion.Euler(
+                    0f,
+                    0f,
+                    angle
+                ) * direction;
+
+            Vector3 worldPoint =
+                origin +
+                pointDirection * radius;
+
+            vertices[i + 1] =
+                t.InverseTransformPoint(worldPoint);
+
+            colors[i + 1] = color;
+        }
+
+        for (int i = 0; i < safeSegments; i++)
+        {
+            int next = i + 1;
+            int triangle = i * 6;
+
+            triangles[triangle] = 0;
+            triangles[triangle + 1] = i + 1;
+            triangles[triangle + 2] = next + 1;
+
+            triangles[triangle + 3] = 0;
+            triangles[triangle + 4] = next + 1;
+            triangles[triangle + 5] = i + 1;
+        }
+
+        mesh.Clear();
+
+        mesh.vertices = vertices;
+        mesh.colors = colors;
+        mesh.triangles = triangles;
+
+        mesh.RecalculateBounds();
+    }
+    // Клас: RangeIndicatorScr
+    private void ShowBombardRadius(
+    Vector3 center,
+    float radius)
+    {
+        EnsureBombardRadius();
+
+        if (bombardRadiusMeshFilter == null ||
+            bombardRadiusRenderer == null)
+        {
+            return;
+        }
+
+        BuildBombardRadius(
+            center,
+            radius
+        );
+
+        bombardRadiusRenderer.enabled = true;
+
+        if (bombardCenterPrefab != null)
+        {
+            if (bombardCenterMarker == null)
+            {
+                bombardCenterMarker =
+                    Instantiate(
+                        bombardCenterPrefab
+                    );
+            }
+
+            bombardCenterMarker.SetActive(true);
+
+            bombardCenterMarker.transform.position =
+                center;
+        }
+    }
+
+    private void BuildBombardRadius(
+    Vector3 center,
+    float radius)
+    {
+        int safeSegments =
+            Mathf.Max(24, segments);
+
+        Vector3[] vertices =
+            new Vector3[safeSegments + 1];
+
+        Color[] colors =
+            new Color[vertices.Length];
+
+        int[] triangles =
+            new int[safeSegments * 6];
+
+        Transform t =
+            bombardRadiusMeshFilter.transform;
+
+        vertices[0] =
+            t.InverseTransformPoint(center);
+
+        colors[0] =
+            attackFillColor;
+
+        for (int i = 0; i < safeSegments; i++)
+        {
+            float angle =
+                2f * Mathf.PI * i / safeSegments;
+
+            Vector3 point =
+                center +
+                new Vector3(
+                    Mathf.Cos(angle),
+                    Mathf.Sin(angle),
+                    0f
+                ) * radius;
+
+            vertices[i + 1] =
+                t.InverseTransformPoint(point);
+
+            colors[i + 1] =
+                attackFillColor;
+        }
+
+        for (int i = 0; i < safeSegments; i++)
+        {
+            int next =
+                (i + 1) % safeSegments;
+
+            int triangle =
+                i * 6;
+
+            triangles[triangle] = 0;
+            triangles[triangle + 1] = i + 1;
+            triangles[triangle + 2] = next + 1;
+
+            triangles[triangle + 3] = 0;
+            triangles[triangle + 4] = next + 1;
+            triangles[triangle + 5] = i + 1;
+        }
+
+        bombardRadiusMesh.Clear();
+
+        bombardRadiusMesh.vertices =
+            vertices;
+
+        bombardRadiusMesh.colors =
+            colors;
+
+        bombardRadiusMesh.triangles =
+            triangles;
+
+        bombardRadiusMesh.RecalculateBounds();
+    }
+
+    private void EnsureBombardRadius()
+    {
+        if (bombardRadiusMeshFilter == null)
+            return;
+
+        if (bombardRadiusMesh == null)
+        {
+            bombardRadiusMesh =
+                new Mesh
+                {
+                    name = "BombardRadiusMesh"
+                };
+
+            bombardRadiusMeshFilter.mesh =
+                bombardRadiusMesh;
+        }
+
+        if (bombardRadiusRenderer == null)
+        {
+            bombardRadiusRenderer =
+                bombardRadiusMeshFilter
+                    .GetComponent<MeshRenderer>();
+        }
+    }
+
+    private void BuildDirectionalCone(Vector3 origin, Vector3 direction, float radius, float coneAngle, Color color)
+    {
+        int safeSegments = Mathf.Max(12, segments);
+
+        direction.z = 0f;
+
+        if (direction.sqrMagnitude < 0.001f)
+            direction = Vector3.right;
+
+        direction.Normalize();
+
+        float halfAngle = coneAngle * 0.5f;
+
+        int vertexCount = safeSegments + 2;
+
+        Vector3[] vertices = new Vector3[vertexCount];
+        Color[] colors = new Color[vertexCount];
+
+        int[] triangles = new int[safeSegments * 6];
+
+        Transform t = meshFilter.transform;
+
+        vertices[0] = t.InverseTransformPoint(origin);
+        colors[0] = color;
+
+        for (int i = 0; i <= safeSegments; i++)
+        {
+            float angle =
+                coneAngle * i / safeSegments;
+
+            Vector3 rayDirection =
+                Quaternion.Euler(
+                    0f,
+                    0f,
+                    angle - halfAngle
+                ) * direction;
+
+            Vector3 point =
+                origin + rayDirection * radius;
+
+            vertices[i + 1] =
+                t.InverseTransformPoint(point);
+
+            colors[i + 1] = color;
+        }
+
+        for (int i = 0; i < safeSegments; i++)
+        {
+            int triangle = i * 6;
+
+            triangles[triangle] = 0;
+            triangles[triangle + 1] = i + 1;
+            triangles[triangle + 2] = i + 2;
+
+            triangles[triangle + 3] = 0;
+            triangles[triangle + 4] = i + 2;
+            triangles[triangle + 5] = i + 1;
+        }
+
+        mesh.Clear();
+        mesh.vertices = vertices;
+        mesh.colors = colors;
+        mesh.triangles = triangles;
+
+        mesh.RecalculateBounds();
+    }
+
+    private void ShowRayFan(BattalionScr selected, Vector3 origin, float range, Color color)
         {
             LineRenderer rayFan = EnsureRayFan();
             if (rayFan == null)
@@ -271,63 +781,77 @@
         }
 
     private void BuildMoveArea(
-    BattalionScr selected,
-    Vector3 origin,
-    float remainingSpeed,
-    Color color)
+        BattalionScr selected,
+        Vector3 origin,
+        float availableSpeed,
+        Color color)
     {
-        int safeSegments = Mathf.Max(12, segments);
+        int safeSegments =
+            Mathf.Max(12, segments);
 
-        Vector3[] vertices = new Vector3[safeSegments + 1];
-        Color[] colors = new Color[vertices.Length];
+        Vector3[] vertices =
+            new Vector3[safeSegments + 1];
 
-        // Подвійні трикутники, як у твоєму BuildCircle:
-        // область буде видна з обох сторін.
-        int[] triangles = new int[safeSegments * 6];
+        Color[] colors =
+            new Color[vertices.Length];
 
-        Transform t = meshFilter.transform;
-        vertices[0] = t.InverseTransformPoint(origin);
+        int[] triangles =
+            new int[safeSegments * 6];
+
+        Transform t =
+            meshFilter.transform;
+
+        vertices[0] =
+            t.InverseTransformPoint(origin);
+
         colors[0] = color;
 
-        // Road має множник 0.5, тому батальйон може пройти до Speed × 2.
-        // Значення також не може бути меншим за заданий у Inspector запас.
-        float testDistance = Mathf.Max(
-            0,
-            remainingSpeed * 2.05f
-        );
+        float testDistance =
+            Mathf.Max(
+                0f,
+                availableSpeed * 2.05f
+            );
 
         for (int i = 0; i < safeSegments; i++)
         {
-            float angle = 2f * Mathf.PI * i / safeSegments;
+            float angle =
+                2f * Mathf.PI *
+                i / safeSegments;
 
-            Vector3 direction = new Vector3(
-                Mathf.Cos(angle),
-                Mathf.Sin(angle),
-                0f
-            );
+            Vector3 direction =
+                new Vector3(
+                    Mathf.Cos(angle),
+                    Mathf.Sin(angle),
+                    0f
+                );
 
-            // Той самий розрахунок terrain-вартості, що застосовується
-            // під час встановлення наказу.
-            float reachableDistance = selected.GetReachableDistance(
-                origin,
-                direction,
-                testDistance,
-                remainingSpeed
-            );
+            float reachableDistance =
+                selected.GetReachableDistance(
+                    origin,
+                    direction,
+                    testDistance,
+                    availableSpeed
+                );
 
             Vector3 worldPoint =
-                origin + direction * reachableDistance;
+                origin +
+                direction *
+                reachableDistance;
 
             vertices[i + 1] =
                 t.InverseTransformPoint(worldPoint);
 
-            colors[i + 1] = color;
+            colors[i + 1] =
+                color;
         }
 
         for (int i = 0; i < safeSegments; i++)
         {
-            int next = (i + 1) % safeSegments;
-            int triangle = i * 6;
+            int next =
+                (i + 1) % safeSegments;
+
+            int triangle =
+                i * 6;
 
             triangles[triangle] = 0;
             triangles[triangle + 1] = i + 1;
@@ -339,9 +863,16 @@
         }
 
         mesh.Clear();
-        mesh.vertices = vertices;
-        mesh.colors = colors;
-        mesh.triangles = triangles;
+
+        mesh.vertices =
+            vertices;
+
+        mesh.colors =
+            colors;
+
+        mesh.triangles =
+            triangles;
+
         mesh.RecalculateBounds();
     }
 }
