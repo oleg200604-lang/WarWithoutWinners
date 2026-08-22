@@ -199,10 +199,6 @@ public class BatalionManagerScr : MonoBehaviour
         Vector3 direction = worldPosition - origin;
         direction.z = 0;
 
-        // Один і той самий наказ перемикає Deploy/Undeploy залежно від
-        // поточного isDeployed. Напрямок клацання потрібен лише коли
-        // РОЗКЛАДАЄМОСЬ — SetDeployOrder сам відхилить порожній напрямок,
-        // якщо він насправді потрібен, і сам ігнорує його при згортанні.
         if (selectBattalion.SetDeployOrder(commandDuty, direction))
         {
             print("Наказ розкладання/згортання встановлено.");
@@ -268,11 +264,13 @@ public class BatalionManagerScr : MonoBehaviour
             commandDuty++;
             print("Наказ " + (commandDuty + 1));
 
-            // Без цього кнопки лишаються від стану ПОПЕРЕДНЬОГО слота —
-            // саме тому Bombard/Undeploy/Rotate ставали доступні лише
-            // наступного ходу, хоча Deploy вже стояв у черзі цього ходу.
             if (battalionUIManager != null)
                 battalionUIManager.CheckButtalion();
+        }
+        else if(commandDuty >= 2)
+        {
+            commandDuty = 0;
+            selectBattalion = null;
         }
     }
 

@@ -103,10 +103,13 @@ public class BattalionScr : MonoBehaviour
         if (TerrainManagerScr.Instance == null)
             return attackRange;
 
-        LandscapeType terrain = TerrainManagerScr.Instance.GetTypeAt(origin);
-
+        // Position-based overload враховує ВСІ накладені terrain-шари
+        // в цій точці (напр. Ліс + Дорога одночасно), а не лише перший
+        // знайдений колайдер, як робив старий GetTypeAt().
         return attackRange *
-               TerrainManagerScr.Instance.GetAttackRangeMultiplier(terrain);
+               TerrainManagerScr.Instance.GetAttackRangeMultiplier(
+                   (Vector2)origin
+               );
     }
 
     // Необов'язковий overload: залишає сумісність зі старими викликами.
@@ -164,11 +167,12 @@ public class BattalionScr : MonoBehaviour
             Vector3 samplePoint =
                 from + direction * (segmentLength * (i + 0.5f));
 
-            LandscapeType terrain =
-                TerrainManagerScr.Instance.GetTypeAt(samplePoint);
-
+            // GetMoveCost вже перемножує вартість УСІХ terrain-шарів
+            // у цій точці (напр. Ліс × Дорога), а не лише одного тайлу.
             cost += segmentLength *
-                    TerrainManagerScr.Instance.GetMoveCostMultiplier(terrain);
+                    TerrainManagerScr.Instance.GetMoveCost(
+                        (Vector2)samplePoint
+                    );
         }
 
         return cost;
@@ -692,11 +696,12 @@ public class BattalionScr : MonoBehaviour
         if (TerrainManagerScr.Instance == null)
             return baseSpeed;
 
-        LandscapeType terrain =
-            TerrainManagerScr.Instance.GetTypeAt(origin);
-
+        // GetMoveCost враховує ВСІ terrain-шари в точці, на відміну
+        // від старого GetTypeAt (лише перший знайдений тайл).
         float multiplier =
-            TerrainManagerScr.Instance.GetMoveCostMultiplier(terrain);
+            TerrainManagerScr.Instance.GetMoveCost(
+                (Vector2)origin
+            );
 
         if (multiplier <= 0.001f)
             return baseSpeed;
@@ -735,20 +740,6 @@ public class BattalionScr : MonoBehaviour
     {
         batalionManager.SelectBattalion(this);
     }
-
-    private static bool IsTerrainPassable(Vector3 point, BattalionType type)
-    {
-        if (TerrainManagerScr.Instance == null)
-            return true;
-
-        LandscapeType land = TerrainManagerScr.Instance.GetTypeAt(point);
-
-        if (type == BattalionType.artillery && TerrainManagerScr.Instance.BlocksArtillery(land))
-            return false;
-
-        return true;
-    }
-
 
     private void ClearAllOrders()
     {
