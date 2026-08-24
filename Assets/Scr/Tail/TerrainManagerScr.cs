@@ -23,10 +23,7 @@ public class TerrainManagerScr : MonoBehaviour
 
     public List<TerrainTileScr> GetAllTilesAt(Vector2 position)
     {
-        Collider2D[] hits = Physics2D.OverlapPointAll(
-            position,
-            terrainLayer
-        );
+        Collider2D[] hits = Physics2D.OverlapPointAll(position, terrainLayer);
 
         List<TerrainTileScr> tiles = new List<TerrainTileScr>();
 
@@ -35,8 +32,7 @@ public class TerrainManagerScr : MonoBehaviour
             if (hits[i] == null)
                 continue;
 
-            TerrainTileScr tile =
-                hits[i].GetComponentInParent<TerrainTileScr>();
+            TerrainTileScr tile = hits[i].GetComponentInParent<TerrainTileScr>();
 
             if (tile == null)
                 continue;
@@ -46,20 +42,6 @@ public class TerrainManagerScr : MonoBehaviour
         }
 
         return tiles;
-    }
-
-    /// <summary>
-    /// Повертає перший terrain.
-    /// НЕ використовувати для розрахунку руху.
-    /// </summary>
-    public TerrainTileScr GetTileAt(Vector2 position)
-    {
-        List<TerrainTileScr> tiles = GetAllTilesAt(position);
-
-        if (tiles.Count == 0)
-            return null;
-
-        return tiles[0];
     }
 
     // =========================================================
@@ -83,21 +65,6 @@ public class TerrainManagerScr : MonoBehaviour
         }
 
         return false;
-    }
-
-    /// <summary>
-    /// Старий метод залишаємо для сумісності.
-    /// Він повертає тільки один terrain.
-    /// Не використовувати для movement cost.
-    /// </summary>
-    public LandscapeType GetTypeAt(Vector2 position)
-    {
-        TerrainTileScr tile = GetTileAt(position);
-
-        if (tile == null)
-            return LandscapeType.Field;
-
-        return tile.type;
     }
 
     // =========================================================
@@ -176,9 +143,7 @@ public class TerrainManagerScr : MonoBehaviour
 
         for (int i = 0; i < tiles.Count; i++)
         {
-            cost *= GetMoveCostMultiplier(
-                tiles[i].type
-            );
+            cost *= GetMoveCostMultiplier(tiles[i].type);
         }
 
         return cost;
@@ -211,77 +176,18 @@ public class TerrainManagerScr : MonoBehaviour
         return true;
     }
 
-    public bool BlocksArtillery(LandscapeType type)
-    {
-        return type == LandscapeType.Mountains ||
-               type == LandscapeType.River;
-    }
-
     // =========================================================
     // LINE OF SIGHT
     // =========================================================
 
     public bool BlocksLineOfSight(LandscapeType type)
     {
-        return type == LandscapeType.Forest ||
-               type == LandscapeType.Mountains;
-    }
-
-    public float GetLineOfSightDistance(
-        Vector3 origin,
-        Vector3 direction,
-        float maxDistance,
-        float sampleStep = 0.15f)
-    {
-        if (maxDistance <= 0f ||
-            direction.sqrMagnitude < 0.001f)
-        {
-            return 0f;
-        }
-
-        direction.Normalize();
-
-        int samples =
-            Mathf.CeilToInt(maxDistance / sampleStep);
-
-        for (int i = 1; i <= samples; i++)
-        {
-            float distance =
-                maxDistance * i / samples;
-
-            Vector3 point =
-                origin + direction * distance;
-
-            List<TerrainTileScr> tiles =
-                GetAllTilesAt(point);
-
-            for (int j = 0; j < tiles.Count; j++)
-            {
-                if (BlocksLineOfSight(tiles[j].type))
-                {
-                    return Mathf.Max(
-                        0f,
-                        distance - sampleStep
-                    );
-                }
-            }
-        }
-
-        return maxDistance;
+        return type == LandscapeType.Forest || type == LandscapeType.Mountains;
     }
 
     // =========================================================
     // ATTACK RANGE
     // =========================================================
-
-    public float GetAttackRangeMultiplier(
-        LandscapeType type)
-    {
-        if (type == LandscapeType.Forest)
-            return 1f / 1.5f;
-
-        return 1f;
-    }
 
     public float GetAttackRangeMultiplier(
         Vector2 position)
@@ -296,50 +202,5 @@ public class TerrainManagerScr : MonoBehaviour
         }
 
         return 1f;
-    }
-
-    // =========================================================
-    // DEBUG
-    // =========================================================
-
-    public void DebugTerrain(Vector2 position)
-    {
-        List<TerrainTileScr> tiles =
-            GetAllTilesAt(position);
-
-        if (tiles.Count == 0)
-        {
-            Debug.Log(
-                $"Terrain at {position}: NONE -> Field"
-            );
-
-            return;
-        }
-
-        string result =
-            $"Terrain at {position}: ";
-
-        float totalCost = 1f;
-
-        for (int i = 0; i < tiles.Count; i++)
-        {
-            float multiplier =
-                GetMoveCostMultiplier(
-                    tiles[i].type
-                );
-
-            totalCost *= multiplier;
-
-            result +=
-                $"{tiles[i].type} × {multiplier}";
-
-            if (i < tiles.Count - 1)
-                result += " | ";
-        }
-
-        result +=
-            $" => TOTAL MOVE COST = {totalCost}";
-
-        Debug.Log(result);
     }
 }

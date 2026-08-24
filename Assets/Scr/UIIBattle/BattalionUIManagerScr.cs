@@ -30,7 +30,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
         bool isNone = battalionScr.battalion.type == BattalionType.none;
         bool isArtillery = battalionScr.battalion.type == BattalionType.artillery;
-        bool isDeployed = isArtillery &&  battalionScr.GetProjectedDeployedState(batalionManager.CommandDuty);
+        bool isDeployed = isArtillery && battalionScr.GetProjectedDeployedState(batalionManager.CommandDuty);
 
         noneButton.SetActive(!isNone);
         moveButton.SetActive(!isNone && !isDeployed);

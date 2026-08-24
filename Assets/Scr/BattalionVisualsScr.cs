@@ -59,8 +59,7 @@ public class BattalionVisualsScr : MonoBehaviour
         if (batalionManager == null)
             return;
 
-        bool isSelected =
-            batalionManager.selectBattalion == battalion;
+        bool isSelected = batalionManager.selectBattalion == battalion;
 
         if (!isSelected)
         {
@@ -83,11 +82,7 @@ public class BattalionVisualsScr : MonoBehaviour
             return;
         }
 
-        int count =
-            Mathf.Min(
-                battalion.command.Length,
-                3
-            );
+        int count = Mathf.Min(battalion.command.Length, 3);
 
         for (int i = 0; i < 3; i++)
         {
@@ -103,26 +98,17 @@ public class BattalionVisualsScr : MonoBehaviour
 
     private void UpdateSlot(int slot)
     {
-        Command command =
-            battalion.command[slot];
+        Command command = battalion.command[slot];
 
-        bool hasMove =
-            command is MoveCommand move &&
-            move.isSet;
+        bool hasMove = command is MoveCommand move && move.isSet;
 
-        bool hasAttack =
-            command is AttackOrder attack &&
-            attack.isSet;
+        bool hasAttack = command is AttackOrder attack && attack.isSet;
 
-        bool hasDefend =
-            command is DefendOrder defend &&
-            defend.isSet;
+        bool hasDefend = command is DefendOrder defend && defend.isSet;
 
-        Vector3 origin =
-            battalion.GetOrderOrigin(slot);
+        Vector3 origin = battalion.GetOrderOrigin(slot);
 
-        Vector3 endPoint =
-            origin;
+        Vector3 endPoint = origin;
 
         // -----------------------------------------------------
         // MOVE
@@ -130,15 +116,9 @@ public class BattalionVisualsScr : MonoBehaviour
 
         if (hasMove)
         {
-            MoveCommand moveCommand =
-                (MoveCommand)command;
+            MoveCommand moveCommand = (MoveCommand)command;
 
-            endPoint =
-                GetVisualMoveEndpoint(
-                    slot,
-                    origin,
-                    moveCommand.pos
-                );
+            endPoint = GetVisualMoveEndpoint(slot, origin, moveCommand.pos);
         }
 
         // -----------------------------------------------------
@@ -147,13 +127,9 @@ public class BattalionVisualsScr : MonoBehaviour
 
         if (hasAttack)
         {
-            AttackOrder attackOrder =
-                (AttackOrder)command;
+            AttackOrder attackOrder = (AttackOrder)command;
 
-            endPoint =
-                origin +
-                attackOrder.direction *
-                attackOrder.moveDistance;
+            endPoint = origin + attackOrder.direction * attackOrder.moveDistance;
 
             endPoint.z = 0f;
         }
@@ -162,18 +138,13 @@ public class BattalionVisualsScr : MonoBehaviour
         // DEFEND
         // -----------------------------------------------------
 
-        Vector3 defendPoint =
-            origin;
+        Vector3 defendPoint = origin;
 
         if (hasDefend)
         {
-            DefendOrder defendOrder =
-                (DefendOrder)command;
+            DefendOrder defendOrder = (DefendOrder)command;
 
-            defendPoint =
-                origin +
-                defendOrder.direction.normalized *
-                defendOrder.range;
+            defendPoint = origin + defendOrder.direction.normalized * defendOrder.range;
 
             defendPoint.z = 0f;
         }
@@ -182,50 +153,24 @@ public class BattalionVisualsScr : MonoBehaviour
         // MARKERS
         // -----------------------------------------------------
 
-        UpdateMarker(
-            orderMarkers,
-            orderMarkerPrefab,
-            slot,
-            hasMove,
-            endPoint
-        );
+        UpdateMarker(orderMarkers, orderMarkerPrefab, slot, hasMove, endPoint);
 
-        UpdateMarker(
-            attackMarkers,
-            attackMarkerPrefab,
-            slot,
-            hasAttack,
-            endPoint
-        );
+        UpdateMarker(attackMarkers, attackMarkerPrefab, slot, hasAttack, endPoint);
 
-        UpdateMarker(
-            defendMarkers,
-            defendMarkerPrefab,
-            slot,
-            hasDefend,
-            defendPoint
-        );
+        UpdateMarker(defendMarkers, defendMarkerPrefab, slot, hasDefend, defendPoint);
 
         // -----------------------------------------------------
         // ARROW
         // -----------------------------------------------------
 
-        bool hasOrder =
-            hasMove ||
-            hasAttack ||
-            hasDefend;
+        bool hasOrder = hasMove || hasAttack || hasDefend;
 
         Vector3 arrowEnd =
             hasMove || hasAttack
                 ? endPoint
                 : defendPoint;
 
-        UpdateOrderArrow(
-            slot,
-            hasOrder,
-            origin,
-            arrowEnd
-        );
+        UpdateOrderArrow(slot, hasOrder, origin, arrowEnd);
     }
 
     // =========================================================
@@ -237,16 +182,14 @@ public class BattalionVisualsScr : MonoBehaviour
         Vector3 origin,
         Vector3 requestedPoint)
     {
-        Vector3 direction =
-            requestedPoint - origin;
+        Vector3 direction = requestedPoint - origin;
 
         direction.z = 0f;
 
         if (direction.sqrMagnitude < 0.0001f)
             return origin;
 
-        float desiredDistance =
-            direction.magnitude;
+        float desiredDistance = direction.magnitude;
 
         direction.Normalize();
 
@@ -262,19 +205,9 @@ public class BattalionVisualsScr : MonoBehaviour
          * ВСЬОМУ маршруту через GetTerrainMoveCost.
          */
 
-        float reachableDistance =
-            battalion.GetReachableDistance(
-                origin,
-                direction,
-                desiredDistance,
-                battalion.speed,
-                1f
-            );
+        float reachableDistance = battalion.GetReachableDistance(origin, direction, desiredDistance, battalion.battalion.speed, 1f);
 
-        Vector3 result =
-            origin +
-            direction *
-            reachableDistance;
+        Vector3 result = origin + direction * reachableDistance;
 
         result.z = 0f;
 
@@ -293,8 +226,7 @@ public class BattalionVisualsScr : MonoBehaviour
         Vector3 point)
     {
         if (slot < 0 ||
-            slot >= pool.Length)
-            return;
+            slot >= pool.Length) return;
 
         if (prefab == null)
             return;
@@ -309,18 +241,12 @@ public class BattalionVisualsScr : MonoBehaviour
 
         if (pool[slot] == null)
         {
-            pool[slot] =
-                Instantiate(
-                    prefab,
-                    point,
-                    Quaternion.identity
-                );
+            pool[slot] = Instantiate(prefab, point, Quaternion.identity);
         }
 
         pool[slot].SetActive(true);
 
-        pool[slot].transform.position =
-            point;
+        pool[slot].transform.position = point;
     }
 
     // =========================================================
@@ -334,8 +260,7 @@ public class BattalionVisualsScr : MonoBehaviour
         Vector3 end)
     {
         if (slot < 0 ||
-            slot >= orderArrows.Length)
-            return;
+            slot >= orderArrows.Length) return;
 
         if (arrowPrefab == null)
             return;
@@ -350,27 +275,18 @@ public class BattalionVisualsScr : MonoBehaviour
 
         if (orderArrows[slot] == null)
         {
-            orderArrows[slot] =
-                Instantiate(
-                    arrowPrefab
-                );
+            orderArrows[slot] = Instantiate(arrowPrefab);
         }
 
-        GameObject arrow =
-            orderArrows[slot];
+        GameObject arrow = orderArrows[slot];
 
         arrow.SetActive(true);
 
-        LineRenderer line =
-            arrow.GetComponent<LineRenderer>();
+        LineRenderer line = arrow.GetComponent<LineRenderer>();
 
         if (line == null)
         {
-            Debug.LogError(
-                "BattalionVisualsScr: " +
-                "arrowPrefab не має LineRenderer!",
-                arrow
-            );
+            Debug.LogError("BattalionVisualsScr: " + "arrowPrefab не має LineRenderer!", arrow);
 
             return;
         }
@@ -403,8 +319,7 @@ public class BattalionVisualsScr : MonoBehaviour
         int slot)
     {
         if (slot < 0 ||
-            slot >= pool.Length)
-            return;
+            slot >= pool.Length) return;
 
         if (pool[slot] != null)
             pool[slot].SetActive(false);

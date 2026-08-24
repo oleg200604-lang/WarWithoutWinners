@@ -7,8 +7,6 @@ public class BatalionManagerScr : MonoBehaviour
     public int teamID;
 
     public RegimentSettings regimentSettings;
-    public int[] teamEnemyID;
-    public int[] teamAllyID;
     public BattalionScr selectBattalion;
     public BattleManagerScr battleManager;
     public BattalionUIManagerScr battalionUIManager;
@@ -267,7 +265,7 @@ public class BatalionManagerScr : MonoBehaviour
             if (battalionUIManager != null)
                 battalionUIManager.CheckButtalion();
         }
-        else if(commandDuty >= 2)
+        else if (commandDuty >= 2)
         {
             commandDuty = 0;
             selectBattalion = null;

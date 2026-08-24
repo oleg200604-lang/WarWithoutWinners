@@ -13,9 +13,6 @@ public class TerrainTileScr : MonoBehaviour
     [Header("Height")]
     public int height = 0;
 
-    [Header("Grid")]
-    public Vector2Int gridPosition;
-
     private void Awake()
     {
         // Перевірка, щоб одразу було видно,
@@ -24,11 +21,7 @@ public class TerrainTileScr : MonoBehaviour
 
         if (col == null)
         {
-            Debug.LogError(
-                $"TerrainTileScr '{name}' не має Collider2D. " +
-                "TerrainManager не зможе визначити terrain.",
-                this
-            );
+            Debug.LogError($"TerrainTileScr '{name}' не має Collider2D. " + "TerrainManager не зможе визначити terrain.", this);
         }
     }
 }

@@ -1,0 +1,30 @@
+using UnityEngine;
+
+public class BarScr : MonoBehaviour
+{
+    [SerializeField] private Transform organizationBar;
+
+
+    [SerializeField] private Transform combatCapableBar;
+    [SerializeField] private Transform combatCapableNoBar;
+
+    public void SetOrganization(float current, float max)
+    {
+
+        float normalized = Mathf.Clamp01(current / max);
+
+        Vector3 scale = organizationBar.localScale;
+        organizationBar.localScale = new Vector3(1f, normalized, 1f);
+    }
+
+    public void SetcombatCapable(float current, float current1, float max)
+    {
+        float normalized = Mathf.Clamp01(current / max);
+        float normalized1 = Mathf.Clamp01(current+current1 / max);
+
+        Vector3 scale = organizationBar.localScale;
+        organizationBar.localScale = new Vector3(1f, normalized, 1f);
+        Vector3 scale1 = organizationBar.localScale;
+        organizationBar.localScale = new Vector3(1f, normalized1, 1f);
+    }
+}

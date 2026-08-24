@@ -27,29 +27,23 @@ public class BattalionAttackSystemScr : MonoBehaviour
 
         direction.Normalize();
 
-        Vector3 origin =
-            attacker.transform.position;
+        Vector3 origin = attacker.transform.position;
 
-        TerrainManagerScr terrain =
-            TerrainManagerScr.Instance;
+        TerrainManagerScr terrain = TerrainManagerScr.Instance;
 
         int attackerHeight =
             terrain != null
                 ? terrain.GetHeightAt(origin)
                 : 0;
 
-        bool attackerIsArtillery =
-            attacker.battalion.type ==
-            BattalionType.artillery;
+        bool attackerIsArtillery = attacker.battalion.type == BattalionType.artillery;
 
-        LayerMask combinedMask =
-            battalionLayer;
+        LayerMask combinedMask = battalionLayer;
 
         if (terrain != null)
             combinedMask |= terrain.TerrainLayer;
 
-        float startAngle =
-            -coneAngle * 0.5f;
+        float startAngle = -coneAngle * 0.5f;
 
         float angleStep =
             rayCount > 1
@@ -58,40 +52,20 @@ public class BattalionAttackSystemScr : MonoBehaviour
 
         for (int i = 0; i < rayCount; i++)
         {
-            float angle =
-                startAngle +
-                angleStep * i;
+            float angle = startAngle + angleStep * i;
 
-            Vector3 rayDirection =
-                Quaternion.Euler(
-                    0f,
-                    0f,
-                    angle
-                ) * direction;
+            Vector3 rayDirection = Quaternion.Euler(0f, 0f, angle) * direction;
 
-            RaycastHit2D[] hits =
-                Physics2D.RaycastAll(
-                    origin,
-                    rayDirection,
-                    maxAttackRange,
-                    combinedMask
-                );
+            RaycastHit2D[] hits = Physics2D.RaycastAll(origin, rayDirection, maxAttackRange, combinedMask);
 
-            System.Array.Sort(
-                hits,
-                (a, b) =>
-                    a.distance.CompareTo(
-                        b.distance
-                    )
-            );
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
             foreach (RaycastHit2D hit in hits)
             {
                 if (hit.collider == null)
                     continue;
 
-                TerrainTileScr tile =
-                    hit.collider.GetComponent<TerrainTileScr>();
+                TerrainTileScr tile = hit.collider.GetComponent<TerrainTileScr>();
 
                 if (tile != null)
                 {
@@ -105,8 +79,7 @@ public class BattalionAttackSystemScr : MonoBehaviour
                     continue;
                 }
 
-                BattalionScr target =
-                    hit.collider.GetComponent<BattalionScr>();
+                BattalionScr target = hit.collider.GetComponent<BattalionScr>();
 
                 if (target == null)
                     continue;
@@ -120,27 +93,18 @@ public class BattalionAttackSystemScr : MonoBehaviour
                     continue;
                 }
 
-                float allowedRange =
-                    maxAttackRange;
+                float allowedRange = maxAttackRange;
 
                 if (!attackerIsArtillery &&
                     terrain != null)
                 {
-                    int targetHeight =
-                        terrain.GetHeightAt(
-                            target.transform.position
-                        );
+                    int targetHeight = terrain.GetHeightAt(target.transform.position);
 
-                    int heightDifference =
-                        attackerHeight -
-                        targetHeight;
+                    int heightDifference = attackerHeight - targetHeight;
 
                     if (heightDifference > 0)
                     {
-                        allowedRange *=
-                            1f +
-                            0.1f *
-                            heightDifference;
+                        allowedRange *= 1f + 0.1f * heightDifference;
                     }
                 }
 
@@ -151,18 +115,7 @@ public class BattalionAttackSystemScr : MonoBehaviour
 
         return null;
     }
-
-    // Обстріл (Bombard): б'є по ВСІХ ворожих батальйонах у колі радіусом
-    // radius навколо center — на відміну від FindTarget, тут не йдеться
-    // про промінь/першу ціль і лінія видимості не перевіряється (непрямий
-    // вогонь артилерії).
-    // Обстріл (Bombard): б'є по ВСІХ батальйонах у колі радіусом radius
-    // навколо center — включно із союзниками. Снаряд не розрізняє форму,
-    // виключаємо тільки саму батарею, що стріляє.
-    public List<BattalionScr> FindTargetsInRadius(
-        Vector3 center,
-        float radius,
-        BattalionScr attacker)
+    public List<BattalionScr> FindTargetsInRadius(Vector3 center, float radius, BattalionScr attacker)
     {
         List<BattalionScr> results = new List<BattalionScr>();
 
