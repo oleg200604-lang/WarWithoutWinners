@@ -231,46 +231,66 @@ public class BattalionScr : MonoBehaviour
         if (GetProjectedDeployedState(slot))
             return false;
 
-        Vector3 origin = GetOrderOrigin(slot);
+        Vector3 origin =
+            GetOrderOrigin(slot);
 
         pos.z = 0f;
 
-        if (!IsRoutePassable(origin, pos))
+        Vector3 direction =
+            pos - origin;
+
+        direction.z = 0f;
+
+        if (direction.sqrMagnitude < 0.0001f)
             return false;
 
+        float desiredDistance =
+            direction.magnitude;
+
+        direction.Normalize();
+
+        float reachableDistance =
+            GetReachableDistance(
+                origin,
+                direction,
+                desiredDistance,
+                battalion.speed,
+                1f);
+
+        if (reachableDistance <= 0.001f)
+            return false;
+
+        Vector3 finalPosition =
+            origin +
+            direction *
+            reachableDistance;
+
+        finalPosition.z = 0f;
+
         if (!IsPositionFree(
-            pos,
+            finalPosition,
             footprintRadius,
             this))
         {
             return false;
         }
 
-        float movementCost = GetTerrainMoveCost(origin, pos);
-
-        float budget = battalion.speed * orderDuration;
-
-        if (movementCost > budget)
-            return false;
-
         ClearOrdersAfter(slot);
 
         isDefending = false;
 
-        command[slot] = new MoveCommand
-        {
-            pos = pos,
-            commandType = CommandType.Move,
-            isSet = true
-        };
+        command[slot] =
+            new MoveCommand
+            {
+                pos = finalPosition,
+                commandType = CommandType.Move,
+                isSet = true
+            };
 
         return true;
     }
 
-    public bool SetAttackOrder(
-        int slot,
-        Vector3 direction,
-        float desiredMoveDistance)
+    public bool SetAttackOrder(int slot, Vector3 direction, float desiredMoveDistance)
     {
         if (command == null ||
             slot < 0 ||
@@ -288,16 +308,27 @@ public class BattalionScr : MonoBehaviour
         if (battalion.attackRange <= 0f)
             return false;
 
-        Vector3 origin = GetOrderOrigin(slot);
+        Vector3 origin =
+            GetOrderOrigin(slot);
 
+        direction.z = 0f;
         direction.Normalize();
 
-        float moveDistance = GetReachableDistance(origin, direction, desiredMoveDistance, battalion.speed, battalion.attackMoveCostMultiplier);
+        float moveDistance =
+            GetReachableDistance(
+                origin,
+                direction,
+                desiredMoveDistance,
+                battalion.speed,
+                battalion.attackMoveCostMultiplier);
 
         if (moveDistance <= 0.001f)
             return false;
 
-        Vector3 targetPoint = origin + direction * moveDistance;
+        Vector3 targetPoint =
+            origin +
+            direction *
+            moveDistance;
 
         targetPoint.z = 0f;
 
@@ -313,17 +344,19 @@ public class BattalionScr : MonoBehaviour
 
         isDefending = false;
 
-        command[slot] = new AttackOrder
-        {
-            direction = direction,
-            moveDistance = moveDistance,
+        command[slot] =
+            new AttackOrder
+            {
+                direction = direction,
+                moveDistance = moveDistance,
 
-            zoneRange =
-                GetEffectiveAttackRange(targetPoint),
+                zoneRange =
+                    GetEffectiveAttackRange(
+                        targetPoint),
 
-            commandType = CommandType.Attack,
-            isSet = true
-        };
+                commandType = CommandType.Attack,
+                isSet = true
+            };
 
         return true;
     }
@@ -983,12 +1016,19 @@ public class Battalion
 {
     public BattalionType type;
 
-    [Tooltip("Фіксована дальність — НЕ залежить від того, скільки Speed вже витрачено іншими наказами в черзі.")]
+    [Tooltip("Фіксована дальність атаки.")]
     public float attackRange = 2.5f;
-    [Tooltip("У скільки разів рух під час атаки дорожчий за звичайний Move (Speed за ту саму дистанцію).")]
+
+    [Tooltip("У скільки разів рух під час атаки дорожчий за звичайний Move.")]
     public float attackMoveCostMultiplier = 2f;
+
+    [Tooltip("Кут сектора атаки цього батальйону.")]
+    [Range(1f, 360f)]
+    public float attackConeAngle = 90f;
+
     public float damage;
-    public float murder, injury;
+    public float murder;
+    public float injury;
     public float speed;
 }
 

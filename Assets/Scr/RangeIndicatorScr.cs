@@ -434,45 +434,82 @@ public class RangeIndicatorScr : MonoBehaviour
         }
     }
 
-    private void ShowRayFan(BattalionScr selected, Vector3 origin, float range, Color color)
+    private void ShowRayFan(
+        BattalionScr selected,
+        Vector3 origin,
+        float range,
+        Color color)
     {
         LineRenderer rayFan = EnsureRayFan();
+
         if (rayFan == null)
             return;
 
-        Vector3 direction = GetAimDirection(origin);
+        Vector3 direction =
+            GetAimDirection(origin);
 
         int rayCount = 31;
         float coneAngle = 90f;
+
         if (selected.attackSystem != null)
         {
-            rayCount = Mathf.Max(1, selected.attackSystem.RayCount);
-            coneAngle = selected.attackSystem.ConeAngle;
+            rayCount =
+                Mathf.Max(
+                    1,
+                    selected.attackSystem.RayCount);
+
+            coneAngle =
+                selected.attackSystem.GetConeAngle(
+                    selected);
         }
 
-        float startAngle = -coneAngle * 0.5f;
-        float angleStep = rayCount > 1 ? coneAngle / (rayCount - 1) : 0f;
+        float startAngle =
+            -coneAngle * 0.5f;
 
-        // Один LineRenderer малює всі промені разом: origin -> кінець
-        // променя -> origin -> кінець наступного -> ... Пряме повернення в
-        // origin між променями не створює зайвих діагоналей, лише "зірку"
-        // з одної точки.
-        Vector3[] points = new Vector3[rayCount * 2];
+        float angleStep =
+            rayCount > 1
+                ? coneAngle / (rayCount - 1)
+                : 0f;
+
+        Vector3[] points =
+            new Vector3[rayCount * 2];
+
         for (int i = 0; i < rayCount; i++)
         {
-            float angle = startAngle + angleStep * i;
-            Vector3 rayDir = Quaternion.Euler(0f, 0f, angle) * direction;
+            float angle =
+                startAngle +
+                angleStep * i;
 
-            points[i * 2] = origin;
-            points[i * 2 + 1] = origin + rayDir * range;
+            Vector3 rayDirection =
+                Quaternion.Euler(
+                    0f,
+                    0f,
+                    angle) *
+                direction;
+
+            points[i * 2] =
+                origin;
+
+            points[i * 2 + 1] =
+                origin +
+                rayDirection * range;
         }
 
-        rayFan.positionCount = points.Length;
+        rayFan.positionCount =
+            points.Length;
+
         rayFan.SetPositions(points);
-        rayFan.startColor = color;
-        rayFan.endColor = color;
+
+        rayFan.startColor =
+            color;
+
+        rayFan.endColor =
+            color;
+
         rayFan.enabled = true;
     }
+
+
 
     /// <summary>
     /// rayFanLineRenderer раніше треба було вручну перетягнути в

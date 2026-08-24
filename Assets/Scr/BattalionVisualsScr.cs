@@ -98,79 +98,128 @@ public class BattalionVisualsScr : MonoBehaviour
 
     private void UpdateSlot(int slot)
     {
-        Command command = battalion.command[slot];
+        Command command =
+            battalion.command[slot];
 
-        bool hasMove = command is MoveCommand move && move.isSet;
+        bool hasMove =
+            command is MoveCommand move &&
+            move.isSet;
 
-        bool hasAttack = command is AttackOrder attack && attack.isSet;
+        bool hasAttack =
+            command is AttackOrder attack &&
+            attack.isSet;
 
-        bool hasDefend = command is DefendOrder defend && defend.isSet;
+        bool hasDefend =
+            command is DefendOrder defend &&
+            defend.isSet;
 
-        Vector3 origin = battalion.GetOrderOrigin(slot);
+        Vector3 origin =
+            battalion.GetOrderOrigin(slot);
 
-        Vector3 endPoint = origin;
-
-        // -----------------------------------------------------
-        // MOVE
-        // -----------------------------------------------------
+        Vector3 endPoint =
+            origin;
 
         if (hasMove)
         {
-            MoveCommand moveCommand = (MoveCommand)command;
+            MoveCommand moveCommand =
+                (MoveCommand)command;
 
-            endPoint = GetVisualMoveEndpoint(slot, origin, moveCommand.pos);
+            endPoint =
+                GetVisualMoveEndpoint(
+                    slot,
+                    origin,
+                    moveCommand.pos);
         }
-
-        // -----------------------------------------------------
-        // ATTACK
-        // -----------------------------------------------------
-
-        if (hasAttack)
+        else if (hasAttack)
         {
-            AttackOrder attackOrder = (AttackOrder)command;
+            AttackOrder attackOrder =
+                (AttackOrder)command;
 
-            endPoint = origin + attackOrder.direction * attackOrder.moveDistance;
+            endPoint =
+                origin +
+                attackOrder.direction *
+                attackOrder.moveDistance;
 
             endPoint.z = 0f;
         }
 
-        // -----------------------------------------------------
-        // DEFEND
-        // -----------------------------------------------------
+        if (hasMove)
+        {
+            UpdateMarker(
+                orderMarkers,
+                orderMarkerPrefab,
+                slot,
+                true,
+                endPoint);
+        }
+        else
+        {
+            HideObject(
+                orderMarkers,
+                slot);
+        }
 
-        Vector3 defendPoint = origin;
+        if (hasAttack)
+        {
+            UpdateMarker(
+                attackMarkers,
+                attackMarkerPrefab,
+                slot,
+                true,
+                endPoint);
+        }
+        else
+        {
+            HideObject(
+                attackMarkers,
+                slot);
+        }
+
+        Vector3 defendPoint =
+            origin;
 
         if (hasDefend)
         {
-            DefendOrder defendOrder = (DefendOrder)command;
+            DefendOrder defendOrder =
+                (DefendOrder)command;
 
-            defendPoint = origin + defendOrder.direction.normalized * defendOrder.range;
+            defendPoint =
+                origin +
+                defendOrder.direction.normalized *
+                defendOrder.range;
 
             defendPoint.z = 0f;
+
+            UpdateMarker(
+                defendMarkers,
+                defendMarkerPrefab,
+                slot,
+                true,
+                defendPoint);
+        }
+        else
+        {
+            HideObject(
+                defendMarkers,
+                slot);
         }
 
-        // -----------------------------------------------------
-        // MARKERS
-        // -----------------------------------------------------
-
-        UpdateMarker(orderMarkers, orderMarkerPrefab, slot, hasMove, endPoint);
-
-        UpdateMarker(attackMarkers, attackMarkerPrefab, slot, hasAttack, endPoint);
-
-        UpdateMarker(defendMarkers, defendMarkerPrefab, slot, hasDefend, defendPoint);
-
-        // -----------------------------------------------------
-        // ARROW
-        // -----------------------------------------------------
-
-        bool hasOrder = hasMove || hasAttack || hasDefend;
+        bool hasOrder =
+            hasMove ||
+            hasAttack ||
+            hasDefend;
 
         Vector3 arrowEnd =
-            hasMove || hasAttack
+            hasMove ||
+            hasAttack
                 ? endPoint
                 : defendPoint;
 
-        UpdateOrderArrow(slot, hasOrder, origin, arrowEnd);
+        UpdateOrderArrow(
+            slot,
+            hasOrder,
+            origin,
+            arrowEnd);
     }
 
     // =========================================================
@@ -331,5 +380,91 @@ public class BattalionVisualsScr : MonoBehaviour
         {
             HideSlot(i);
         }
+    }
+
+    public void ShowPhantomMove(int slot, Vector3 requestedPoint)
+    {
+        if (battalion == null)
+            return;
+
+        if (slot < 0 ||
+            slot >= 3)
+        {
+            return;
+        }
+
+        Vector3 origin =
+            battalion.GetOrderOrigin(slot);
+
+        Vector3 endpoint =
+            GetVisualMoveEndpoint(
+                slot,
+                origin,
+                requestedPoint);
+
+        UpdateMarker(
+            orderMarkers,
+            orderMarkerPrefab,
+            slot,
+            true,
+            endpoint);
+
+        UpdateOrderArrow(
+            slot,
+            true,
+            origin,
+            endpoint);
+    }
+
+    public void ShowPhantomAttack(
+    int slot,
+    Vector3 direction,
+    float requestedDistance)
+    {
+        if (battalion == null)
+            return;
+
+        if (slot < 0 ||
+            slot >= 3)
+        {
+            return;
+        }
+
+        if (direction.sqrMagnitude < 0.001f)
+            return;
+
+        Vector3 origin =
+            battalion.GetOrderOrigin(slot);
+
+        direction.z = 0f;
+        direction.Normalize();
+
+        float reachableDistance =
+            battalion.GetReachableDistance(
+                origin,
+                direction,
+                requestedDistance,
+                battalion.battalion.speed,
+                battalion.battalion.attackMoveCostMultiplier);
+
+        Vector3 endpoint =
+            origin +
+            direction *
+            reachableDistance;
+
+        endpoint.z = 0f;
+
+        UpdateMarker(
+            attackMarkers,
+            attackMarkerPrefab,
+            slot,
+            true,
+            endpoint);
+
+        UpdateOrderArrow(
+            slot,
+            true,
+            origin,
+            endpoint);
     }
 }
