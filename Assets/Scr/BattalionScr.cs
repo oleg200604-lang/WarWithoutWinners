@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Timeline;
 
 public class BattalionScr : MonoBehaviour
 {
@@ -18,26 +19,15 @@ public class BattalionScr : MonoBehaviour
     public Command[] command = new Command[3];
     public bool isDefending;
     public Vector3 defendDirection = Vector3.right;
-    [Header("Пересування")]
     public float orderDuration = 1f;
-    [Header("Атака / Захист")]
-    [Tooltip("Фіксована дальність — НЕ залежить від того, скільки Speed вже витрачено іншими наказами в черзі.")]
-    public float attackRange = 2.5f;
-    [Tooltip("У скільки разів рух під час атаки дорожчий за звичайний Move (Speed за ту саму дистанцію).")]
-    public float attackMoveCostMultiplier = 2f;
-    [Header("Зайнятість клітинки")]
-    [Tooltip("Мінімальна відстань до іншого батальйона — новий наказ (Move/Attack) не встановиться, якщо кінцева точка опиниться ближче цього значення до чужої кінцевої позиції.")]
+    
     public float footprintRadius = 0.6f;
-    [Header("Артилерія: розкладка / обстріл")]
-    [Tooltip("Стосується лише BattalionType.artillery. Поки true — Move і звичайний Attack недоступні (спершу Undeploy). Доступні Defend (лише в deployDirection), Bombard і Rotate.")]
+    
     public bool isDeployed;
-    [Tooltip("Напрямок фронту, зафіксований останнім Deploy/Rotate. Defend і Bombard, поки розкладена, прив'язані до цього напрямку.")]
     public Vector3 deployDirection = Vector3.right;
-    [Tooltip("Дальність зони ураження в розкладеному стані. ОКРЕМЕ поле від attackRange (той діє лише під час руху/звичайної Attack).")]
     public float deployRange = 4f;
-    [Tooltip("Ширина конуса зони розкладки (градуси) — Bombard має влучати в цей конус навколо deployDirection. Щоб обстріляти щось поза конусом — потрібен окремий наказ Rotate.")]
+   
     public float deployConeAngle = 90f;
-    [Tooltip("Радіус ураження одного обстрілу (Bombard) — б'є по ВСІХ ворожих батальйонах у цьому колі навколо точки влучення, а не лише по першому на промені.")]
     public float bombardRadius = 1.5f;
     [Header("Terrain sampling")]
     [SerializeField, Min(0.05f)]
@@ -99,9 +89,9 @@ public class BattalionScr : MonoBehaviour
     public float GetEffectiveAttackRange(Vector3 origin)
     {
         if (TerrainManagerScr.Instance == null)
-            return attackRange;
+            return battalion.attackRange;
 
-        return attackRange * TerrainManagerScr.Instance.GetAttackRangeMultiplier((Vector2)origin);
+        return battalion.attackRange * TerrainManagerScr.Instance.GetAttackRangeMultiplier((Vector2)origin);
     }
 
     public float GetEffectiveAttackRange()
@@ -295,14 +285,14 @@ public class BattalionScr : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             return false;
 
-        if (attackRange <= 0f)
+        if (battalion.attackRange <= 0f)
             return false;
 
         Vector3 origin = GetOrderOrigin(slot);
 
         direction.Normalize();
 
-        float moveDistance = GetReachableDistance(origin, direction, desiredMoveDistance, battalion.speed, attackMoveCostMultiplier);
+        float moveDistance = GetReachableDistance(origin, direction, desiredMoveDistance, battalion.speed, battalion.attackMoveCostMultiplier);
 
         if (moveDistance <= 0.001f)
             return false;
@@ -357,7 +347,7 @@ public class BattalionScr : MonoBehaviour
         else
         {
             if (direction.sqrMagnitude < 0.001f ||
-                attackRange <= 0f)
+                battalion.attackRange <= 0f)
             {
                 return false;
             }
@@ -653,11 +643,11 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
-    public void TakeDamage(float damage)
+    public void TakeDamage(float damage, float murder, float injury)
     {
         print(damage);
 
-        personnel.Losses(1, 9, damage, bar);
+        personnel.Losses(murder, injury, damage, bar);
     }
 
     private float ComputeAttackDamage()
@@ -737,7 +727,7 @@ public class BattalionScr : MonoBehaviour
                         {
                             float damage = ComputeAttackDamage();
 
-                            hitTarget.TakeDamage(damage);
+                            hitTarget.TakeDamage(damage, battalion.murder, battalion.injury);
 
                             print(nameBattalion + ": атака влучила по " + hitTarget.nameBattalion);
 
@@ -779,7 +769,7 @@ public class BattalionScr : MonoBehaviour
                         {
                             float damage = ComputeAttackDamage();
 
-                            hitTarget.TakeDamage(damage);
+                            hitTarget.TakeDamage(damage, battalion.murder, battalion.injury);
 
                             print(nameBattalion + ": захист влучив по " + hitTarget.nameBattalion);
 
@@ -842,7 +832,7 @@ public class BattalionScr : MonoBehaviour
                             BattalionScr hitTarget
                             in hitTargets)
                         {
-                            hitTarget.TakeDamage(damage);
+                            hitTarget.TakeDamage(damage, battalion.murder, battalion.injury);
 
                             print(nameBattalion + ": обстріл влучив по " + hitTarget.nameBattalion);
                         }
@@ -992,11 +982,28 @@ public interface Command
 public class Battalion
 {
     public BattalionType type;
+
+    [Tooltip("Фіксована дальність — НЕ залежить від того, скільки Speed вже витрачено іншими наказами в черзі.")]
+    public float attackRange = 2.5f;
+    [Tooltip("У скільки разів рух під час атаки дорожчий за звичайний Move (Speed за ту саму дистанцію).")]
+    public float attackMoveCostMultiplier = 2f;
     public float damage;
+    public float murder, injury;
     public float speed;
+}
+
+public class Company
+{
+    public CompanyType company;
+    public Battalion settins;
 }
 
 public enum BattalionType
 {
     none, infantry, artillery, cavalry, mechanically
+}
+
+public enum CompanyType
+{
+    none, machineGun, medical, cannon, flamethrower
 }

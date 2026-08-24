@@ -2457,10 +2457,10 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 7
+  m_SortingOrder: 6
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 2f85458e782abf14a980a4dec6bcad32, type: 3}
-  m_Color: {r: 1, g: 0.95224696, b: 0, a: 1}
+  m_Color: {r: 0.6431373, g: 0.24313726, b: 0, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -2711,7 +2711,7 @@ Transform:
   m_GameObject: {fileID: 699230704}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.35, y: -0.02, z: 0}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 23.888186, y: 1.0233911, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -3261,10 +3261,10 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 5
+  m_SortingOrder: 7
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 2f85458e782abf14a980a4dec6bcad32, type: 3}
-  m_Color: {r: 0.6431373, g: 0.24320023, b: 0, a: 1}
+  m_Color: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -4332,8 +4332,8 @@ Transform:
   m_GameObject: {fileID: 976630857}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.1888, z: 0}
-  m_LocalScale: {x: 31.37, y: 14.35636, z: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 25, y: 25, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 493925537}
@@ -4385,7 +4385,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: -1
+  m_SortingOrder: -2
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
   m_Color: {r: 0.6371692, g: 0.7924528, b: 0.31772873, a: 1}
@@ -5655,7 +5655,7 @@ SpriteRenderer:
   m_SortingOrder: 5
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.15153769, g: 0.3207547, b: 0, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -5996,20 +5996,22 @@ MonoBehaviour:
     organizationMax: 100
   battalion:
     type: 1
+    attackRange: 2.5
+    attackMoveCostMultiplier: 2
     damage: 200
+    murder: 1
+    injury: 3
     speed: 2
   teamID: 0
   regimentredID: -1
   isDefending: 0
   defendDirection: {x: 1, y: 0, z: 0}
   orderDuration: 1
-  attackRange: 1.5
-  attackMoveCostMultiplier: 2
   footprintRadius: 0.6
   isDeployed: 0
   deployDirection: {x: 1, y: 0, z: 0}
   deployRange: 4
-  deployConeAngle: 90
+  deployConeAngle: 30
   bombardRadius: 1.5
   terrainSampleStep: 0.15
 --- !u!114 &1307456461
@@ -7352,13 +7354,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1531888304}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.2556, y: 3.17, z: 0}
+  m_LocalRotation: {x: 0, y: 0, z: 0.7071068, w: 0.7071068}
+  m_LocalPosition: {x: 7.052678, y: 2.2287774, z: 0}
   m_LocalScale: {x: 12.8744, y: 4.65813, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 493925537}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 90}
 --- !u!114 &1531888306
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7466,7 +7468,7 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: -1
   m_MaskInteraction: 0
   m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
   m_Color: {r: 0.3333333, g: 0.4196079, b: 0.1843137, a: 1}
