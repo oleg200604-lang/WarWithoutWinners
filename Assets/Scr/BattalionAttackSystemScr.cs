@@ -20,6 +20,43 @@ public class BattalionAttackSystemScr : MonoBehaviour
         return attacker.battalion.attackConeAngle;
     }
 
+    /// <summary>
+    /// Дальність до першого terrain, що блокує лінію вогню вздовж
+    /// напрямку — та сама перевірка, що й у FindTarget, але без
+    /// пошуку цілі. Використовується прев'ю-візуалізацією
+    /// (RangeIndicatorScr), щоб промені видимо зупинялись на
+    /// лісі/горах так само, як реально зупиняється атака.
+    /// </summary>
+    public float GetLineOfSightRange(Vector3 origin, Vector3 direction, float maxRange)
+    {
+        if (direction.sqrMagnitude < 0.001f || maxRange <= 0f)
+            return 0f;
+
+        direction.Normalize();
+
+        TerrainManagerScr terrain = TerrainManagerScr.Instance;
+
+        if (terrain == null)
+            return maxRange;
+
+        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, direction, maxRange, terrain.TerrainLayer);
+
+        System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit2D hit in hits)
+        {
+            if (hit.collider == null)
+                continue;
+
+            TerrainTileScr tile = hit.collider.GetComponent<TerrainTileScr>();
+
+            if (tile != null && terrain.BlocksLineOfSight(tile.type))
+                return hit.distance;
+        }
+
+        return maxRange;
+    }
+
     public BattalionScr FindTarget(
         BattalionScr attacker,
         Vector3 direction,

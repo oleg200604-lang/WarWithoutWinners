@@ -113,6 +113,23 @@ public class BattalionVisualsScr : MonoBehaviour
             command is DefendOrder defend &&
             defend.isSet;
 
+        // Поки гравець ще ЦІЛИТЬСЯ (не підтвердив клацанням) наказом
+        // Move/Attack для цього слота, фантомну мітку/стрілку веде
+        // RangeIndicatorScr (ShowPhantomMove/ShowPhantomAttack) — тут
+        // її ховати не можна, інакше вона миготітиме щокадру.
+        bool isCurrentSlot =
+            batalionManager != null &&
+            batalionManager.selectBattalion == battalion &&
+            batalionManager.CommandDuty == slot;
+
+        bool isAimingMove =
+            isCurrentSlot &&
+            batalionManager.commandType == CommandType.Move;
+
+        bool isAimingAttack =
+            isCurrentSlot &&
+            batalionManager.commandType == CommandType.Attack;
+
         Vector3 origin =
             battalion.GetOrderOrigin(slot);
 
@@ -152,7 +169,7 @@ public class BattalionVisualsScr : MonoBehaviour
                 true,
                 endPoint);
         }
-        else
+        else if (!isAimingMove)
         {
             HideObject(
                 orderMarkers,
@@ -168,7 +185,7 @@ public class BattalionVisualsScr : MonoBehaviour
                 true,
                 endPoint);
         }
-        else
+        else if (!isAimingAttack)
         {
             HideObject(
                 attackMarkers,
@@ -215,11 +232,14 @@ public class BattalionVisualsScr : MonoBehaviour
                 ? endPoint
                 : defendPoint;
 
-        UpdateOrderArrow(
-            slot,
-            hasOrder,
-            origin,
-            arrowEnd);
+        if (hasOrder || !(isAimingMove || isAimingAttack))
+        {
+            UpdateOrderArrow(
+                slot,
+                hasOrder,
+                origin,
+                arrowEnd);
+        }
     }
 
     // =========================================================
@@ -393,27 +413,13 @@ public class BattalionVisualsScr : MonoBehaviour
             return;
         }
 
-        Vector3 origin =
-            battalion.GetOrderOrigin(slot);
+        Vector3 origin = battalion.GetOrderOrigin(slot);
 
-        Vector3 endpoint =
-            GetVisualMoveEndpoint(
-                slot,
-                origin,
-                requestedPoint);
+        Vector3 endpoint = GetVisualMoveEndpoint(slot, origin, requestedPoint);
 
-        UpdateMarker(
-            orderMarkers,
-            orderMarkerPrefab,
-            slot,
-            true,
-            endpoint);
+        UpdateMarker( orderMarkers, orderMarkerPrefab, slot, true, endpoint);
 
-        UpdateOrderArrow(
-            slot,
-            true,
-            origin,
-            endpoint);
+        UpdateOrderArrow(slot, true, origin, endpoint);
     }
 
     public void ShowPhantomAttack(
@@ -433,38 +439,19 @@ public class BattalionVisualsScr : MonoBehaviour
         if (direction.sqrMagnitude < 0.001f)
             return;
 
-        Vector3 origin =
-            battalion.GetOrderOrigin(slot);
+        Vector3 origin = battalion.GetOrderOrigin(slot);
 
         direction.z = 0f;
         direction.Normalize();
 
-        float reachableDistance =
-            battalion.GetReachableDistance(
-                origin,
-                direction,
-                requestedDistance,
-                battalion.battalion.speed,
-                battalion.battalion.attackMoveCostMultiplier);
+        float reachableDistance = battalion.GetReachableDistance(origin, direction, requestedDistance, battalion.battalion.speed,battalion.battalion.attackMoveCostMultiplier);
 
-        Vector3 endpoint =
-            origin +
-            direction *
-            reachableDistance;
+        Vector3 endpoint = origin + direction * reachableDistance;
 
         endpoint.z = 0f;
 
-        UpdateMarker(
-            attackMarkers,
-            attackMarkerPrefab,
-            slot,
-            true,
-            endpoint);
+        UpdateMarker(attackMarkers, attackMarkerPrefab, slot, true, endpoint);
 
-        UpdateOrderArrow(
-            slot,
-            true,
-            origin,
-            endpoint);
+        UpdateOrderArrow(slot, true, origin, endpoint);
     }
 }

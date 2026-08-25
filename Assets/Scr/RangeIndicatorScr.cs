@@ -36,6 +36,20 @@ public class RangeIndicatorScr : MonoBehaviour
     private Mesh mesh;
     private MeshRenderer meshRenderer;
 
+    private BattalionScr cachedVisualsOwner;
+    private BattalionVisualsScr cachedVisuals;
+
+    private BattalionVisualsScr GetVisuals(BattalionScr selected)
+    {
+        if (selected != cachedVisualsOwner)
+        {
+            cachedVisualsOwner = selected;
+            cachedVisuals = selected != null ? selected.GetComponent<BattalionVisualsScr>() : null;
+        }
+
+        return cachedVisuals;
+    }
+
     // Клас: RangeIndicatorScr
     private void Update()
     {
@@ -89,6 +103,11 @@ public class RangeIndicatorScr : MonoBehaviour
 
             BuildMoveArea(selected, origin, availableSpeed, fillColor);
 
+            BattalionVisualsScr visuals = GetVisuals(selected);
+
+            if (visuals != null)
+                visuals.ShowPhantomMove(slot, GetMouseWorldPosition());
+
             return;
         }
 
@@ -103,7 +122,30 @@ public class RangeIndicatorScr : MonoBehaviour
                 return;
             }
 
-            float maxRange = selected.GetEffectiveAttackRange(origin);
+            // Attack, як і реальний SetAttackOrder, спершу рухає
+            // батальйон у бік курсора (в межах доступного Speed) і
+            // лише ПОТІМ атакує з цієї кінцевої точки — тож і зона/
+            // промені прев'ю мають малюватись від неї, а не від
+            // поточної позиції.
+            Vector3 aimDirection = GetAimDirection(origin);
+
+            Vector3 mouseWorld = GetMouseWorldPosition();
+
+            float desiredDistance = (mouseWorld - origin).magnitude;
+
+            float moveDistance =
+                selected.GetReachableDistance(
+                    origin,
+                    aimDirection,
+                    desiredDistance,
+                    selected.battalion.speed,
+                    selected.battalion.attackMoveCostMultiplier);
+
+            Vector3 attackOrigin = origin + aimDirection * moveDistance;
+
+            attackOrigin.z = 0f;
+
+            float maxRange = selected.GetEffectiveAttackRange(attackOrigin);
 
             if (maxRange <= 0f)
             {
@@ -114,9 +156,14 @@ public class RangeIndicatorScr : MonoBehaviour
 
             Show();
 
-            BuildCircle(origin, maxRange, attackFillColor);
+            BuildCircle(attackOrigin, maxRange, attackFillColor);
 
-            ShowRayFan(selected, origin, maxRange, rayColor);
+            ShowRayFan(selected, attackOrigin, aimDirection, maxRange, rayColor);
+
+            BattalionVisualsScr visuals = GetVisuals(selected);
+
+            if (visuals != null)
+                visuals.ShowPhantomAttack(slot, aimDirection, desiredDistance);
 
             return;
         }
@@ -127,21 +174,10 @@ public class RangeIndicatorScr : MonoBehaviour
 
             bool isDeployed = selected.GetProjectedDeployedState(slot);
 
-            float maxRange;
-            Vector3 direction;
-
-            if (isDeployed)
-            {
-                maxRange = selected.deployRange;
-
-                direction = selected.GetProjectedDeployDirection(slot);
-            }
-            else
-            {
-                maxRange = selected.GetEffectiveAttackRange(origin);
-
-                direction = GetAimDirection(origin);
-            }
+            float maxRange =
+                isDeployed
+                    ? selected.deployRange
+                    : selected.GetEffectiveAttackRange(origin);
 
             if (maxRange <= 0f)
             {
@@ -152,9 +188,9 @@ public class RangeIndicatorScr : MonoBehaviour
 
             Show();
 
-            BuildCircle(origin, maxRange, defendFillColor);
+            HideRayFan();
 
-            ShowRayFan(selected, origin, maxRange, defendRayColor);
+            BuildCircle(origin, maxRange, defendFillColor);
 
             return;
         }
@@ -202,7 +238,7 @@ public class RangeIndicatorScr : MonoBehaviour
 
             BuildSector(origin, selected.deployRange, selected.GetProjectedDeployDirection(slot), selected.deployConeAngle, defendFillColor);
 
-            ShowRayFan(selected, origin, selected.deployRange, defendRayColor);
+            ShowRayFan(selected, origin, GetAimDirection(origin), selected.deployRange, defendRayColor);
 
             return;
         }
@@ -437,6 +473,7 @@ public class RangeIndicatorScr : MonoBehaviour
     private void ShowRayFan(
         BattalionScr selected,
         Vector3 origin,
+        Vector3 direction,
         float range,
         Color color)
     {
@@ -444,9 +481,6 @@ public class RangeIndicatorScr : MonoBehaviour
 
         if (rayFan == null)
             return;
-
-        Vector3 direction =
-            GetAimDirection(origin);
 
         int rayCount = 31;
         float coneAngle = 90f;
@@ -487,12 +521,26 @@ public class RangeIndicatorScr : MonoBehaviour
                     angle) *
                 direction;
 
+            // Промінь видимо зупиняється там, де його зупинив би
+            // ліс/гора для реальної атаки (FindTarget) — а не
+            // завжди малюється на всю дальність.
+            float visibleRange = range;
+
+            if (selected.attackSystem != null)
+            {
+                visibleRange =
+                    selected.attackSystem.GetLineOfSightRange(
+                        origin,
+                        rayDirection,
+                        range);
+            }
+
             points[i * 2] =
                 origin;
 
             points[i * 2 + 1] =
                 origin +
-                rayDirection * range;
+                rayDirection * visibleRange;
         }
 
         rayFan.positionCount =
