@@ -15,6 +15,7 @@ public class BattalionScr : MonoBehaviour
     public Battalion battalion;
     public int teamID;
     public int regimentredID = -1;
+    public Company[] company;
     [Space]
     public Command[] command = new Command[3];
     public bool isDefending;
@@ -50,7 +51,7 @@ public class BattalionScr : MonoBehaviour
         command[1] = new MoveCommand();
         command[2] = new MoveCommand();
     }
-    // Клас: BattalionScr
+
     public Vector3 GetOrderOrigin(int slot)
     {
         if (command == null ||
@@ -889,6 +890,11 @@ public class BattalionScr : MonoBehaviour
         ClearAllOrders();
     }
 
+    public void AddCompany(int selectCompany, CompanyType compan)
+    {
+
+        //company[selectCompany] = 
+    }
 
 }
 
@@ -1000,6 +1006,7 @@ public class Personnel
 
     }
 }
+
 
 public enum CommandType
 {

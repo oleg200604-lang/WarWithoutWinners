@@ -72,12 +72,15 @@ public class BatalionManagerScr : MonoBehaviour
 
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-
-            isRedy = true;
-            battleManager.IsSrtart();
-            selectBattalion = null;
-            battalionUIManager.CommandPanel(false);
+            NextMove();
         }
+    }
+    public void NextMove()
+    {
+        isRedy = true;
+        battleManager.IsSrtart();
+        selectBattalion = null;
+        battalionUIManager.CommandPanel(false);
     }
 
     private void Move()

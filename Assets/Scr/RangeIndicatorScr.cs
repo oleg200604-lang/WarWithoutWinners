@@ -90,7 +90,6 @@ public class RangeIndicatorScr : MonoBehaviour
             HideRayFan();
             HideBombardRadius();
 
-            // Кожен Move отримує повний speed.
             float availableSpeed = selected.battalion.speed;
 
             if (availableSpeed <= 0f)
@@ -122,11 +121,6 @@ public class RangeIndicatorScr : MonoBehaviour
                 return;
             }
 
-            // Attack, як і реальний SetAttackOrder, спершу рухає
-            // батальйон у бік курсора (в межах доступного Speed) і
-            // лише ПОТІМ атакує з цієї кінцевої точки — тож і зона/
-            // промені прев'ю мають малюватись від неї, а не від
-            // поточної позиції.
             Vector3 aimDirection = GetAimDirection(origin);
 
             Vector3 mouseWorld = GetMouseWorldPosition();
@@ -294,12 +288,7 @@ public class RangeIndicatorScr : MonoBehaviour
         return mouseWorld;
     }
 
-    private void BuildSector(
-    Vector3 origin,
-    float radius,
-    Vector3 direction,
-    float coneAngle,
-    Color color)
+    private void BuildSector(Vector3 origin, float radius, Vector3 direction, float coneAngle, Color color)
     {
         int safeSegments = Mathf.Max(8, segments);
 
@@ -361,10 +350,8 @@ public class RangeIndicatorScr : MonoBehaviour
 
         mesh.RecalculateBounds();
     }
-    // Клас: RangeIndicatorScr
-    private void ShowBombardRadius(
-    Vector3 center,
-    float radius)
+
+    private void ShowBombardRadius(Vector3 center, float radius)
     {
         EnsureBombardRadius();
 
@@ -391,9 +378,7 @@ public class RangeIndicatorScr : MonoBehaviour
         }
     }
 
-    private void BuildBombardRadius(
-    Vector3 center,
-    float radius)
+    private void BuildBombardRadius(Vector3 center, float radius)
     {
         int safeSegments = Mathf.Max(24, segments);
 
@@ -470,12 +455,7 @@ public class RangeIndicatorScr : MonoBehaviour
         }
     }
 
-    private void ShowRayFan(
-        BattalionScr selected,
-        Vector3 origin,
-        Vector3 direction,
-        float range,
-        Color color)
+    private void ShowRayFan(BattalionScr selected, Vector3 origin, Vector3 direction, float range, Color color)
     {
         LineRenderer rayFan = EnsureRayFan();
 
@@ -521,9 +501,6 @@ public class RangeIndicatorScr : MonoBehaviour
                     angle) *
                 direction;
 
-            // Промінь видимо зупиняється там, де його зупинив би
-            // ліс/гора для реальної атаки (FindTarget) — а не
-            // завжди малюється на всю дальність.
             float visibleRange = range;
 
             if (selected.attackSystem != null)
@@ -557,15 +534,6 @@ public class RangeIndicatorScr : MonoBehaviour
         rayFan.enabled = true;
     }
 
-
-
-    /// <summary>
-    /// rayFanLineRenderer раніше треба було вручну перетягнути в
-    /// інспекторі — якщо цього не зробити, промені просто мовчки не
-    /// малювались. Тепер, якщо поле порожнє, компонент створює собі
-    /// LineRenderer сам, на дочірньому об'єкті, з базовим матеріалом
-    /// (Sprites/Default, він є в будь-якому проєкті).
-    /// </summary>
     private LineRenderer EnsureRayFan()
     {
         if (rayFanLineRenderer != null)
@@ -592,7 +560,6 @@ public class RangeIndicatorScr : MonoBehaviour
             rayFanLineRenderer.enabled = false;
     }
 
-    /// <summary>Напрямок прицілювання — до курсора миші (як і в BatalionManagerScr.Attack()).</summary>
     private Vector3 GetAimDirection(Vector3 origin)
     {
         if (Mouse.current == null || Camera.main == null)
@@ -642,8 +609,6 @@ public class RangeIndicatorScr : MonoBehaviour
         Vector3[] vertices = new Vector3[segments + 1];
         Color[] colors = new Color[vertices.Length];
 
-        // Подвійна намотка трикутників (лицева + зворотна), щоб меш було
-        // видно незалежно від напрямку камери.
         int[] triangles = new int[segments * 3 * 2];
 
         Transform t = meshFilter.transform;
@@ -678,11 +643,7 @@ public class RangeIndicatorScr : MonoBehaviour
         mesh.triangles = triangles;
     }
 
-    private void BuildMoveArea(
-        BattalionScr selected,
-        Vector3 origin,
-        float availableSpeed,
-        Color color)
+    private void BuildMoveArea(BattalionScr selected, Vector3 origin, float availableSpeed, Color color)
     {
         int safeSegments = Mathf.Max(12, segments);
 

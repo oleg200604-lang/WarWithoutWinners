@@ -39,6 +39,8 @@ public class BattalionAttackSystemScr : MonoBehaviour
         if (terrain == null)
             return maxRange;
 
+        List<TerrainTileScr> shooterTiles = terrain.GetAllTilesAt(origin);
+
         RaycastHit2D[] hits = Physics2D.RaycastAll(origin, direction, maxRange, terrain.TerrainLayer);
 
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
@@ -48,9 +50,9 @@ public class BattalionAttackSystemScr : MonoBehaviour
             if (hit.collider == null)
                 continue;
 
-            TerrainTileScr tile = hit.collider.GetComponent<TerrainTileScr>();
+            TerrainTileScr tile = hit.collider.GetComponentInParent<TerrainTileScr>();
 
-            if (tile != null && terrain.BlocksLineOfSight(tile.type))
+            if (terrain.BlocksLineOfSightFrom(tile, shooterTiles))
                 return hit.distance;
         }
 
@@ -73,6 +75,11 @@ public class BattalionAttackSystemScr : MonoBehaviour
         Vector3 origin = attacker.transform.position;
 
         TerrainManagerScr terrain = TerrainManagerScr.Instance;
+
+        List<TerrainTileScr> shooterTiles =
+            terrain != null
+                ? terrain.GetAllTilesAt(origin)
+                : null;
 
         int attackerHeight =
             terrain != null
@@ -120,12 +127,12 @@ public class BattalionAttackSystemScr : MonoBehaviour
                     continue;
 
                 TerrainTileScr tile =
-                    hit.collider.GetComponent<TerrainTileScr>();
+                    hit.collider.GetComponentInParent<TerrainTileScr>();
 
                 if (tile != null)
                 {
                     if (terrain != null &&
-                        terrain.BlocksLineOfSight(tile.type))
+                        terrain.BlocksLineOfSightFrom(tile, shooterTiles))
                     {
                         break;
                     }

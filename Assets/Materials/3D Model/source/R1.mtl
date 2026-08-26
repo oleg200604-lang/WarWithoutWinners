@@ -1,0 +1,113 @@
+# MTL file - created by a modified js OBJExporter
+
+newmtl root.0
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pm 1
+Pr 1
+Pds 1
+Pl 1
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd root.0.png
+map_Pm metalnessMap1.png
+map_Pr metalnessMap1.png
+norm normalMap1.png
+
+newmtl root.1
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pm 1
+Pr 1
+Pds 1
+Pl 1
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd root.0.png
+map_Pm metalnessMap2.png
+map_Pr metalnessMap2.png
+norm normalMap1.png
+
+newmtl root.2
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pm 1
+Pr 1
+Pds 1
+Pl 1
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd root.0.png
+map_Pm metalnessMap2.png
+map_Pr metalnessMap2.png
+norm normalMap1.png
+
+newmtl root.3
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pm 1
+Pr 1
+Pds 1
+Pl 1
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd root.0.png
+map_Pm metalnessMap2.png
+map_Pr metalnessMap2.png
+norm normalMap1.png
+
+newmtl root.4
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pm 1
+Pr 1
+Pds 1
+Pl 1
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd root.0.png
+map_Pm metalnessMap2.png
+map_Pr metalnessMap2.png
+norm normalMap1.png
+
+newmtl root.5
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pm 1
+Pr 1
+Pds 1
+Pl 1
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd root.0.png
+map_Pm metalnessMap2.png
+map_Pr metalnessMap2.png
+norm normalMap1.png
+
+newmtl root.6
+Tr 0.0000
+Tf 1.0000 1.0000 1.0000
+illum 1
+Pm 1
+Pr 1
+Pds 1
+Pl 1
+Ka 1 1 1
+Kd 1 1 1
+Ke 0 0 0
+map_Kd root.0.png
+map_Pm metalnessMap2.png
+map_Pr metalnessMap2.png
+norm normalMap1.png

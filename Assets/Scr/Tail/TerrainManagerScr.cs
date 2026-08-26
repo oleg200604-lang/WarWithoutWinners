@@ -185,6 +185,35 @@ public class TerrainManagerScr : MonoBehaviour
         return type == LandscapeType.Forest || type == LandscapeType.Mountains;
     }
 
+    /// <summary>
+    /// Чи блокує ця terrain-плитка лінію вогню САМЕ для стрільця,
+    /// що стоїть на плитках зі списку shooterTiles.
+    ///
+    /// Плитка, на якій стоїть сам стрілець, НІКОЛИ не блокує його
+    /// власний постріл — з лісу/гори можна стріляти (дальність вже
+    /// зменшується окремо через GetAttackRangeMultiplier). Блокує
+    /// лише лінія вогню, що йде В ліс/гору чи КРІЗЬ них — тобто
+    /// будь-яка інша лісова/гірська плитка на шляху променя.
+    ///
+    /// Без цього винятку Physics2D.RaycastAll повертає власну
+    /// плитку стрільця як влучення на distance = 0 (промінь
+    /// починається всередині її колайдера), і постріл блокувався б
+    /// одразу на нульовій дистанції для будь-кого в лісі.
+    /// </summary>
+    public bool BlocksLineOfSightFrom(TerrainTileScr tile, List<TerrainTileScr> shooterTiles)
+    {
+        if (tile == null)
+            return false;
+
+        if (!BlocksLineOfSight(tile.type))
+            return false;
+
+        if (shooterTiles != null && shooterTiles.Contains(tile))
+            return false;
+
+        return true;
+    }
+
     // =========================================================
     // ATTACK RANGE
     // =========================================================
