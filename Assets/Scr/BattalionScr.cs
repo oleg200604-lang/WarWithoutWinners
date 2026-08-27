@@ -1286,5 +1286,12 @@ public enum CompanyType
 
 public enum EffectType
 {
-    none, suppressed, battle, panic
+    none, suppressed, battle, panic       
+}
+
+[System.Serializable]
+public class ActiveEffect
+{
+    public EffectType type;
+    public int remainingTurns;
 }
