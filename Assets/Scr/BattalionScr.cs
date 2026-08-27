@@ -21,19 +21,29 @@ public class BattalionScr : MonoBehaviour
     public bool isDefending;
     public Vector3 defendDirection = Vector3.right;
     public float orderDuration = 1f;
-    
+
     public float footprintRadius = 0.6f;
-    
+
     public bool isDeployed;
     public Vector3 deployDirection = Vector3.right;
     public float deployRange = 4f;
-   
+
     public float deployConeAngle = 90f;
     public float bombardRadius = 1.5f;
     [Header("Terrain sampling")]
     [SerializeField, Min(0.05f)]
     private float terrainSampleStep = 0.15f;
     private static readonly List<BattalionScr> AllBattalions = new List<BattalionScr>();
+
+    // Базові (без бонусів рот) характеристики — знімок того, що виставлено
+    // в інспекторі. Від нього завжди рахуємо battalion/personnel заново,
+    // щоб бонуси рот не накопичувались один на одного.
+    private Battalion baseBattalion;
+    private int basePersonnelMax;
+
+    // "Стан спокою" — базові стати + бонуси рот з умовою Always.
+    // Саме до нього повертається battalion, коли бойова дія завершилась.
+    private Battalion restingBattalion;
 
     private void OnEnable()
     {
@@ -50,6 +60,11 @@ public class BattalionScr : MonoBehaviour
         command[0] = new MoveCommand();
         command[1] = new MoveCommand();
         command[2] = new MoveCommand();
+
+        baseBattalion = battalion.Clone();
+        basePersonnelMax = personnel.personnelMax;
+
+        RecalculateStats();
     }
 
     public Vector3 GetOrderOrigin(int slot)
@@ -300,66 +315,78 @@ public class BattalionScr : MonoBehaviour
             return false;
         }
 
-        if (GetProjectedDeployedState(slot))
-            return false;
+        // На час розрахунку наказу атаки вмикаємо бонуси рот з умовою
+        // "атака"/"атака і захист" — щоб дальність/швидкість вже
+        // враховували їх ще на етапі постановки наказу.
+        EnterAttackContext();
 
-        if (direction.sqrMagnitude < 0.001f)
-            return false;
-
-        if (battalion.attackRange <= 0f)
-            return false;
-
-        Vector3 origin =
-            GetOrderOrigin(slot);
-
-        direction.z = 0f;
-        direction.Normalize();
-
-        float moveDistance =
-            GetReachableDistance(
-                origin,
-                direction,
-                desiredMoveDistance,
-                battalion.speed,
-                battalion.attackMoveCostMultiplier);
-
-        if (moveDistance <= 0.001f)
-            return false;
-
-        Vector3 targetPoint =
-            origin +
-            direction *
-            moveDistance;
-
-        targetPoint.z = 0f;
-
-        if (!IsPositionFree(
-            targetPoint,
-            footprintRadius,
-            this))
+        try
         {
-            return false;
-        }
+            if (GetProjectedDeployedState(slot))
+                return false;
 
-        ClearOrdersAfter(slot);
+            if (direction.sqrMagnitude < 0.001f)
+                return false;
 
-        isDefending = false;
+            if (battalion.attackRange <= 0f)
+                return false;
 
-        command[slot] =
-            new AttackOrder
+            Vector3 origin =
+                GetOrderOrigin(slot);
+
+            direction.z = 0f;
+            direction.Normalize();
+
+            float moveDistance =
+                GetReachableDistance(
+                    origin,
+                    direction,
+                    desiredMoveDistance,
+                    battalion.speed,
+                    battalion.attackMoveCostMultiplier);
+
+            if (moveDistance <= 0.001f)
+                return false;
+
+            Vector3 targetPoint =
+                origin +
+                direction *
+                moveDistance;
+
+            targetPoint.z = 0f;
+
+            if (!IsPositionFree(
+                targetPoint,
+                footprintRadius,
+                this))
             {
-                direction = direction,
-                moveDistance = moveDistance,
+                return false;
+            }
 
-                zoneRange =
-                    GetEffectiveAttackRange(
-                        targetPoint),
+            ClearOrdersAfter(slot);
 
-                commandType = CommandType.Attack,
-                isSet = true
-            };
+            isDefending = false;
 
-        return true;
+            command[slot] =
+                new AttackOrder
+                {
+                    direction = direction,
+                    moveDistance = moveDistance,
+
+                    zoneRange =
+                        GetEffectiveAttackRange(
+                            targetPoint),
+
+                    commandType = CommandType.Attack,
+                    isSet = true
+                };
+
+            return true;
+        }
+        finally
+        {
+            ExitCombatContext();
+        }
     }
 
     public bool SetDefendOrder(int slot, Vector3 direction)
@@ -370,27 +397,38 @@ public class BattalionScr : MonoBehaviour
         Vector3 finalDirection;
         float finalRange;
 
-        bool projectedDeployed = GetProjectedDeployedState(slot);
+        // На час розрахунку наказу захисту вмикаємо бонуси рот з умовою
+        // "захист"/"атака і захист".
+        EnterDefendContext();
 
-        if (projectedDeployed)
+        try
         {
-            finalDirection = GetProjectedDeployDirection(slot);
+            bool projectedDeployed = GetProjectedDeployedState(slot);
 
-            finalRange = deployRange;
-        }
-        else
-        {
-            if (direction.sqrMagnitude < 0.001f ||
-                battalion.attackRange <= 0f)
+            if (projectedDeployed)
             {
-                return false;
+                finalDirection = GetProjectedDeployDirection(slot);
+
+                finalRange = deployRange;
             }
+            else
+            {
+                if (direction.sqrMagnitude < 0.001f ||
+                    battalion.attackRange <= 0f)
+                {
+                    return false;
+                }
 
-            Vector3 origin = GetOrderOrigin(slot);
+                Vector3 origin = GetOrderOrigin(slot);
 
-            finalDirection = direction.normalized;
+                finalDirection = direction.normalized;
 
-            finalRange = GetEffectiveAttackRange(origin);
+                finalRange = GetEffectiveAttackRange(origin);
+            }
+        }
+        finally
+        {
+            ExitCombatContext();
         }
 
         ClearOrdersAfter(slot);
@@ -698,7 +736,7 @@ public class BattalionScr : MonoBehaviour
             lastExecutedTurn = battleManager.turnId;
             StartCoroutine(ExecuteOrders());
         }
-        
+
         bar.SetOrganization(personnel.organization, personnel.organizationMax);
 
         bar.SetcombatCapable(personnel.combatCapable, personnel.combatCapableNo, personnel.personnelMax);
@@ -733,6 +771,10 @@ public class BattalionScr : MonoBehaviour
             else if (command[i] is AttackOrder attack &&
                      attack.isSet)
             {
+                // Бонуси рот "лише атака"/"атака і захист" діють на весь
+                // час виконання наказу атаки (рух + постріл).
+                EnterAttackContext();
+
                 Vector3 start = transform.position;
 
                 Vector3 target = start + attack.direction * attack.moveDistance;
@@ -779,10 +821,16 @@ public class BattalionScr : MonoBehaviour
                 {
                     print(nameBattalion + ": атака нікого не зачепила");
                 }
+
+                ExitCombatContext();
             }
             else if (command[i] is DefendOrder defend &&
                      defend.isSet)
             {
+                // Бонуси рот "лише захист"/"атака і захист" діють на весь
+                // час, поки батальйон стоїть у захисті цього ходу.
+                EnterDefendContext();
+
                 isDefending = true;
                 defendDirection = defend.direction.normalized;
 
@@ -821,6 +869,8 @@ public class BattalionScr : MonoBehaviour
 
                 // НЕ видаляємо DefendOrder.
                 // Він залишається активним між ходами.
+
+                ExitCombatContext();
             }
             else if (command[i] is DeployOrder deployOrder &&
                      deployOrder.isSet)
@@ -850,6 +900,10 @@ public class BattalionScr : MonoBehaviour
             else if (command[i] is BombardOrder bombardOrder &&
                      bombardOrder.isSet)
             {
+                // Обстріл — наступальна дія, тож рахуємо його як "атаку"
+                // для бонусів рот з умовою AttackOnly/AttackAndDefend.
+                EnterAttackContext();
+
                 if (attackSystem == null)
                 {
                     Debug.LogWarning(nameBattalion + ": attackSystem не призначено — обстріл не завдає шкоди.", this);
@@ -877,6 +931,8 @@ public class BattalionScr : MonoBehaviour
                     }
                 }
 
+                ExitCombatContext();
+
                 yield return
                     new WaitForSeconds(orderDuration);
             }
@@ -890,10 +946,169 @@ public class BattalionScr : MonoBehaviour
         ClearAllOrders();
     }
 
-    public void AddCompany(int selectCompany, CompanyType compan)
+    public bool AddCompany(int selectCompany, CompanyType compan)
     {
+        if (company == null ||
+            selectCompany < 0 ||
+            selectCompany >= company.Length)
+        {
+            Debug.LogWarning(nameBattalion + ": невірний слот роти " + selectCompany);
+            return false;
+        }
 
-        //company[selectCompany] = 
+        if (CompanyDatabaseScr.Instance == null)
+        {
+            Debug.LogWarning(nameBattalion + ": CompanyDatabaseScr не знайдено на сцені — бонуси роти не застосовано.");
+            return false;
+        }
+
+        if (compan != CompanyType.none &&
+            !CompanyDatabaseScr.Instance.TryGetDefinition(compan, out _))
+        {
+            Debug.LogWarning(nameBattalion + ": для типу роти " + compan + " немає визначення в CompanyDatabaseScr.");
+            return false;
+        }
+
+        company[selectCompany] = new Company { company = compan };
+
+        RecalculateStats();
+
+        return true;
+    }
+
+    public bool RemoveCompany(int selectCompany)
+    {
+        if (company == null ||
+            selectCompany < 0 ||
+            selectCompany >= company.Length)
+        {
+            return false;
+        }
+
+        company[selectCompany] = new Company { company = CompanyType.none };
+
+        RecalculateStats();
+
+        return true;
+    }
+
+    // Перераховує battalion/personnel.personnelMax як (базові значення) + (сума бонусів усіх активних рот).
+    // Викликати щоразу після зміни складу рот батальйону.
+    // personnelMaxBonus діє завжди; бойові statBonus зберігаються у
+    // restingBattalion лише ті, чия умова — Always (решта додаються
+    // тимчасово через EnterAttackContext/EnterDefendContext).
+    public void RecalculateStats()
+    {
+        int personnelMax = basePersonnelMax;
+
+        if (company != null &&
+            CompanyDatabaseScr.Instance != null)
+        {
+            for (int i = 0; i < company.Length; i++)
+            {
+                Company slot = company[i];
+
+                if (slot == null ||
+                    slot.company == CompanyType.none)
+                {
+                    continue;
+                }
+
+                if (!CompanyDatabaseScr.Instance.TryGetDefinition(slot.company, out CompanyDefinition definition))
+                {
+                    continue;
+                }
+
+                personnelMax += definition.personnelMaxBonus;
+            }
+        }
+
+        personnel.personnelMax = personnelMax;
+
+        restingBattalion = BuildBattalion(false, false);
+        battalion = restingBattalion.Clone();
+    }
+
+    // Складає ефективні бойові стати: базові + бонуси рот, чия умова
+    // дозволяє застосування у поточному контексті.
+    // includeAttack/includeDefend — чи триває зараз атака/обстріл чи захист.
+    private Battalion BuildBattalion(bool includeAttack, bool includeDefend)
+    {
+        Battalion result = baseBattalion.Clone();
+
+        if (company == null ||
+            CompanyDatabaseScr.Instance == null)
+        {
+            return result;
+        }
+
+        for (int i = 0; i < company.Length; i++)
+        {
+            Company slot = company[i];
+
+            if (slot == null ||
+                slot.company == CompanyType.none)
+            {
+                continue;
+            }
+
+            if (!CompanyDatabaseScr.Instance.TryGetDefinition(slot.company, out CompanyDefinition definition) ||
+                definition.statBonus == null)
+            {
+                continue;
+            }
+
+            bool applies;
+
+            switch (definition.condition)
+            {
+                case CompanyBonusCondition.AttackOnly:
+                    applies = includeAttack;
+                    break;
+                case CompanyBonusCondition.DefendOnly:
+                    applies = includeDefend;
+                    break;
+                case CompanyBonusCondition.AttackAndDefend:
+                    applies = includeAttack || includeDefend;
+                    break;
+                default:
+                    applies = true; // Always
+                    break;
+            }
+
+            if (!applies)
+                continue;
+
+            result.attackRange += definition.statBonus.attackRange;
+            result.attackMoveCostMultiplier += definition.statBonus.attackMoveCostMultiplier;
+            result.attackConeAngle += definition.statBonus.attackConeAngle;
+            result.damage += definition.statBonus.damage;
+            result.murder += definition.statBonus.murder;
+            result.injury += definition.statBonus.injury;
+            result.speed += definition.statBonus.speed;
+        }
+
+        return result;
+    }
+
+    // Тимчасово вмикає бонуси рот з умовою "лише атака"/"атака і захист".
+    // Викликати перед розрахунками, пов'язаними з атакою/обстрілом,
+    // і обов'язково повернутись у стан спокою через ExitCombatContext().
+    public void EnterAttackContext()
+    {
+        battalion = BuildBattalion(true, false);
+    }
+
+    // Тимчасово вмикає бонуси рот з умовою "лише захист"/"атака і захист".
+    public void EnterDefendContext()
+    {
+        battalion = BuildBattalion(false, true);
+    }
+
+    // Повертає battalion у "стан спокою" (базові стати + бонуси Always).
+    public void ExitCombatContext()
+    {
+        battalion = restingBattalion.Clone();
     }
 
 }
@@ -1010,7 +1225,7 @@ public class Personnel
 
 public enum CommandType
 {
-    None,  Move, Attack, Defend, Deploy, Rotate, Bombard
+    None, Move, Attack, Defend, Deploy, Rotate, Bombard
 }
 
 public interface Command
@@ -1037,12 +1252,26 @@ public class Battalion
     public float murder;
     public float injury;
     public float speed;
+    public Battalion Clone()
+    {
+        return new Battalion
+        {
+            type = type,
+            attackRange = attackRange,
+            attackMoveCostMultiplier = attackMoveCostMultiplier,
+            attackConeAngle = attackConeAngle,
+            damage = damage,
+            murder = murder,
+            injury = injury,
+            speed = speed
+        };
+    }
 }
 
+[System.Serializable]
 public class Company
 {
     public CompanyType company;
-    public Battalion settins;
 }
 
 public enum BattalionType
@@ -1053,4 +1282,9 @@ public enum BattalionType
 public enum CompanyType
 {
     none, machineGun, medical, cannon, flamethrower
+}
+
+public enum EffectType
+{
+    none, suppressed, battle, panic
 }

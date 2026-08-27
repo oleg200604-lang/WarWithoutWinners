@@ -2610,6 +2610,7 @@ MonoBehaviour:
     speed: 2
   teamID: 0
   regimentredID: -1
+  company: []
   isDefending: 0
   defendDirection: {x: 1, y: 0, z: 0}
   orderDuration: 1
@@ -5150,6 +5151,7 @@ MonoBehaviour:
     speed: 2
   teamID: 0
   regimentredID: -1
+  company: []
   isDefending: 0
   defendDirection: {x: 1, y: 0, z: 0}
   orderDuration: 1
@@ -8663,6 +8665,10 @@ MonoBehaviour:
     speed: 2
   teamID: 0
   regimentredID: -1
+  company:
+  - company: 1
+  - company: 1
+  - company: 3
   isDefending: 0
   defendDirection: {x: 1, y: 0, z: 0}
   orderDuration: 1
@@ -12195,6 +12201,7 @@ GameObject:
   - component: {fileID: 1916624631}
   - component: {fileID: 1916624630}
   - component: {fileID: 1916624632}
+  - component: {fileID: 1916624633}
   m_Layer: 0
   m_Name: Division
   m_TagString: Untagged
@@ -12266,6 +12273,67 @@ MonoBehaviour:
   - {fileID: 229653253}
   - {fileID: 282397759}
   batalionManager: {fileID: 1916624630}
+--- !u!114 &1916624633
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1916624629}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 026452608bc5a0b4f93a004d65b86f34, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CompanyDatabaseScr
+  companyDefinitions:
+  - type: 1
+    personnelMaxBonus: 50
+    condition: 2
+    statBonus:
+      type: 0
+      attackRange: 0.25
+      attackMoveCostMultiplier: 0
+      attackConeAngle: 15
+      damage: 50
+      murder: 1
+      injury: 3
+      speed: -0.25
+  - type: 2
+    personnelMaxBonus: 50
+    condition: 0
+    statBonus:
+      type: 0
+      attackRange: 0
+      attackMoveCostMultiplier: 0
+      attackConeAngle: 0
+      damage: 0
+      murder: 0
+      injury: 0
+      speed: 0
+  - type: 3
+    personnelMaxBonus: 25
+    condition: 2
+    statBonus:
+      type: 0
+      attackRange: 0.5
+      attackMoveCostMultiplier: 0
+      attackConeAngle: -15
+      damage: 150
+      murder: 1
+      injury: 3
+      speed: -0.5
+  - type: 4
+    personnelMaxBonus: 50
+    condition: 1
+    statBonus:
+      type: 0
+      attackRange: -0.5
+      attackMoveCostMultiplier: 0
+      attackConeAngle: 0
+      damage: 100
+      murder: 2
+      injury: 1
+      speed: 0
 --- !u!1 &1919072802
 GameObject:
   m_ObjectHideFlags: 0
@@ -13085,6 +13153,7 @@ MonoBehaviour:
     speed: 2
   teamID: 0
   regimentredID: -1
+  company: []
   isDefending: 0
   defendDirection: {x: 1, y: 0, z: 0}
   orderDuration: 1
