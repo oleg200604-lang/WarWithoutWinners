@@ -147,8 +147,8 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 229653250}
   - {fileID: 1296005170}
+  - {fileID: 229653250}
   - {fileID: 1979316015}
   m_Father: {fileID: 984040225}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -19536,7 +19536,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BatalionManagerScr
   teamID: 0
-  regimentSettings: 0
   selectBattalion: {fileID: 0}
   selectRegiment:
     nameRegiment: 
@@ -19581,28 +19580,23 @@ MonoBehaviour:
   moveButton: {fileID: 755558388}
   attackButton: {fileID: 1575233364}
   defendButton: {fileID: 296243567}
-  addrRgiment: {fileID: 229653249}
-  removeRegiment: {fileID: 0}
   deployButton: {fileID: 1212145750}
   undeployButton: {fileID: 1049384128}
   rotateButton: {fileID: 923782388}
   bombardButton: {fileID: 974332101}
-  buttonRegiment:
-  - {fileID: 1190233}
-  - {fileID: 1975749697}
-  - {fileID: 1995896871}
-  buttonSelectRegiment:
-  - {fileID: 229653253}
-  - {fileID: 218555639}
-  - {fileID: 446560051}
-  buttonAddRegiment:
-  - {fileID: 1296005173}
-  - {fileID: 1899661246}
-  - {fileID: 2055075486}
-  buttonRemoveRegiment:
-  - {fileID: 1979316018}
-  - {fileID: 1207445806}
-  - {fileID: 881185910}
+  regimentButtonGroups:
+  - root: {fileID: 1190233}
+    selectButton: {fileID: 229653253}
+    addButton: {fileID: 1296005173}
+    removeButton: {fileID: 1979316018}
+  - root: {fileID: 1975749697}
+    selectButton: {fileID: 218555639}
+    addButton: {fileID: 1899661246}
+    removeButton: {fileID: 1207445806}
+  - root: {fileID: 1995896871}
+    selectButton: {fileID: 446560051}
+    addButton: {fileID: 2055075486}
+    removeButton: {fileID: 881185910}
   batalionManager: {fileID: 1916624630}
 --- !u!114 &1916624633
 MonoBehaviour:

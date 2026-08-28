@@ -6,7 +6,6 @@ public class BatalionManagerScr : MonoBehaviour
 {
     public int teamID;
 
-    public RegimentSettings regimentSettings;
     public BattalionScr selectBattalion;
     public Regiment selectRegiment;
     public BattleManagerScr battleManager;
@@ -321,90 +320,77 @@ public class BatalionManagerScr : MonoBehaviour
         }
         Debug.Log($"Створено полк: {newRegiment.nameRegiment}");
 
-        for (int i = 0; i < regiments.Count; i++)
-        {
-            battalionUIManager.ChekRegiment(i);
-        }
+        battalionUIManager.RefreshRegimentButtons();
     }
 
+    // battalion == null (нічого не обрано) чи тип не збігається — тихо ігноруємо,
+    // UI сам вимикає interactable кнопки "+" в цих випадках.
     public void AddRegiment(BattalionScr battalion, Regiment regiment)
     {
-        if (battalion.battalion.type == regiment.battalionType)
+        if (battalion == null || regiment == null)
+            return;
+
+        if (battalion.battalion.type != regiment.battalionType)
+            return;
+
+        if (regiment.battalions.Contains(battalion))
+            return;
+
+        for (int i = 0; i < regiments.Count; i++)
         {
-            for (int i = 0; regiments.Count > i; i++)
+            if (regiments[i] == regiment)
             {
-                if (regiments[i] == regiment)
-                {
-                    battalion.regimentredID = i;
-                }
+                battalion.regimentredID = i;
+                break;
             }
-            regiment.battalions.Add(battalion);
-            regiment.RecalculateFormation();
         }
+
+        regiment.battalions.Add(battalion);
+        regiment.RecalculateFormation();
+
+        if (battalionUIManager != null)
+            battalionUIManager.RefreshRegimentButtons();
     }
 
     public void RemovRegiment(BattalionScr battalion, Regiment regiment)
     {
-        if (regiment.battalions.Contains(battalion))
+        if (battalion == null || regiment == null)
+            return;
+
+        if (!regiment.battalions.Contains(battalion))
+            return;
+
+        regiment.battalions.Remove(battalion);
+        battalion.regimentredID = -1;
+        regiment.RecalculateFormation();
+
+        if (regiment.battalions.Count < 1)
         {
-            regiment.battalions.Remove(battalion);
-            battalion.regimentredID = -1;
-            regiment.RecalculateFormation();
+            DestroyRegiment(regiment);
         }
+
+        if (battalionUIManager != null)
+            battalionUIManager.RefreshRegimentButtons();
     }
+
     public void DestroyRegiment(Regiment regiment)
     {
         regiments.Remove(regiment);
 
         if (selectRegiment == regiment)
             selectRegiment = null;
-    }
 
-    public void SelectRegiment(Regiment regiment)
-    {
-        switch (regimentSettings)
-        {
-            case RegimentSettings.None:
-
-                break;
-
-            case RegimentSettings.Remove:
-                for (int i = 0; i < regiment.battalions.Count; i++)
-                {
-                    if (regiment.battalions[i] == selectBattalion)
-                    {
-                        RemovRegiment(selectBattalion, regiment);
-                        break;
-                    }
-
-                }
-                break;
-
-            case RegimentSettings.Add:
-                for (int i = 0; i < regiment.battalions.Count; i++)
-                {
-                    if (regiment.battalions[i] == selectBattalion)
-                    {
-                        AddRegiment(selectBattalion, regiment);
-                        break;
-                    }
-                }
-                break;
-        }
-        if (regiment.battalions.Count < 1)
-        {
-            DestroyRegiment(regiment);
-        }
-        print(regiment);
+        if (battalionUIManager != null)
+            battalionUIManager.RefreshRegimentButtons();
     }
 
     // Вибір полку як цілісної одиниці командування (аналог SelectBattalion,
     // тільки командує одразу всіма батальйонами всередині).
-    public void SelectRegimentUnit(int regiment)
+    public void SelectRegimentUnit(Regiment regiment)
     {
         commandType = CommandType.None;
 
-        if (selectRegiment == regiments[regiment])
+        if (selectRegiment == regiment)
         {
             selectRegiment = null;
             battalionUIManager.CommandPanel(false);
@@ -412,7 +398,7 @@ public class BatalionManagerScr : MonoBehaviour
         else
         {
             selectBattalion = null;
-            selectRegiment = regiments[regiment];
+            selectRegiment = regiment;
             battalionUIManager.CommandPanel(true);
         }
     }
@@ -438,6 +424,7 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
+    // Клас: BatalionManagerScr
     public void SetCommandType(int type)
     {
         switch (type)
@@ -480,6 +467,9 @@ public class BatalionManagerScr : MonoBehaviour
     }
 }
 
+// Один член полку: батальйон + його фіксований зсув відносно
+// центру формації (anchor). Зсув рахується від поточних позицій
+// у момент RecalculateFormation() і зберігає "строй" при русі.
 [System.Serializable]
 public class RegimentMember
 {
@@ -497,6 +487,9 @@ public class Regiment
     public List<RegimentMember> members = new List<RegimentMember>();
     public Vector3 anchor;
 
+    // Перераховує anchor (центр мас батальйонів) і offset кожного
+    // батальйону відносно нього. Викликати після будь-якої зміни
+    // складу полку (додали/прибрали батальйон).
     public void RecalculateFormation()
     {
         members.Clear();
@@ -536,6 +529,8 @@ public class Regiment
         }
     }
 
+    // Максимальна дальність полку обмежена найповільнішим батальйоном
+    // (рішення з дизайну: рельєф/дебафи/тип роти можуть відрізнятись).
     public float GetSlowestSpeed()
     {
         float slowest = float.MaxValue;
@@ -587,9 +582,4 @@ public class Regiment
 
         return anySucceeded;
     }
-}
-
-public enum RegimentSettings
-{
-    None, Remove, Add
 }
