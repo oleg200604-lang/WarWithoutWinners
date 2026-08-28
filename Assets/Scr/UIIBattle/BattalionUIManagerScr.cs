@@ -6,11 +6,14 @@ public class BattalionUIManagerScr : MonoBehaviour
 {
 
     public GameObject commandPanel;
-    public GameObject noneButton, moveButton, attackButton, defendButton, addrRgiment, removeRegiment;
+    public GameObject noneButton, moveButton, attackButton, defendButton;
     [Header("Артилерія: розкладка / обстріл")]
     public GameObject deployButton, undeployButton, rotateButton, bombardButton;
 
+    public List<GameObject> buttonRegiment;
     public List<Button> buttonSelectRegiment;
+    public List<Button> buttonAddRegiment;
+    public List<Button> buttonRemoveRegiment;
     public BatalionManagerScr batalionManager;
     public void CommandPanel(bool isActvie)
     {
@@ -37,37 +40,45 @@ public class BattalionUIManagerScr : MonoBehaviour
         attackButton.SetActive(!isNone && !isDeployed);
         defendButton.SetActive(!isNone);
 
-        // Накази, специфічні для розкладеної артилерії.
         deployButton.SetActive(isArtillery && !isDeployed);
         undeployButton.SetActive(isDeployed);
         rotateButton.SetActive(isDeployed);
         bombardButton.SetActive(isDeployed);
 
-        addrRgiment.SetActive(false);
-        removeRegiment.SetActive(false);
-
-        if (batalionManager.regiments.Count > 0)
-        {
-            if (battalionScr.regimentredID < 0)
-            {
-                addrRgiment.SetActive(true);
-            }
-            else
-            {
-                removeRegiment.SetActive(true);
-            }
-        }
-
     }
 
     public void ChekRegiment(int regiment)
     {
+        buttonRegiment[regiment].SetActive(true);
         if (batalionManager.regiments[regiment] != null)
         {
-            buttonSelectRegiment[regiment].gameObject.SetActive(true);
+            if (batalionManager.selectBattalion == true  )
+            {
+                if (batalionManager.selectBattalion.regimentredID < 0)
+                {
+                    buttonAddRegiment[regiment].gameObject.SetActive(true);
+                    buttonRemoveRegiment[regiment].gameObject.SetActive(false);
+                    buttonAddRegiment[regiment].onClick.AddListener(() => batalionManager.AddRegiment(batalionManager.selectBattalion, batalionManager.regiments[regiment]));
+                }
+                else if (batalionManager.selectBattalion.regimentredID == regiment)
+                {
+                    buttonAddRegiment[regiment].gameObject.SetActive(false);
+                    buttonRemoveRegiment[regiment].gameObject.SetActive(true);
+                    buttonRemoveRegiment[regiment].onClick.AddListener(() => batalionManager.RemovRegiment(batalionManager.selectBattalion, batalionManager.regiments[regiment]));
+                }
+                else
+                {
+                    buttonAddRegiment[regiment].gameObject.SetActive(false);
+                    buttonRemoveRegiment[regiment].gameObject.SetActive(false);
+                }
+            }
+            else
+            {
+                buttonAddRegiment[regiment].gameObject.SetActive(false);
+                buttonRemoveRegiment[regiment].gameObject.SetActive(false);
+            }
+
             buttonSelectRegiment[regiment].onClick.AddListener(() => batalionManager.SelectRegiment(batalionManager.regiments[regiment]));
         }
     }
-
-
 }

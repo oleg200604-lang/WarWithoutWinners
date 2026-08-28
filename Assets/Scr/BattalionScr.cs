@@ -35,14 +35,9 @@ public class BattalionScr : MonoBehaviour
     private float terrainSampleStep = 0.15f;
     private static readonly List<BattalionScr> AllBattalions = new List<BattalionScr>();
 
-    // Базові (без бонусів рот) характеристики — знімок того, що виставлено
-    // в інспекторі. Від нього завжди рахуємо battalion/personnel заново,
-    // щоб бонуси рот не накопичувались один на одного.
     private Battalion baseBattalion;
     private int basePersonnelMax;
 
-    // "Стан спокою" — базові стати + бонуси рот з умовою Always.
-    // Саме до нього повертається battalion, коли бойова дія завершилась.
     private Battalion restingBattalion;
 
     private void OnEnable()

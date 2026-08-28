@@ -8,6 +8,7 @@ public class BatalionManagerScr : MonoBehaviour
 
     public RegimentSettings regimentSettings;
     public BattalionScr selectBattalion;
+    public Regiment selectRegiment;
     public BattleManagerScr battleManager;
     public BattalionUIManagerScr battalionUIManager;
     public List<Regiment> regiments;
@@ -80,15 +81,19 @@ public class BatalionManagerScr : MonoBehaviour
         isRedy = true;
         battleManager.IsSrtart();
         selectBattalion = null;
+        selectRegiment = null;
         battalionUIManager.CommandPanel(false);
     }
 
+    // Наказ "Рух". Якщо вибрано полк — наказ по черзі роздається
+    // усім батальйонам полку (через формацію anchor+offset).
+    // Якщо вибрано окремий батальйон — працює як раніше.
     private void Move()
     {
         if (!Mouse.current.rightButton.wasPressedThisFrame)
             return;
 
-        if (selectBattalion == null)
+        if (selectBattalion == null && selectRegiment == null)
             return;
 
         Vector3 mousePosition =
@@ -98,6 +103,21 @@ public class BatalionManagerScr : MonoBehaviour
             Camera.main.ScreenToWorldPoint(mousePosition);
 
         worldPosition.z = 0f;
+
+        if (selectRegiment != null)
+        {
+            if (selectRegiment.IssueMoveOrder(commandDuty, worldPosition))
+            {
+                print("Наказ руху полку встановлено.");
+                AdvanceCommandDuty();
+            }
+            else
+            {
+                print("Не вдалося встановити наказ руху полку.");
+            }
+
+            return;
+        }
 
         if (selectBattalion.SetMoveOrder(
             commandDuty,
@@ -272,6 +292,7 @@ public class BatalionManagerScr : MonoBehaviour
         {
             commandDuty = 0;
             selectBattalion = null;
+            selectRegiment = null;
         }
     }
 
@@ -283,9 +304,10 @@ public class BatalionManagerScr : MonoBehaviour
             return;
         }
 
-        Regiment newRegiment = new Regiment { nameRegiment = "Regiment", battalions = new List<BattalionScr>() { }, battalionType = BattalionType.infantry };
+        Regiment newRegiment = new Regiment { nameRegiment = "Regiment", battalions = new List<BattalionScr>() { }, battalionType = selectBattalion.battalion.type };
 
         newRegiment.battalions.Add(selectBattalion);
+        newRegiment.RecalculateFormation();
 
         regiments.Add(newRegiment);
 
@@ -317,19 +339,25 @@ public class BatalionManagerScr : MonoBehaviour
                 }
             }
             regiment.battalions.Add(battalion);
+            regiment.RecalculateFormation();
         }
     }
 
     public void RemovRegiment(BattalionScr battalion, Regiment regiment)
     {
-        if (battalion.battalion.type == regiment.battalionType)
+        if (regiment.battalions.Contains(battalion))
         {
-            regiment.battalions.Add(battalion);
+            regiment.battalions.Remove(battalion);
+            battalion.regimentredID = -1;
+            regiment.RecalculateFormation();
         }
     }
     public void DestroyRegiment(Regiment regiment)
     {
         regiments.Remove(regiment);
+
+        if (selectRegiment == regiment)
+            selectRegiment = null;
     }
 
     public void SelectRegiment(Regiment regiment)
@@ -369,6 +397,26 @@ public class BatalionManagerScr : MonoBehaviour
         }
         print(regiment);
     }
+
+    // Вибір полку як цілісної одиниці командування (аналог SelectBattalion,
+    // тільки командує одразу всіма батальйонами всередині).
+    public void SelectRegimentUnit(int regiment)
+    {
+        commandType = CommandType.None;
+
+        if (selectRegiment == regiments[regiment])
+        {
+            selectRegiment = null;
+            battalionUIManager.CommandPanel(false);
+        }
+        else
+        {
+            selectBattalion = null;
+            selectRegiment = regiments[regiment];
+            battalionUIManager.CommandPanel(true);
+        }
+    }
+
     public void SelectBattalion(BattalionScr battalion)
     {
         commandType = CommandType.None;
@@ -381,6 +429,7 @@ public class BatalionManagerScr : MonoBehaviour
             }
             else
             {
+                selectRegiment = null;
                 selectBattalion = battalion;
                 battalionUIManager.CommandPanel(true);
             }
@@ -389,7 +438,6 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
-    // Клас: BatalionManagerScr
     public void SetCommandType(int type)
     {
         switch (type)
@@ -433,11 +481,112 @@ public class BatalionManagerScr : MonoBehaviour
 }
 
 [System.Serializable]
+public class RegimentMember
+{
+    public BattalionScr battalion;
+    public Vector3 offset;
+}
+
+[System.Serializable]
 public class Regiment
 {
     public string nameRegiment;
     public List<BattalionScr> battalions;
     public BattalionType battalionType;
+
+    public List<RegimentMember> members = new List<RegimentMember>();
+    public Vector3 anchor;
+
+    public void RecalculateFormation()
+    {
+        members.Clear();
+
+        if (battalions == null || battalions.Count == 0)
+            return;
+
+        Vector3 center = Vector3.zero;
+        int counted = 0;
+
+        for (int i = 0; i < battalions.Count; i++)
+        {
+            if (battalions[i] == null)
+                continue;
+
+            center += battalions[i].transform.position;
+            counted++;
+        }
+
+        if (counted == 0)
+            return;
+
+        center /= counted;
+        center.z = 0f;
+
+        anchor = center;
+
+        for (int i = 0; i < battalions.Count; i++)
+        {
+            if (battalions[i] == null)
+                continue;
+
+            Vector3 offset = battalions[i].transform.position - center;
+            offset.z = 0f;
+
+            members.Add(new RegimentMember { battalion = battalions[i], offset = offset });
+        }
+    }
+
+    public float GetSlowestSpeed()
+    {
+        float slowest = float.MaxValue;
+
+        for (int i = 0; i < battalions.Count; i++)
+        {
+            if (battalions[i] == null)
+                continue;
+
+            slowest = Mathf.Min(slowest, battalions[i].battalion.speed);
+        }
+
+        return slowest == float.MaxValue ? 0f : slowest;
+    }
+
+    // Головний метод: один наказ гравця -> по черзі роздається
+    // кожному батальйону полку зі своїм зсувом, зберігаючи формацію.
+    // Якщо котромусь батальйону наказ не вдалось встановити (зайнята
+    // точка, непрохідний рельєф) — він просто лишається на місці,
+    // решта полку все одно отримує наказ.
+    public bool IssueMoveOrder(int slot, Vector3 newAnchor)
+    {
+        if (battalions == null || battalions.Count == 0)
+            return false;
+
+        if (members.Count != battalions.Count)
+            RecalculateFormation();
+
+        newAnchor.z = 0f;
+
+        bool anySucceeded = false;
+
+        for (int i = 0; i < members.Count; i++)
+        {
+            BattalionScr battalion = members[i].battalion;
+
+            if (battalion == null)
+                continue;
+
+            Vector3 targetPos = newAnchor + members[i].offset;
+            targetPos.z = 0f;
+
+            if (battalion.SetMoveOrder(slot, targetPos))
+                anySucceeded = true;
+        }
+
+        if (anySucceeded)
+            anchor = newAnchor;
+
+        return anySucceeded;
+    }
 }
 
 public enum RegimentSettings
