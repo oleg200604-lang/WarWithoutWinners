@@ -26,24 +26,30 @@ public class BattalionUIManagerScr : MonoBehaviour
     public void CheckButtalion()
     {
         BattalionScr battalionScr = batalionManager.selectBattalion;
+        Regiment regiment = batalionManager.selectRegiment;
 
-        // Панель наказів (None/Move/Attack/...) стосується лише окремого
-        // батальйону — коли обрано полк, ці кнопки просто ховаємо.
         bool hasBattalionSelected = battalionScr != null;
+        bool hasRegimentSelected = regiment != null;
+
+        // Move/Attack/Defend — одна й та сама панель для батальйона і для
+        // полку: BatalionManagerScr сам розрізняє ціль всередині обробників.
+        bool hasSelection = hasBattalionSelected || hasRegimentSelected;
 
         bool isNone = hasBattalionSelected && battalionScr.battalion.type == BattalionType.none;
         bool isArtillery = hasBattalionSelected && battalionScr.battalion.type == BattalionType.artillery;
         bool isDeployed = isArtillery && battalionScr.GetProjectedDeployedState(batalionManager.CommandDuty);
 
-        noneButton.SetActive(hasBattalionSelected && !isNone);
-        moveButton.SetActive(hasBattalionSelected && !isNone && !isDeployed);
-        attackButton.SetActive(hasBattalionSelected && !isNone && !isDeployed);
-        defendButton.SetActive(hasBattalionSelected && !isNone);
+        noneButton.SetActive(hasSelection && !isNone);
+        moveButton.SetActive(hasSelection && !isNone && !isDeployed);
+        attackButton.SetActive(hasSelection && !isNone && !isDeployed);
+        defendButton.SetActive(hasSelection && !isNone);
 
-        deployButton.SetActive(isArtillery && !isDeployed);
-        undeployButton.SetActive(isDeployed);
-        rotateButton.SetActive(isDeployed);
-        bombardButton.SetActive(isDeployed);
+        // Розкладка/обстріл — специфічні для окремого артилерійського
+        // батальйону, полк такі накази поки не підтримує.
+        deployButton.SetActive(hasBattalionSelected && isArtillery && !isDeployed);
+        undeployButton.SetActive(hasBattalionSelected && isDeployed);
+        rotateButton.SetActive(hasBattalionSelected && isDeployed);
+        bombardButton.SetActive(hasBattalionSelected && isDeployed);
 
         RefreshRegimentButtons();
     }
@@ -95,12 +101,11 @@ public class BattalionUIManagerScr : MonoBehaviour
                     RefreshRegimentButtons();
                 });
 
-                bool canAdd =
-                    selected != null &&
-                    selected.regimentredID != i &&
-                    selected.battalion.type == regiment.battalionType;
-
-                group.addButton.interactable = canAdd;
+                // Тип/членство не перевіряємо тут — кнопка лишається клікабельною,
+                // якщо взагалі щось вибрано, а AddRegiment сам друкує причину
+                // відмови (інший тип, вже в цьому полку). Так відмову видно,
+                // а не просто "сіру" кнопку без пояснення.
+                group.addButton.interactable = selected != null;
             }
 
             if (group.removeButton != null)

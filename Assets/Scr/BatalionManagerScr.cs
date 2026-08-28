@@ -138,71 +138,125 @@ public class BatalionManagerScr : MonoBehaviour
 
     private void Attack()
     {
-        if (Mouse.current.rightButton.wasPressedThisFrame && selectBattalion != null)
+        if (!Mouse.current.rightButton.wasPressedThisFrame)
+            return;
+
+        if (selectBattalion == null && selectRegiment == null)
+            return;
+
+        Vector3 mousePosition = Mouse.current.position.ReadValue();
+        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
+        worldPosition.z = 0;
+
+        if (selectRegiment != null)
         {
-            Vector3 mousePosition = Mouse.current.position.ReadValue();
-            Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
-            worldPosition.z = 0;
+            Vector3 regimentOrigin = selectRegiment.anchor;
+            Vector3 regimentDirection = worldPosition - regimentOrigin;
+            regimentDirection.z = 0;
 
-            Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
-            Vector3 direction = worldPosition - origin;
-            direction.z = 0;
-
-            if (direction.sqrMagnitude < 0.001f)
+            if (regimentDirection.sqrMagnitude < 0.001f)
                 return;
 
-            float desiredMoveDistance = direction.magnitude;
-            direction.Normalize();
+            float regimentDesiredDistance = regimentDirection.magnitude;
+            regimentDirection.Normalize();
 
-            if (selectBattalion.SetAttackOrder(commandDuty, direction, desiredMoveDistance))
+            if (selectRegiment.IssueAttackOrder(commandDuty, regimentDirection, regimentDesiredDistance))
             {
-                print("Наказ атаки встановлено.");
+                print("Наказ атаки полку встановлено.");
                 AdvanceCommandDuty();
             }
             else
             {
-                print("Не вдалося встановити наказ атаки — можливо, точка зайнята іншим батальйоном");
+                print("Не вдалося встановити наказ атаки полку.");
             }
+
+            return;
+        }
+
+        Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
+        Vector3 direction = worldPosition - origin;
+        direction.z = 0;
+
+        if (direction.sqrMagnitude < 0.001f)
+            return;
+
+        float desiredMoveDistance = direction.magnitude;
+        direction.Normalize();
+
+        if (selectBattalion.SetAttackOrder(commandDuty, direction, desiredMoveDistance))
+        {
+            print("Наказ атаки встановлено.");
+            AdvanceCommandDuty();
+        }
+        else
+        {
+            print("Не вдалося встановити наказ атаки — можливо, точка зайнята іншим батальйоном");
         }
     }
 
     private void Defend()
     {
-        if (Mouse.current.rightButton.wasPressedThisFrame &&
-            selectBattalion != null)
+        if (!Mouse.current.rightButton.wasPressedThisFrame)
+            return;
+
+        if (selectBattalion == null && selectRegiment == null)
+            return;
+
+        Vector3 mousePosition =
+            Mouse.current.position.ReadValue();
+
+        Vector3 worldPosition =
+            Camera.main.ScreenToWorldPoint(mousePosition);
+
+        worldPosition.z = 0;
+
+        if (selectRegiment != null)
         {
-            Vector3 mousePosition =
-                Mouse.current.position.ReadValue();
+            Vector3 regimentOrigin = selectRegiment.anchor;
+            Vector3 regimentDirection = worldPosition - regimentOrigin;
+            regimentDirection.z = 0;
 
-            Vector3 worldPosition =
-                Camera.main.ScreenToWorldPoint(mousePosition);
-
-            worldPosition.z = 0;
-
-            Vector3 origin =
-                selectBattalion.GetOrderOrigin(commandDuty);
-
-            // На відміну від атаки — дистанція кліку не має значення,
-            // гравець задає лише напрямок захисту.
-            Vector3 direction =
-                worldPosition - origin;
-
-            direction.z = 0;
-
-            if (direction.sqrMagnitude < 0.001f)
+            if (regimentDirection.sqrMagnitude < 0.001f)
                 return;
 
-            direction.Normalize();
+            regimentDirection.Normalize();
 
-            if (selectBattalion.SetDefendOrder(commandDuty, direction))
+            if (selectRegiment.IssueDefendOrder(commandDuty, regimentDirection))
             {
-                print("Наказ захисту встановлено. Напрямок: " + direction);
+                print("Наказ захисту полку встановлено. Напрямок: " + regimentDirection);
                 AdvanceCommandDuty();
             }
             else
             {
-                print("Не вдалося встановити наказ захисту");
+                print("Не вдалося встановити наказ захисту полку.");
             }
+
+            return;
+        }
+
+        Vector3 origin =
+            selectBattalion.GetOrderOrigin(commandDuty);
+
+        // На відміну від атаки — дистанція кліку не має значення,
+        // гравець задає лише напрямок захисту.
+        Vector3 direction =
+            worldPosition - origin;
+
+        direction.z = 0;
+
+        if (direction.sqrMagnitude < 0.001f)
+            return;
+
+        direction.Normalize();
+
+        if (selectBattalion.SetDefendOrder(commandDuty, direction))
+        {
+            print("Наказ захисту встановлено. Напрямок: " + direction);
+            AdvanceCommandDuty();
+        }
+        else
+        {
+            print("Не вдалося встановити наказ захисту");
         }
     }
 
@@ -328,13 +382,35 @@ public class BatalionManagerScr : MonoBehaviour
     public void AddRegiment(BattalionScr battalion, Regiment regiment)
     {
         if (battalion == null || regiment == null)
+        {
+            print("Не вдалося додати до полку: не вибрано батальйон.");
             return;
+        }
 
         if (battalion.battalion.type != regiment.battalionType)
+        {
+            print($"Не вдалося додати до полку: батальйон типу {battalion.battalion.type}, а полк — {regiment.battalionType} (полк приймає лише один тип).");
             return;
+        }
 
         if (regiment.battalions.Contains(battalion))
+        {
+            print("Батальйон уже в цьому полку.");
             return;
+        }
+
+        // Батальйон може перебувати лише в одному полку. Якщо він уже
+        // в іншому — переносимо, а не залишаємо в обох одночасно.
+        for (int i = 0; i < regiments.Count; i++)
+        {
+            Regiment other = regiments[i];
+
+            if (other != regiment && other.battalions.Contains(battalion))
+            {
+                RemovRegiment(battalion, other);
+                break;
+            }
+        }
 
         for (int i = 0; i < regiments.Count; i++)
         {
@@ -579,6 +655,51 @@ public class Regiment
 
         if (anySucceeded)
             anchor = newAnchor;
+
+        return anySucceeded;
+    }
+
+    // Атака/захист полку: усі батальйони діють в один і той самий напрямок
+    // (гравець може потім вручну перевизначити окремий батальйон окремо —
+    // такий override триває один хід, як і вирішено раніше).
+    public bool IssueAttackOrder(int slot, Vector3 direction, float desiredMoveDistance)
+    {
+        if (battalions == null || battalions.Count == 0)
+            return false;
+
+        bool anySucceeded = false;
+
+        for (int i = 0; i < battalions.Count; i++)
+        {
+            BattalionScr battalion = battalions[i];
+
+            if (battalion == null)
+                continue;
+
+            if (battalion.SetAttackOrder(slot, direction, desiredMoveDistance))
+                anySucceeded = true;
+        }
+
+        return anySucceeded;
+    }
+
+    public bool IssueDefendOrder(int slot, Vector3 direction)
+    {
+        if (battalions == null || battalions.Count == 0)
+            return false;
+
+        bool anySucceeded = false;
+
+        for (int i = 0; i < battalions.Count; i++)
+        {
+            BattalionScr battalion = battalions[i];
+
+            if (battalion == null)
+                continue;
+
+            if (battalion.SetDefendOrder(slot, direction))
+                anySucceeded = true;
+        }
 
         return anySucceeded;
     }
