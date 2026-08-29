@@ -4,6 +4,7 @@ using UnityEngine.InputSystem;
 
 public class BatalionManagerScr : MonoBehaviour
 {
+    
     public int teamID;
 
     public BattalionScr selectBattalion;
@@ -12,6 +13,7 @@ public class BatalionManagerScr : MonoBehaviour
     public BattalionUIManagerScr battalionUIManager;
     public List<Regiment> regiments;
     public CommandType commandType;
+    public Ressurs ressurs;
     private int commandDuty;
     public bool isRedy;
     public int CommandDuty => commandDuty;
@@ -77,6 +79,11 @@ public class BatalionManagerScr : MonoBehaviour
     }
     public void NextMove()
     {
+        ressurs.command += ressurs.planning;
+        if (ressurs.command > ressurs.commandMax)
+        {
+            ressurs.command = ressurs.commandMax;
+        }
         isRedy = true;
         battleManager.IsSrtart();
         selectBattalion = null;
@@ -84,9 +91,6 @@ public class BatalionManagerScr : MonoBehaviour
         battalionUIManager.CommandPanel(false);
     }
 
-    // Наказ "Рух". Якщо вибрано полк — наказ по черзі роздається
-    // усім батальйонам полку (через формацію anchor+offset).
-    // Якщо вибрано окремий батальйон — працює як раніше.
     private void Move()
     {
         if (!Mouse.current.rightButton.wasPressedThisFrame)
@@ -377,8 +381,6 @@ public class BatalionManagerScr : MonoBehaviour
         battalionUIManager.RefreshRegimentButtons();
     }
 
-    // battalion == null (нічого не обрано) чи тип не збігається — тихо ігноруємо,
-    // UI сам вимикає interactable кнопки "+" в цих випадках.
     public void AddRegiment(BattalionScr battalion, Regiment regiment)
     {
         if (battalion == null || regiment == null)
@@ -399,8 +401,6 @@ public class BatalionManagerScr : MonoBehaviour
             return;
         }
 
-        // Батальйон може перебувати лише в одному полку. Якщо він уже
-        // в іншому — переносимо, а не залишаємо в обох одночасно.
         for (int i = 0; i < regiments.Count; i++)
         {
             Regiment other = regiments[i];
@@ -460,8 +460,6 @@ public class BatalionManagerScr : MonoBehaviour
             battalionUIManager.RefreshRegimentButtons();
     }
 
-    // Вибір полку як цілісної одиниці командування (аналог SelectBattalion,
-    // тільки командує одразу всіма батальйонами всередині).
     public void SelectRegimentUnit(Regiment regiment)
     {
         commandType = CommandType.None;
@@ -500,7 +498,6 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
-    // Клас: BatalionManagerScr
     public void SetCommandType(int type)
     {
         switch (type)
@@ -543,9 +540,6 @@ public class BatalionManagerScr : MonoBehaviour
     }
 }
 
-// Один член полку: батальйон + його фіксований зсув відносно
-// центру формації (anchor). Зсув рахується від поточних позицій
-// у момент RecalculateFormation() і зберігає "строй" при русі.
 [System.Serializable]
 public class RegimentMember
 {
@@ -563,9 +557,6 @@ public class Regiment
     public List<RegimentMember> members = new List<RegimentMember>();
     public Vector3 anchor;
 
-    // Перераховує anchor (центр мас батальйонів) і offset кожного
-    // батальйону відносно нього. Викликати після будь-якої зміни
-    // складу полку (додали/прибрали батальйон).
     public void RecalculateFormation()
     {
         members.Clear();
@@ -605,8 +596,6 @@ public class Regiment
         }
     }
 
-    // Максимальна дальність полку обмежена найповільнішим батальйоном
-    // (рішення з дизайну: рельєф/дебафи/тип роти можуть відрізнятись).
     public float GetSlowestSpeed()
     {
         float slowest = float.MaxValue;
@@ -622,11 +611,6 @@ public class Regiment
         return slowest == float.MaxValue ? 0f : slowest;
     }
 
-    // Головний метод: один наказ гравця -> по черзі роздається
-    // кожному батальйону полку зі своїм зсувом, зберігаючи формацію.
-    // Якщо котромусь батальйону наказ не вдалось встановити (зайнята
-    // точка, непрохідний рельєф) — він просто лишається на місці,
-    // решта полку все одно отримує наказ.
     public bool IssueMoveOrder(int slot, Vector3 newAnchor)
     {
         if (battalions == null || battalions.Count == 0)
@@ -659,9 +643,6 @@ public class Regiment
         return anySucceeded;
     }
 
-    // Атака/захист полку: усі батальйони діють в один і той самий напрямок
-    // (гравець може потім вручну перевизначити окремий батальйон окремо —
-    // такий override триває один хід, як і вирішено раніше).
     public bool IssueAttackOrder(int slot, Vector3 direction, float desiredMoveDistance)
     {
         if (battalions == null || battalions.Count == 0)
@@ -702,5 +683,29 @@ public class Regiment
         }
 
         return anySucceeded;
+    }
+}
+
+public class Ressurs 
+{
+    public int personnel, supplies, command, commandMax, planning;
+    public float discount;
+
+    public void ByePersonnel(float price, int number)
+    {
+        if ((price*discount)<= command)
+        {
+            command-=(int)(price * discount);
+            personnel += number;
+        }
+    }
+
+    public void ByeSupplies(float price, int number)
+    {
+        if ((price * discount) <= command)
+        {
+            command -= (int)(price * discount);
+            supplies += number;
+        }
     }
 }
