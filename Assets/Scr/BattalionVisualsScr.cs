@@ -59,7 +59,10 @@ public class BattalionVisualsScr : MonoBehaviour
         if (batalionManager == null)
             return;
 
-        bool isSelected = batalionManager.selectBattalion == battalion;
+        bool isSelected =
+            batalionManager.selectBattalion == battalion ||
+            (batalionManager.selectRegiment != null &&
+             batalionManager.selectRegiment.battalions.Contains(battalion));
 
         if (!isSelected)
         {
@@ -417,7 +420,7 @@ public class BattalionVisualsScr : MonoBehaviour
 
         Vector3 endpoint = GetVisualMoveEndpoint(slot, origin, requestedPoint);
 
-        UpdateMarker( orderMarkers, orderMarkerPrefab, slot, true, endpoint);
+        UpdateMarker(orderMarkers, orderMarkerPrefab, slot, true, endpoint);
 
         UpdateOrderArrow(slot, true, origin, endpoint);
     }
@@ -444,7 +447,7 @@ public class BattalionVisualsScr : MonoBehaviour
         direction.z = 0f;
         direction.Normalize();
 
-        float reachableDistance = battalion.GetReachableDistance(origin, direction, requestedDistance, battalion.battalion.speed,battalion.battalion.attackMoveCostMultiplier);
+        float reachableDistance = battalion.GetReachableDistance(origin, direction, requestedDistance, battalion.battalion.speed, battalion.battalion.attackMoveCostMultiplier);
 
         Vector3 endpoint = origin + direction * reachableDistance;
 
