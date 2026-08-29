@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -39,6 +40,148 @@ public class RangeIndicatorScr : MonoBehaviour
     private BattalionScr cachedVisualsOwner;
     private BattalionVisualsScr cachedVisuals;
 
+    [Header("Зони полку (пул, одна на кожного члена)")]
+    public Transform regimentZoneParent;
+    private readonly List<MeshFilter> regimentZonePool = new List<MeshFilter>();
+
+    private MeshFilter GetRegimentZone(int index)
+    {
+        while (regimentZonePool.Count <= index)
+        {
+            GameObject go = new GameObject("RegimentZone_" + regimentZonePool.Count);
+            go.transform.SetParent(regimentZoneParent != null ? regimentZoneParent : transform, false);
+
+            MeshFilter mf = go.AddComponent<MeshFilter>();
+            mf.mesh = new Mesh { name = "RegimentZoneMesh" };
+
+            MeshRenderer mr = go.AddComponent<MeshRenderer>();
+
+            if (meshRenderer != null)
+                mr.sharedMaterial = meshRenderer.sharedMaterial;
+
+            regimentZonePool.Add(mf);
+        }
+
+        return regimentZonePool[index];
+    }
+
+    private void HideRegimentZonesFrom(int startIndex)
+    {
+        for (int i = startIndex; i < regimentZonePool.Count; i++)
+        {
+            MeshRenderer mr = regimentZonePool[i].GetComponent<MeshRenderer>();
+
+            if (mr != null)
+                mr.enabled = false;
+        }
+    }
+
+    // Та сама зона, що й для одного батальйона (BuildMoveArea/BuildCircle),
+    // тільки по одній на кожного члена полку — показує реальну зону, в якій
+    // саме ЦЕЙ батальйон може діяти, з урахуванням обмеження regiment.GetSlowestSpeed().
+    private void UpdateRegimentZones(Regiment regiment, CommandType commandType, int slot)
+    {
+        if (regiment.battalions == null)
+        {
+            HideRegimentZonesFrom(0);
+            return;
+        }
+
+        // Захист: anchor/members актуальні лише після RecalculateFormation().
+        // Якщо хтось не викликав її (полк щойно десеріалізовано, або формація
+        // застаріла) — anchor може лишитись (0,0,0), і напрямок прицілювання
+        // рахувався б від зовсім не тієї точки.
+        if (regiment.members.Count != regiment.battalions.Count)
+            regiment.RecalculateFormation();
+
+        // Спільний напрямок атаки/захисту для всього полку (курсор відносно
+        // anchor'а) — той самий принцип, що й для одиночного батальйона,
+        // тільки джерело напрямку — центр формації, а не сам батальйон.
+        Vector3 mouseWorld = GetMouseWorldPosition();
+        Vector3 aimDirection = GetAimDirection(regiment.anchor);
+
+        for (int i = 0; i < regiment.battalions.Count; i++)
+        {
+            BattalionScr member = regiment.battalions[i];
+
+            MeshFilter zoneMesh = GetRegimentZone(i);
+            MeshRenderer zoneRenderer = zoneMesh.GetComponent<MeshRenderer>();
+
+            if (member == null)
+            {
+                if (zoneRenderer != null) zoneRenderer.enabled = false;
+                continue;
+            }
+
+            Vector3 origin = member.GetOrderOrigin(slot);
+
+            if (commandType == CommandType.Move)
+            {
+                float availableSpeed = Mathf.Min(member.battalion.speed, regiment.GetSlowestSpeed());
+
+                if (availableSpeed <= 0f)
+                {
+                    if (zoneRenderer != null) zoneRenderer.enabled = false;
+                    continue;
+                }
+
+                BuildMoveAreaOn(zoneMesh.sharedMesh, zoneMesh.transform, member, origin, availableSpeed, fillColor);
+
+                if (zoneRenderer != null) zoneRenderer.enabled = true;
+                continue;
+            }
+
+            if (commandType == CommandType.Attack || commandType == CommandType.Defend)
+            {
+                // Так само, як для одиночного батальйона: спершу рахуємо,
+                // куди батальйон реально зайде в напрямку атаки, і тільки
+                // ПОТІМ беремо дальність атаки з цієї точки (terrain-множник
+                // залежить від позиції — на старій позиції він міг бути 0).
+                float desiredDistance = (mouseWorld - origin).magnitude;
+
+                float moveDistance = member.GetReachableDistance(
+                    origin,
+                    aimDirection,
+                    desiredDistance,
+                    member.battalion.speed,
+                    member.battalion.attackMoveCostMultiplier);
+
+                Vector3 attackOrigin = origin + aimDirection * moveDistance;
+                attackOrigin.z = 0f;
+
+                float maxRange = member.GetEffectiveAttackRange(attackOrigin);
+
+                if (maxRange <= 0f)
+                {
+                    // Тимчасова діагностика: якщо після цього фіксу коло й
+                    // далі не з'являється — консоль скаже точно, чи справа
+                    // в attackRange==0 на префабі, чи деінде.
+                    Debug.LogWarning($"[RangeIndicatorScr] Зона {commandType} для '{member.nameBattalion}' " +
+                        $"не показана: maxRange={maxRange:0.###} " +
+                        $"(attackRange={member.battalion.attackRange:0.###}, " +
+                        $"attackOrigin={attackOrigin}, moveDistance={moveDistance:0.###}, " +
+                        $"aimDirection={aimDirection}, anchor={regiment.anchor}).", member);
+
+                    if (zoneRenderer != null) zoneRenderer.enabled = false;
+                    continue;
+                }
+
+                Color color = commandType == CommandType.Attack ? attackFillColor : defendFillColor;
+
+                BuildCircleOn(zoneMesh.sharedMesh, zoneMesh.transform, attackOrigin, maxRange, color);
+
+                if (zoneRenderer != null) zoneRenderer.enabled = true;
+                continue;
+            }
+
+            // Deploy/Rotate/Bombard — суто одноартилерійська механіка,
+            // для полку поки не визначена.
+            if (zoneRenderer != null) zoneRenderer.enabled = false;
+        }
+
+        HideRegimentZonesFrom(regiment.battalions.Count);
+    }
+
     private BattalionVisualsScr GetVisuals(BattalionScr selected)
     {
         if (selected != cachedVisualsOwner)
@@ -70,16 +213,33 @@ public class RangeIndicatorScr : MonoBehaviour
         EnsureMesh();
 
         BattalionScr selected = batalionManager.selectBattalion;
+        Regiment regiment = batalionManager.selectRegiment;
 
         CommandType commandType = batalionManager.commandType;
 
-        if (selected == null)
+        if (selected == null && regiment == null)
         {
             Hide();
             HideRayFan();
             HideBombardRadius();
+            HideRegimentZonesFrom(0);
             return;
         }
+
+        if (regiment != null)
+        {
+            // У режимі полку окремий selectBattalion відсутній — головний
+            // mesh/промені/бомбардування тут не використовуються, зона
+            // кожного члена малюється окремим пулом мешів.
+            Hide();
+            HideRayFan();
+            HideBombardRadius();
+
+            UpdateRegimentZones(regiment, commandType, batalionManager.CommandDuty);
+            return;
+        }
+
+        HideRegimentZonesFrom(0);
 
         int slot = batalionManager.CommandDuty;
 
@@ -606,12 +766,16 @@ public class RangeIndicatorScr : MonoBehaviour
 
     private void BuildCircle(Vector3 origin, float radius, Color color)
     {
+        BuildCircleOn(mesh, meshFilter.transform, origin, radius, color);
+    }
+
+    private void BuildCircleOn(Mesh targetMesh, Transform t, Vector3 origin, float radius, Color color)
+    {
         Vector3[] vertices = new Vector3[segments + 1];
         Color[] colors = new Color[vertices.Length];
 
         int[] triangles = new int[segments * 3 * 2];
 
-        Transform t = meshFilter.transform;
         vertices[0] = t.InverseTransformPoint(origin);
         colors[0] = color;
 
@@ -637,26 +801,27 @@ public class RangeIndicatorScr : MonoBehaviour
             triangles[b + 5] = i + 1;
         }
 
-        mesh.Clear();
-        mesh.vertices = vertices;
-        mesh.colors = colors;
-        mesh.triangles = triangles;
+        targetMesh.Clear();
+        targetMesh.vertices = vertices;
+        targetMesh.colors = colors;
+        targetMesh.triangles = triangles;
+        targetMesh.RecalculateBounds();
     }
 
     private void BuildMoveArea(BattalionScr selected, Vector3 origin, float availableSpeed, Color color)
     {
+        BuildMoveAreaOn(mesh, meshFilter.transform, selected, origin, availableSpeed, color);
+    }
+
+    private void BuildMoveAreaOn(Mesh targetMesh, Transform t, BattalionScr selected, Vector3 origin, float availableSpeed, Color color)
+    {
         int safeSegments = Mathf.Max(12, segments);
 
         Vector3[] vertices = new Vector3[safeSegments + 1];
-
         Color[] colors = new Color[vertices.Length];
-
         int[] triangles = new int[safeSegments * 6];
 
-        Transform t = meshFilter.transform;
-
         vertices[0] = t.InverseTransformPoint(origin);
-
         colors[0] = color;
 
         float testDistance = Mathf.Max(0f, availableSpeed * 2.05f);
@@ -672,14 +837,12 @@ public class RangeIndicatorScr : MonoBehaviour
             Vector3 worldPoint = origin + direction * reachableDistance;
 
             vertices[i + 1] = t.InverseTransformPoint(worldPoint);
-
             colors[i + 1] = color;
         }
 
         for (int i = 0; i < safeSegments; i++)
         {
             int next = (i + 1) % safeSegments;
-
             int triangle = i * 6;
 
             triangles[triangle] = 0;
@@ -691,14 +854,10 @@ public class RangeIndicatorScr : MonoBehaviour
             triangles[triangle + 5] = i + 1;
         }
 
-        mesh.Clear();
-
-        mesh.vertices = vertices;
-
-        mesh.colors = colors;
-
-        mesh.triangles = triangles;
-
-        mesh.RecalculateBounds();
+        targetMesh.Clear();
+        targetMesh.vertices = vertices;
+        targetMesh.colors = colors;
+        targetMesh.triangles = triangles;
+        targetMesh.RecalculateBounds();
     }
 }

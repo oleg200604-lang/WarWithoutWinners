@@ -62,6 +62,7 @@ public class BattalionVisualsScr : MonoBehaviour
         bool isSelected =
             batalionManager.selectBattalion == battalion ||
             (batalionManager.selectRegiment != null &&
+             batalionManager.selectRegiment.battalions != null &&
              batalionManager.selectRegiment.battalions.Contains(battalion));
 
         if (!isSelected)

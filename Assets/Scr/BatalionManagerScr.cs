@@ -4,7 +4,7 @@ using UnityEngine.InputSystem;
 
 public class BatalionManagerScr : MonoBehaviour
 {
-    
+
     public int teamID;
 
     public BattalionScr selectBattalion;
@@ -13,7 +13,7 @@ public class BatalionManagerScr : MonoBehaviour
     public BattalionUIManagerScr battalionUIManager;
     public List<Regiment> regiments;
     public CommandType commandType;
-    public Ressurs ressurs;
+    public Ressurs ressurs = new Ressurs();
     private int commandDuty;
     public bool isRedy;
     public int CommandDuty => commandDuty;
@@ -551,7 +551,7 @@ public class RegimentMember
 public class Regiment
 {
     public string nameRegiment;
-    public List<BattalionScr> battalions;
+    public List<BattalionScr> battalions = new List<BattalionScr>();
     public BattalionType battalionType;
 
     public List<RegimentMember> members = new List<RegimentMember>();
@@ -686,16 +686,17 @@ public class Regiment
     }
 }
 
-public class Ressurs 
+[System.Serializable]
+public class Ressurs
 {
     public int personnel, supplies, command, commandMax, planning;
     public float discount;
 
     public void ByePersonnel(float price, int number)
     {
-        if ((price*discount)<= command)
+        if ((price * discount) <= command)
         {
-            command-=(int)(price * discount);
+            command -= (int)(price * discount);
             personnel += number;
         }
     }
