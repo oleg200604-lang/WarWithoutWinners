@@ -510,7 +510,7 @@ public class BatalionManagerScr : MonoBehaviour
     public void SelectBattalion(BattalionScr battalion)
     {
         commandType = CommandType.None;
-        battalion.isSelect.SetActive(true);
+
         if (teamID == battalion.teamID)
         {
             if (selectBattalion == battalion)

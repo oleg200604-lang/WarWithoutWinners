@@ -44,6 +44,34 @@ public class RangeIndicatorScr : MonoBehaviour
     public Transform regimentZoneParent;
     private readonly List<MeshFilter> regimentZonePool = new List<MeshFilter>();
 
+    // =========================================================
+    // КЕШ ЗОН РУХУ (ОПТИМІЗАЦІЯ)
+    // =========================================================
+    //
+    // BuildMoveArea(On) рахує reachableDistance у 'segments' напрямках,
+    // а кожен такий розрахунок — це бінарний пошук по 16 ітераціях з
+    // семплюванням terrain. Раніше цей меш перебудовувався щокадру в
+    // Update(), навіть коли гравець просто водить мишею — а сама зона
+    // руху залежить ЛИШЕ від origin і availableSpeed, курсор на неї не
+    // впливає. Тому будуємо її заново лише тоді, коли ці вхідні дані
+    // справді змінились (наприклад, вибрано інший батальйон/полк).
+    private const float MoveAreaEpsilon = 0.001f;
+
+    private bool moveAreaValid;
+    private BattalionScr moveAreaOwner;
+    private Vector3 moveAreaOrigin;
+    private float moveAreaSpeed;
+
+    private readonly List<bool> regimentZoneValid = new List<bool>();
+    private readonly List<Vector3> regimentZoneOrigin = new List<Vector3>();
+    private readonly List<float> regimentZoneSpeed = new List<float>();
+
+    private static bool SameMoveArea(Vector3 originA, float speedA, Vector3 originB, float speedB)
+    {
+        return (originA - originB).sqrMagnitude < MoveAreaEpsilon * MoveAreaEpsilon &&
+               Mathf.Abs(speedA - speedB) < MoveAreaEpsilon;
+    }
+
     private MeshFilter GetRegimentZone(int index)
     {
         while (regimentZonePool.Count <= index)
@@ -60,9 +88,31 @@ public class RangeIndicatorScr : MonoBehaviour
                 mr.sharedMaterial = meshRenderer.sharedMaterial;
 
             regimentZonePool.Add(mf);
+            regimentZoneValid.Add(false);
+            regimentZoneOrigin.Add(Vector3.zero);
+            regimentZoneSpeed.Add(0f);
         }
 
         return regimentZonePool[index];
+    }
+
+    // Перебудовує зону члена полку лише якщо origin/availableSpeed
+    // справді змінились відносно попереднього кадру (див. коментар вище
+    // про moveAreaValid).
+    private void BuildMoveAreaOnCached(int index, MeshFilter zoneMesh, BattalionScr member, Vector3 origin, float availableSpeed, Color color)
+    {
+        bool upToDate =
+            regimentZoneValid[index] &&
+            SameMoveArea(regimentZoneOrigin[index], regimentZoneSpeed[index], origin, availableSpeed);
+
+        if (upToDate)
+            return;
+
+        BuildMoveAreaOn(zoneMesh.sharedMesh, zoneMesh.transform, member, origin, availableSpeed, color);
+
+        regimentZoneValid[index] = true;
+        regimentZoneOrigin[index] = origin;
+        regimentZoneSpeed[index] = availableSpeed;
     }
 
     private void HideRegimentZonesFrom(int startIndex)
@@ -135,7 +185,7 @@ public class RangeIndicatorScr : MonoBehaviour
                     continue;
                 }
 
-                BuildMoveAreaOn(zoneMesh.sharedMesh, zoneMesh.transform, member, origin, availableSpeed, fillColor);
+                BuildMoveAreaOnCached(i, zoneMesh, member, origin, availableSpeed, fillColor);
 
                 if (zoneRenderer != null) zoneRenderer.enabled = true;
 
@@ -336,7 +386,20 @@ public class RangeIndicatorScr : MonoBehaviour
 
             Show();
 
-            BuildMoveArea(selected, origin, availableSpeed, fillColor);
+            bool moveAreaUpToDate =
+                moveAreaValid &&
+                moveAreaOwner == selected &&
+                SameMoveArea(moveAreaOrigin, moveAreaSpeed, origin, availableSpeed);
+
+            if (!moveAreaUpToDate)
+            {
+                BuildMoveArea(selected, origin, availableSpeed, fillColor);
+
+                moveAreaValid = true;
+                moveAreaOwner = selected;
+                moveAreaOrigin = origin;
+                moveAreaSpeed = availableSpeed;
+            }
 
             BattalionVisualsScr visuals = GetVisuals(selected);
 

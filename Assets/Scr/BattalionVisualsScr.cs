@@ -65,6 +65,8 @@ public class BattalionVisualsScr : MonoBehaviour
              batalionManager.selectRegiment.battalions != null &&
              batalionManager.selectRegiment.battalions.Contains(battalion));
 
+        UpdateSelectionOutline(isSelected);
+
         if (!isSelected)
         {
             HideAllVisuals();
@@ -72,6 +74,23 @@ public class BattalionVisualsScr : MonoBehaviour
         }
 
         UpdateOrders();
+    }
+
+    // =========================================================
+    // ОБВОДКА ВИБОРУ
+    // =========================================================
+
+    // Обводка (battalion.isSelect) показується, якщо цей батальйон
+    // обраний напряму АБО входить у зараз обраний полк (selectRegiment).
+    // Викликається щокадру з Update(), тому вмикає/вимикає стан
+    // однаково для обох випадків і автоматично гасне при знятті виділення.
+    private void UpdateSelectionOutline(bool isSelected)
+    {
+        if (battalion.isSelect == null)
+            return;
+
+        if (battalion.isSelect.activeSelf != isSelected)
+            battalion.isSelect.SetActive(isSelected);
     }
 
     // =========================================================

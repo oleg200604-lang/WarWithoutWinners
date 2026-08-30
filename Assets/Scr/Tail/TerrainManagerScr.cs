@@ -21,8 +21,52 @@ public class TerrainManagerScr : MonoBehaviour
         Instance = this;
     }
 
+    // =========================================================
+    // КЕШ ЗАПИТІВ ДО TERRAIN (ОПТИМІЗАЦІЯ)
+    // =========================================================
+    //
+    // GetAllTilesAt викликається сотні-тисячі разів за кадр під час
+    // розрахунку дальності руху (бінарний пошук у BattalionScr:
+    // GetTerrainMoveCost + IsRoutePassable семплюють ОДНІ Й ТІ Ж
+    // точки маршруту незалежно одне від одного). Physics2D.OverlapPointAll
+    // — важкий виклик з алокацією масиву, тож без кешування прицілювання
+    // наказу дає різкий просад FPS.
+    //
+    // Кеш прив'язаний до Time.frameCount: у межах одного кадру той самий
+    // (округлений) запит повертається з кешу, без повторного фізичного
+    // запиту. На наступному кадрі кеш автоматично скидається, тож
+    // актуальність даних (якщо terrain колись стане динамічним) не
+    // страждає — це лише усуває ПОВТОРНІ запити в межах кадру.
+    private int cachedFrame = -1;
+    private readonly Dictionary<Vector2Int, List<TerrainTileScr>> tileCache =
+        new Dictionary<Vector2Int, List<TerrainTileScr>>();
+
+    // Розмір комірки округлення. Значно менший за типовий крок
+    // семплування (terrainSampleStep у BattalionScr), тож на візуал
+    // і точність розрахунків це не впливає — лише об'єднує запити,
+    // що й так фактично питають про ту саму точку.
+    private const float CacheCellSize = 0.05f;
+
+    private static Vector2Int ToCacheKey(Vector2 position)
+    {
+        return new Vector2Int(
+            Mathf.RoundToInt(position.x / CacheCellSize),
+            Mathf.RoundToInt(position.y / CacheCellSize));
+    }
+
     public List<TerrainTileScr> GetAllTilesAt(Vector2 position)
     {
+        if (Time.frameCount != cachedFrame)
+        {
+            tileCache.Clear();
+            cachedFrame = Time.frameCount;
+        }
+
+        Vector2Int key = ToCacheKey(position);
+
+        if (tileCache.TryGetValue(key, out List<TerrainTileScr> cachedTiles))
+            return cachedTiles;
+
         Collider2D[] hits = Physics2D.OverlapPointAll(position, terrainLayer);
 
         List<TerrainTileScr> tiles = new List<TerrainTileScr>();
@@ -40,6 +84,8 @@ public class TerrainManagerScr : MonoBehaviour
             if (!tiles.Contains(tile))
                 tiles.Add(tile);
         }
+
+        tileCache[key] = tiles;
 
         return tiles;
     }
