@@ -412,6 +412,37 @@ public class BatalionManagerScr : MonoBehaviour
             }
         }
 
+        // Ланцюг: новий батальйон може приєднатись лише з одного з двох
+        // кінців поточного ланцюга (перший або останній у списку — середину
+        // "розірвати" не можна), і лише якщо відстань до цього кінця не
+        // перевищує regiment.chainMaxDistance.
+        if (regiment.battalions.Count > 0)
+        {
+            BattalionScr chainStart = regiment.battalions[0];
+            BattalionScr chainEnd = regiment.battalions[regiment.battalions.Count - 1];
+
+            float distToStart = Vector3.Distance(battalion.transform.position, chainStart.transform.position);
+            float distToEnd = Vector3.Distance(battalion.transform.position, chainEnd.transform.position);
+
+            bool closerToStart = distToStart <= distToEnd;
+            float nearestDistance = closerToStart ? distToStart : distToEnd;
+
+            if (nearestDistance > regiment.chainMaxDistance)
+            {
+                print($"Не вдалося додати до полку: задалеко від ланцюга ({nearestDistance:0.##} > {regiment.chainMaxDistance:0.##}).");
+                return;
+            }
+
+            if (closerToStart)
+                regiment.battalions.Insert(0, battalion);
+            else
+                regiment.battalions.Add(battalion);
+        }
+        else
+        {
+            regiment.battalions.Add(battalion);
+        }
+
         for (int i = 0; i < regiments.Count; i++)
         {
             if (regiments[i] == regiment)
@@ -421,7 +452,6 @@ public class BatalionManagerScr : MonoBehaviour
             }
         }
 
-        regiment.battalions.Add(battalion);
         regiment.RecalculateFormation();
 
         if (battalionUIManager != null)
@@ -480,6 +510,7 @@ public class BatalionManagerScr : MonoBehaviour
     public void SelectBattalion(BattalionScr battalion)
     {
         commandType = CommandType.None;
+        battalion.isSelect.SetActive(true);
         if (teamID == battalion.teamID)
         {
             if (selectBattalion == battalion)
@@ -553,6 +584,7 @@ public class Regiment
     public string nameRegiment;
     public List<BattalionScr> battalions = new List<BattalionScr>();
     public BattalionType battalionType;
+    public float chainMaxDistance = 6f;
 
     public List<RegimentMember> members = new List<RegimentMember>();
     public Vector3 anchor;
@@ -623,6 +655,13 @@ public class Regiment
 
         bool anySucceeded = false;
 
+        // Ланцюг обробляється послідовно за порядком members (== порядок
+        // battalions): кожен наступний батальйон обмежений відстанню до
+        // ФАКТИЧНОЇ точки зупинки попереднього (не бажаної цілі) — якщо
+        // когось затримав рельєф, ланцюг не дозволить іншим "втекти" далі
+        // ліміту.
+        Vector3? previousResolvedPos = null;
+
         for (int i = 0; i < members.Count; i++)
         {
             BattalionScr battalion = members[i].battalion;
@@ -633,8 +672,38 @@ public class Regiment
             Vector3 targetPos = newAnchor + members[i].offset;
             targetPos.z = 0f;
 
-            if (battalion.SetMoveOrder(slot, targetPos))
+            if (previousResolvedPos.HasValue && chainMaxDistance > 0f)
+            {
+                Vector3 toTarget = targetPos - previousResolvedPos.Value;
+                toTarget.z = 0f;
+
+                if (toTarget.magnitude > chainMaxDistance)
+                    targetPos = previousResolvedPos.Value + toTarget.normalized * chainMaxDistance;
+            }
+
+            bool moved = battalion.SetMoveOrder(slot, targetPos);
+
+            if (moved)
                 anySucceeded = true;
+
+            // Фактична точка, де батальйон реально стане цього ходу
+            // (SetMoveOrder уже врахував рельєф і зберіг це в command[slot]).
+            // Якщо наказ не вдався — лишається на своєму origin.
+            Vector3 resolvedPos;
+
+            if (battalion.command != null &&
+                slot >= 0 && slot < battalion.command.Length &&
+                battalion.command[slot] is MoveCommand resolvedMove &&
+                resolvedMove.isSet)
+            {
+                resolvedPos = resolvedMove.pos;
+            }
+            else
+            {
+                resolvedPos = battalion.GetOrderOrigin(slot);
+            }
+
+            previousResolvedPos = resolvedPos;
         }
 
         if (anySucceeded)

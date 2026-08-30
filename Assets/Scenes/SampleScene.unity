@@ -14189,6 +14189,7 @@ MonoBehaviour:
   defendRayColor: {r: 0.3, g: 0.5, b: 1, a: 0.6}
   bombardRadiusMeshFilter: {fileID: 1277061435}
   bombardCenterPrefab: {fileID: 1422405059204657089, guid: ed4e59956a8cca0439eb2028688303f7, type: 3}
+  regimentZoneParent: {fileID: 0}
 --- !u!4 &1456703855
 Transform:
   m_ObjectHideFlags: 0
@@ -19541,12 +19542,20 @@ MonoBehaviour:
     nameRegiment: 
     battalions: []
     battalionType: 1
+    chainMaxDistance: 6
     members: []
     anchor: {x: 0, y: 0, z: 0}
   battleManager: {fileID: 1039417165}
   battalionUIManager: {fileID: 1916624632}
   regiments: []
   commandType: 0
+  ressurs:
+    personnel: 0
+    supplies: 0
+    command: 0
+    commandMax: 0
+    planning: 0
+    discount: 0
   isRedy: 0
 --- !u!4 &1916624631
 Transform:
@@ -20271,6 +20280,54 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &1974153315
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1974153317}
+  - component: {fileID: 1974153318}
+  m_Layer: 0
+  m_Name: RegimentChainVisuals
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1974153317
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1974153315}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 141.43782, y: 918.5002, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1974153318
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1974153315}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8cadad73ee9411c43ad20c22078f30d9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RegimentChainVisualsScr
+  batalionManager: {fileID: 1916624630}
+  chainColor: {r: 1, g: 0.85, b: 0.2, a: 0.9}
+  strainedColor: {r: 1, g: 0.15, b: 0.15, a: 0.9}
+  lineWidth: 0.1
 --- !u!1 &1975749697
 GameObject:
   m_ObjectHideFlags: 0
@@ -22563,3 +22620,4 @@ SceneRoots:
   - {fileID: 608638108}
   - {fileID: 162508498}
   - {fileID: 1690350807}
+  - {fileID: 1974153317}

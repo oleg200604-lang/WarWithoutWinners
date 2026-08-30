@@ -21,24 +21,23 @@ public class BattalionScr : MonoBehaviour
     public bool isDefending;
     public Vector3 defendDirection = Vector3.right;
     public float orderDuration = 1f;
-
     public float footprintRadius = 0.6f;
-
     public bool isDeployed;
     public Vector3 deployDirection = Vector3.right;
     public float deployRange = 4f;
 
     public float deployConeAngle = 90f;
     public float bombardRadius = 1.5f;
+    public GameObject isSelect;
     [Header("Terrain sampling")]
     [SerializeField, Min(0.05f)]
     private float terrainSampleStep = 0.15f;
     private static readonly List<BattalionScr> AllBattalions = new List<BattalionScr>();
-
     private Battalion baseBattalion;
     private int basePersonnelMax;
-
     private Battalion restingBattalion;
+
+
 
     private void OnEnable()
     {
