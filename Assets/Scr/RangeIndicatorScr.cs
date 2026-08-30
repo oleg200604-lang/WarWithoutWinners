@@ -154,7 +154,7 @@ public class RangeIndicatorScr : MonoBehaviour
                 continue;
             }
 
-            if (commandType == CommandType.Attack || commandType == CommandType.Defend)
+            if (commandType == CommandType.Attack)
             {
                 // Так само, як для одиночного батальйона: спершу рахуємо,
                 // куди батальйон реально зайде в напрямку атаки, і тільки
@@ -176,36 +176,53 @@ public class RangeIndicatorScr : MonoBehaviour
 
                 if (maxRange <= 0f)
                 {
-                    // Тимчасова діагностика: якщо після цього фіксу коло й
-                    // далі не з'являється — консоль скаже точно, чи справа
-                    // в attackRange==0 на префабі, чи деінде.
-                    Debug.LogWarning($"[RangeIndicatorScr] Зона {commandType} для '{member.nameBattalion}' " +
-                        $"не показана: maxRange={maxRange:0.###} " +
-                        $"(attackRange={member.battalion.attackRange:0.###}, " +
-                        $"attackOrigin={attackOrigin}, moveDistance={moveDistance:0.###}, " +
-                        $"aimDirection={aimDirection}, anchor={regiment.anchor}).", member);
+                    if (zoneRenderer != null) zoneRenderer.enabled = false;
+
+                    LineRenderer skippedRayFan = GetRegimentRayFan(i);
+                    if (skippedRayFan != null) skippedRayFan.enabled = false;
+
+                    continue;
+                }
+
+                BuildCircleOn(zoneMesh.sharedMesh, zoneMesh.transform, attackOrigin, maxRange, attackFillColor);
+
+                if (zoneRenderer != null) zoneRenderer.enabled = true;
+
+                // Те саме віяло променів, що й для одиночного батальйона —
+                // тут по одному на кожного атакуючого члена полку.
+                LineRenderer memberRayFan = GetRegimentRayFan(i);
+                ShowRayFanOn(memberRayFan, member, attackOrigin, aimDirection, maxRange, rayColor);
+
+                // Той самий фантомний маркер/стрілка, що й для одиночного
+                // батальйона (BattalionVisualsScr.ShowPhantomAttack).
+                BattalionVisualsScr memberVisuals = member.GetComponent<BattalionVisualsScr>();
+
+                if (memberVisuals != null)
+                    memberVisuals.ShowPhantomAttack(slot, aimDirection, desiredDistance);
+
+                continue;
+            }
+
+            if (commandType == CommandType.Defend)
+            {
+                // На відміну від Attack — Defend НЕ рухає батальйон у
+                // напрямку курсора: коло стоїть на поточній позиції, точно
+                // як для одиночного батальйона (GetEffectiveAttackRange(origin)).
+                float maxRange = member.GetEffectiveAttackRange(origin);
+
+                if (maxRange <= 0f)
+                {
+                    Debug.LogWarning($"[RangeIndicatorScr] Defend-зона для '{member.nameBattalion}' " +
+                        $"не показана: maxRange={maxRange:0.###}, attackRange={member.battalion.attackRange:0.###}, " +
+                        $"origin={origin}, projectedDeployed={member.GetProjectedDeployedState(slot)}.", member);
 
                     if (zoneRenderer != null) zoneRenderer.enabled = false;
                     continue;
                 }
 
-                Color color = commandType == CommandType.Attack ? attackFillColor : defendFillColor;
-
-                BuildCircleOn(zoneMesh.sharedMesh, zoneMesh.transform, attackOrigin, maxRange, color);
+                BuildCircleOn(zoneMesh.sharedMesh, zoneMesh.transform, origin, maxRange, defendFillColor);
 
                 if (zoneRenderer != null) zoneRenderer.enabled = true;
-
-                // Той самий фантомний маркер/стрілка, що й для одиночного
-                // батальйона (BattalionVisualsScr.ShowPhantomAttack) — тільки
-                // для Attack: Defend не має фантомної точки навіть для
-                // одиночного батальйона (лише коло), тож тут поводимось так само.
-                if (commandType == CommandType.Attack)
-                {
-                    BattalionVisualsScr memberVisuals = member.GetComponent<BattalionVisualsScr>();
-
-                    if (memberVisuals != null)
-                        memberVisuals.ShowPhantomAttack(slot, aimDirection, desiredDistance);
-                }
 
                 continue;
             }
@@ -216,6 +233,11 @@ public class RangeIndicatorScr : MonoBehaviour
         }
 
         HideRegimentZonesFrom(regiment.battalions.Count);
+
+        if (commandType == CommandType.Attack)
+            HideRegimentRayFansFrom(regiment.battalions.Count);
+        else
+            HideRegimentRayFansFrom(0);
     }
 
     private BattalionVisualsScr GetVisuals(BattalionScr selected)
@@ -259,6 +281,7 @@ public class RangeIndicatorScr : MonoBehaviour
             HideRayFan();
             HideBombardRadius();
             HideRegimentZonesFrom(0);
+            HideRegimentRayFansFrom(0);
             return;
         }
 
@@ -276,6 +299,7 @@ public class RangeIndicatorScr : MonoBehaviour
         }
 
         HideRegimentZonesFrom(0);
+        HideRegimentRayFansFrom(0);
 
         int slot = batalionManager.CommandDuty;
 
@@ -655,6 +679,48 @@ public class RangeIndicatorScr : MonoBehaviour
     {
         LineRenderer rayFan = EnsureRayFan();
 
+        if (rayFan == null)
+            return;
+
+        ShowRayFanOn(rayFan, selected, origin, direction, range, color);
+    }
+
+    // Пул віял променів для полку — по одному LineRenderer на кожного
+    // атакуючого батальйона (індекс збігається з regimentZonePool).
+    private readonly List<LineRenderer> regimentRayFanPool = new List<LineRenderer>();
+
+    private LineRenderer GetRegimentRayFan(int index)
+    {
+        while (regimentRayFanPool.Count <= index)
+        {
+            GameObject go = new GameObject("RegimentRayFan_" + regimentRayFanPool.Count);
+            go.transform.SetParent(regimentZoneParent != null ? regimentZoneParent : transform, false);
+
+            LineRenderer lr = go.AddComponent<LineRenderer>();
+            lr.useWorldSpace = true;
+            lr.widthMultiplier = 0.05f;
+
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+                lr.material = new Material(shader);
+
+            regimentRayFanPool.Add(lr);
+        }
+
+        return regimentRayFanPool[index];
+    }
+
+    private void HideRegimentRayFansFrom(int startIndex)
+    {
+        for (int i = startIndex; i < regimentRayFanPool.Count; i++)
+        {
+            if (regimentRayFanPool[i] != null)
+                regimentRayFanPool[i].enabled = false;
+        }
+    }
+
+    private void ShowRayFanOn(LineRenderer rayFan, BattalionScr selected, Vector3 origin, Vector3 direction, float range, Color color)
+    {
         if (rayFan == null)
             return;
 
