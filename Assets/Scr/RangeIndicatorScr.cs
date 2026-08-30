@@ -207,8 +207,15 @@ public class RangeIndicatorScr : MonoBehaviour
             {
                 // На відміну від Attack — Defend НЕ рухає батальйон у
                 // напрямку курсора: коло стоїть на поточній позиції, точно
-                // як для одиночного батальйона (GetEffectiveAttackRange(origin)).
-                float maxRange = member.GetEffectiveAttackRange(origin);
+                // як для одиночного батальйона. Так само, як і там —
+                // розгорнутий юніт (артилерія) використовує deployRange,
+                // а не attackRange (який для розгорнутих може бути 0).
+                bool isDeployed = member.GetProjectedDeployedState(slot);
+
+                float maxRange =
+                    isDeployed
+                        ? member.deployRange
+                        : member.GetEffectiveAttackRange(origin);
 
                 if (maxRange <= 0f)
                 {
@@ -217,12 +224,21 @@ public class RangeIndicatorScr : MonoBehaviour
                         $"origin={origin}, projectedDeployed={member.GetProjectedDeployedState(slot)}.", member);
 
                     if (zoneRenderer != null) zoneRenderer.enabled = false;
+
+                    LineRenderer skippedDefendRayFan = GetRegimentRayFan(i);
+                    if (skippedDefendRayFan != null) skippedDefendRayFan.enabled = false;
+
                     continue;
                 }
 
                 BuildCircleOn(zoneMesh.sharedMesh, zoneMesh.transform, origin, maxRange, defendFillColor);
 
                 if (zoneRenderer != null) zoneRenderer.enabled = true;
+
+                // Так само, як Attack, тільки без проекції руху — коло і
+                // віяло променів стоять рівно на позиції батальйона.
+                LineRenderer memberDefendRayFan = GetRegimentRayFan(i);
+                ShowRayFanOn(memberDefendRayFan, member, origin, aimDirection, maxRange, defendRayColor);
 
                 continue;
             }
@@ -234,7 +250,7 @@ public class RangeIndicatorScr : MonoBehaviour
 
         HideRegimentZonesFrom(regiment.battalions.Count);
 
-        if (commandType == CommandType.Attack)
+        if (commandType == CommandType.Attack || commandType == CommandType.Defend)
             HideRegimentRayFansFrom(regiment.battalions.Count);
         else
             HideRegimentRayFansFrom(0);
@@ -402,9 +418,14 @@ public class RangeIndicatorScr : MonoBehaviour
 
             Show();
 
-            HideRayFan();
+            // Так само, як Attack, тільки без проекції руху — коло і
+            // віяло променів стоять рівно на позиції батальйона (origin),
+            // а не там, куди він міг би дійти.
+            Vector3 defendAimDirection = GetAimDirection(origin);
 
             BuildCircle(origin, maxRange, defendFillColor);
+
+            ShowRayFan(selected, origin, defendAimDirection, maxRange, defendRayColor);
 
             return;
         }
