@@ -253,7 +253,8 @@ public class BattalionVisualsScr : MonoBehaviour
     private Vector3 GetVisualMoveEndpoint(
         int slot,
         Vector3 origin,
-        Vector3 requestedPoint)
+        Vector3 requestedPoint,
+        float overrideSpeed = -1f)
     {
         Vector3 direction = requestedPoint - origin;
 
@@ -276,9 +277,15 @@ public class BattalionVisualsScr : MonoBehaviour
          * базовий (terrain-незалежний) battalion.speed — сам
          * GetReachableDistance тепер рахує вартість шляху по
          * ВСЬОМУ маршруту через GetTerrainMoveCost.
+         *
+         * overrideSpeed > 0 — для полку, де швидкість обмежена
+         * найповільнішим батальйоном (regiment.GetSlowestSpeed()),
+         * а не власною швидкістю цього батальйона.
          */
 
-        float reachableDistance = battalion.GetReachableDistance(origin, direction, desiredDistance, battalion.battalion.speed, 1f);
+        float effectiveSpeed = overrideSpeed > 0f ? overrideSpeed : battalion.battalion.speed;
+
+        float reachableDistance = battalion.GetReachableDistance(origin, direction, desiredDistance, effectiveSpeed, 1f);
 
         Vector3 result = origin + direction * reachableDistance;
 
@@ -406,7 +413,7 @@ public class BattalionVisualsScr : MonoBehaviour
         }
     }
 
-    public void ShowPhantomMove(int slot, Vector3 requestedPoint)
+    public void ShowPhantomMove(int slot, Vector3 requestedPoint, float overrideSpeed = -1f)
     {
         if (battalion == null)
             return;
@@ -419,7 +426,7 @@ public class BattalionVisualsScr : MonoBehaviour
 
         Vector3 origin = battalion.GetOrderOrigin(slot);
 
-        Vector3 endpoint = GetVisualMoveEndpoint(slot, origin, requestedPoint);
+        Vector3 endpoint = GetVisualMoveEndpoint(slot, origin, requestedPoint, overrideSpeed);
 
         UpdateMarker(orderMarkers, orderMarkerPrefab, slot, true, endpoint);
 

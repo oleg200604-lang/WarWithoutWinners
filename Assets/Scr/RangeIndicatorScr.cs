@@ -79,6 +79,16 @@ public class RangeIndicatorScr : MonoBehaviour
     // Та сама зона, що й для одного батальйона (BuildMoveArea/BuildCircle),
     // тільки по одній на кожного члена полку — показує реальну зону, в якій
     // саме ЦЕЙ батальйон може діяти, з урахуванням обмеження regiment.GetSlowestSpeed().
+    //
+    // Щоб додати новий тип наказу для полку (окрім Move/Attack/Defend),
+    // торкнутись рівно 3 місць:
+    //   1) Regiment.IssueXOrder(...) у BatalionManagerScr.cs — форвардить
+    //      наказ усім battalions по черзі (як IssueMoveOrder).
+    //   2) BatalionManagerScr.X() — гілка "if (selectRegiment != null)"
+    //      на початку методу (як у Move()/Attack()/Defend()).
+    //   3) новий case тут, у циклі UpdateRegimentZones — малює зону
+    //      і, за потреби, кличе member.GetComponent<BattalionVisualsScr>()
+    //      .ShowPhantomX(...) для фантомної мітки.
     private void UpdateRegimentZones(Regiment regiment, CommandType commandType, int slot)
     {
         if (regiment.battalions == null)
@@ -128,6 +138,19 @@ public class RangeIndicatorScr : MonoBehaviour
                 BuildMoveAreaOn(zoneMesh.sharedMesh, zoneMesh.transform, member, origin, availableSpeed, fillColor);
 
                 if (zoneRenderer != null) zoneRenderer.enabled = true;
+
+                // Фантомна мітка+стрілка передбачуваної точки — та сама, що
+                // й для одиночного батальйона (ShowPhantomMove), тільки ціль
+                // тут — anchor(курсор) + власний offset у формації полку,
+                // і швидкість обмежена найповільнішим батальйоном.
+                BattalionVisualsScr memberVisuals = member.GetComponent<BattalionVisualsScr>();
+
+                if (memberVisuals != null && i < regiment.members.Count)
+                {
+                    Vector3 memberTarget = mouseWorld + regiment.members[i].offset;
+                    memberVisuals.ShowPhantomMove(slot, memberTarget, availableSpeed);
+                }
+
                 continue;
             }
 
@@ -171,6 +194,19 @@ public class RangeIndicatorScr : MonoBehaviour
                 BuildCircleOn(zoneMesh.sharedMesh, zoneMesh.transform, attackOrigin, maxRange, color);
 
                 if (zoneRenderer != null) zoneRenderer.enabled = true;
+
+                // Той самий фантомний маркер/стрілка, що й для одиночного
+                // батальйона (BattalionVisualsScr.ShowPhantomAttack) — тільки
+                // для Attack: Defend не має фантомної точки навіть для
+                // одиночного батальйона (лише коло), тож тут поводимось так само.
+                if (commandType == CommandType.Attack)
+                {
+                    BattalionVisualsScr memberVisuals = member.GetComponent<BattalionVisualsScr>();
+
+                    if (memberVisuals != null)
+                        memberVisuals.ShowPhantomAttack(slot, aimDirection, desiredDistance);
+                }
+
                 continue;
             }
 
