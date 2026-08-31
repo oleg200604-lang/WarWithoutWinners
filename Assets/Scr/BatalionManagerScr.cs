@@ -412,36 +412,32 @@ public class BatalionManagerScr : MonoBehaviour
             }
         }
 
-        // Ланцюг: новий батальйон може приєднатись лише з одного з двох
-        // кінців поточного ланцюга (перший або останній у списку — середину
-        // "розірвати" не можна), і лише якщо відстань до цього кінця не
-        // перевищує regiment.chainMaxDistance.
+        // Умова додавання: один тип (перевірено вище) + близька відстань
+        // ХОЧА Б до одного вже наявного батальйона полку — не обов'язково
+        // до "кінця" списку. Порядок ланцюга після цього перебудовується
+        // автоматично (RecalculateFormation -> ReorderChainByProximity),
+        // тож немає ризику "перескочити" через когось, хто стоїть ближче.
         if (regiment.battalions.Count > 0)
         {
-            BattalionScr chainStart = regiment.battalions[0];
-            BattalionScr chainEnd = regiment.battalions[regiment.battalions.Count - 1];
+            float nearestDistance = float.MaxValue;
 
-            float distToStart = Vector3.Distance(battalion.transform.position, chainStart.transform.position);
-            float distToEnd = Vector3.Distance(battalion.transform.position, chainEnd.transform.position);
+            for (int i = 0; i < regiment.battalions.Count; i++)
+            {
+                if (regiment.battalions[i] == null)
+                    continue;
 
-            bool closerToStart = distToStart <= distToEnd;
-            float nearestDistance = closerToStart ? distToStart : distToEnd;
+                float dist = Vector3.Distance(battalion.transform.position, regiment.battalions[i].transform.position);
+                nearestDistance = Mathf.Min(nearestDistance, dist);
+            }
 
             if (nearestDistance > regiment.chainMaxDistance)
             {
-                print($"Не вдалося додати до полку: задалеко від ланцюга ({nearestDistance:0.##} > {regiment.chainMaxDistance:0.##}).");
+                print($"Не вдалося додати до полку: задалеко від найближчого батальйона полку ({nearestDistance:0.##} > {regiment.chainMaxDistance:0.##}).");
                 return;
             }
+        }
 
-            if (closerToStart)
-                regiment.battalions.Insert(0, battalion);
-            else
-                regiment.battalions.Add(battalion);
-        }
-        else
-        {
-            regiment.battalions.Add(battalion);
-        }
+        regiment.battalions.Add(battalion);
 
         for (int i = 0; i < regiments.Count; i++)
         {
@@ -452,6 +448,7 @@ public class BatalionManagerScr : MonoBehaviour
             }
         }
 
+        // Перебудовує і порядок ланцюга (nearest-neighbor), і anchor/offset.
         regiment.RecalculateFormation();
 
         if (battalionUIManager != null)
@@ -510,7 +507,7 @@ public class BatalionManagerScr : MonoBehaviour
     public void SelectBattalion(BattalionScr battalion)
     {
         commandType = CommandType.None;
-
+        battalion.isSelect.SetActive(true);
         if (teamID == battalion.teamID)
         {
             if (selectBattalion == battalion)
@@ -584,13 +581,63 @@ public class Regiment
     public string nameRegiment;
     public List<BattalionScr> battalions = new List<BattalionScr>();
     public BattalionType battalionType;
-    public float chainMaxDistance = 6f;
+    public float chainMaxDistance = 3f;
 
     public List<RegimentMember> members = new List<RegimentMember>();
     public Vector3 anchor;
 
+    public void ReorderChainByProximity()
+    {
+        if (battalions == null || battalions.Count <= 2)
+            return;
+
+        List<BattalionScr> remaining = new List<BattalionScr>();
+
+        for (int i = 0; i < battalions.Count; i++)
+        {
+            if (battalions[i] != null)
+                remaining.Add(battalions[i]);
+        }
+
+        if (remaining.Count <= 2)
+            return;
+
+        List<BattalionScr> ordered = new List<BattalionScr>();
+
+        // Починаємо саме з поточного першого елемента — щоб порядок не
+        // "стрибав" довільно щоразу, коли перебудова взагалі не потрібна.
+        BattalionScr current = remaining[0];
+        ordered.Add(current);
+        remaining.RemoveAt(0);
+
+        while (remaining.Count > 0)
+        {
+            int nearestIndex = 0;
+            float nearestDist = float.MaxValue;
+
+            for (int i = 0; i < remaining.Count; i++)
+            {
+                float dist = Vector3.Distance(current.transform.position, remaining[i].transform.position);
+
+                if (dist < nearestDist)
+                {
+                    nearestDist = dist;
+                    nearestIndex = i;
+                }
+            }
+
+            current = remaining[nearestIndex];
+            ordered.Add(current);
+            remaining.RemoveAt(nearestIndex);
+        }
+
+        battalions = ordered;
+    }
+
     public void RecalculateFormation()
     {
+        ReorderChainByProximity();
+
         members.Clear();
 
         if (battalions == null || battalions.Count == 0)
