@@ -18,6 +18,10 @@ public class BatalionManagerScr : MonoBehaviour
     public bool isRedy;
     public int CommandDuty => commandDuty;
 
+    [Header("Налаштування полку/ланцюга (застосовуються до НОВОСТВОРЕНИХ полків)")]
+    [Tooltip("Максимальна відстань між сусідніми (за ланцюгом) батальйонами в новому полку.")]
+    public float defaultChainMaxDistance = 6f;
+
     private void Update()
     {
         if (Keyboard.current.digit1Key.wasPressedThisFrame)
@@ -122,9 +126,22 @@ public class BatalionManagerScr : MonoBehaviour
             return;
         }
 
+        // Якщо цей батальйон є членом полку — обрізаємо ціль руху
+        // відстанню до сусідів по ланцюгу, навіть коли керуємо ним
+        // напряму (не через сам полк). Інакше окремий член полку міг
+        // проігнорувати chainMaxDistance і піти будь-куди.
+        Vector3 clampedTarget = worldPosition;
+
+        if (selectBattalion.regimentredID >= 0 &&
+            selectBattalion.regimentredID < regiments.Count)
+        {
+            Regiment ownRegiment = regiments[selectBattalion.regimentredID];
+            clampedTarget = ownRegiment.ClampToChainNeighbors(selectBattalion, worldPosition, commandDuty);
+        }
+
         if (selectBattalion.SetMoveOrder(
             commandDuty,
-            worldPosition))
+            clampedTarget))
         {
             print(
                 "Наказ руху встановлено."
@@ -361,7 +378,13 @@ public class BatalionManagerScr : MonoBehaviour
             return;
         }
 
-        Regiment newRegiment = new Regiment { nameRegiment = "Regiment", battalions = new List<BattalionScr>() { }, battalionType = selectBattalion.battalion.type };
+        Regiment newRegiment = new Regiment
+        {
+            nameRegiment = "Regiment",
+            battalions = new List<BattalionScr>() { },
+            battalionType = selectBattalion.battalion.type,
+            chainMaxDistance = defaultChainMaxDistance
+        };
 
         newRegiment.battalions.Add(selectBattalion);
         newRegiment.RecalculateFormation();
@@ -581,11 +604,16 @@ public class Regiment
     public string nameRegiment;
     public List<BattalionScr> battalions = new List<BattalionScr>();
     public BattalionType battalionType;
-    public float chainMaxDistance = 3f;
+    public float chainMaxDistance = 6f;
 
     public List<RegimentMember> members = new List<RegimentMember>();
     public Vector3 anchor;
 
+    // Автоматично перевпорядковує battalions за принципом найближчого
+    // сусіда (nearest-neighbor), щоб порядок у списку завжди відповідав
+    // реальній геометрії — без цього новий батальйон міг опинитись у
+    // списку не там, де він фізично стоїть, і лінія ланцюга/обмеження руху
+    // "перескакували" би через когось, хто насправді ближче.
     public void ReorderChainByProximity()
     {
         if (battalions == null || battalions.Count <= 2)
@@ -688,6 +716,49 @@ public class Regiment
         }
 
         return slowest == float.MaxValue ? 0f : slowest;
+    }
+
+    // Обрізає бажану ціль руху ОКРЕМОГО батальйона-члена полку відстанню
+    // до його сусідів по ланцюгу (i-1, i+1 у battalions). Використовується,
+    // коли гравець керує цим батальйоном НАПРЯМУ (не через сам полк) —
+    // без цього наказ окремому батальйону повністю ігнорував ланцюг, і він
+    // міг "втекти" від решти полку на будь-яку відстань.
+    public Vector3 ClampToChainNeighbors(BattalionScr battalion, Vector3 desiredPos, int slot)
+    {
+        if (battalions == null)
+            return desiredPos;
+
+        int index = battalions.IndexOf(battalion);
+
+        if (index < 0)
+            return desiredPos;
+
+        Vector3 result = desiredPos;
+
+        if (index > 0)
+            result = ClampAgainstNeighbor(result, battalions[index - 1], slot);
+
+        if (index < battalions.Count - 1)
+            result = ClampAgainstNeighbor(result, battalions[index + 1], slot);
+
+        return result;
+    }
+
+    private Vector3 ClampAgainstNeighbor(Vector3 desiredPos, BattalionScr neighbor, int slot)
+    {
+        if (neighbor == null || chainMaxDistance <= 0f)
+            return desiredPos;
+
+        Vector3 neighborPos = neighbor.GetOrderOrigin(slot);
+        neighborPos.z = 0f;
+
+        Vector3 toDesired = desiredPos - neighborPos;
+        toDesired.z = 0f;
+
+        if (toDesired.magnitude > chainMaxDistance)
+            return neighborPos + toDesired.normalized * chainMaxDistance;
+
+        return desiredPos;
     }
 
     public bool IssueMoveOrder(int slot, Vector3 newAnchor)
