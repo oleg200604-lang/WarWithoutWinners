@@ -17,7 +17,13 @@ public class RegimentChainVisualsScr : MonoBehaviour
     public Color strainedColor = new Color(1f, 0.15f, 0.15f, 0.9f);
     public float lineWidth = 0.06f;
 
+    [Header("Коло-межа (chainMaxDistance) — тільки для зараз вибраного полку")]
+    public Color limitCircleColor = new Color(1f, 1f, 1f, 0.35f);
+    public float limitCircleWidth = 0.04f;
+    public int limitCircleSegments = 36;
+
     private readonly List<LineRenderer> pool = new List<LineRenderer>();
+    private readonly List<LineRenderer> limitCirclePool = new List<LineRenderer>();
 
     private LineRenderer GetLine(int index)
     {
@@ -41,6 +47,31 @@ public class RegimentChainVisualsScr : MonoBehaviour
         return pool[index];
     }
 
+    private LineRenderer GetLimitCircle(int index)
+    {
+        while (limitCirclePool.Count <= index)
+        {
+            GameObject go = new GameObject("RegimentChainLimitCircle_" + limitCirclePool.Count);
+            go.transform.SetParent(transform, false);
+
+            LineRenderer lr = go.AddComponent<LineRenderer>();
+            lr.useWorldSpace = true;
+            lr.widthMultiplier = limitCircleWidth;
+            lr.loop = true;
+            lr.positionCount = limitCircleSegments;
+            lr.startColor = limitCircleColor;
+            lr.endColor = limitCircleColor;
+
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader != null)
+                lr.material = new Material(shader);
+
+            limitCirclePool.Add(lr);
+        }
+
+        return limitCirclePool[index];
+    }
+
     private void HideFrom(int startIndex)
     {
         for (int i = startIndex; i < pool.Count; i++)
@@ -50,11 +81,88 @@ public class RegimentChainVisualsScr : MonoBehaviour
         }
     }
 
+    private void HideLimitCirclesFrom(int startIndex)
+    {
+        for (int i = startIndex; i < limitCirclePool.Count; i++)
+        {
+            if (limitCirclePool[i] != null)
+                limitCirclePool[i].enabled = false;
+        }
+    }
+
+    // Знаходить полк, до якого зараз "прикутий" фокус гравця — сам полк
+    // вибраний напряму, або вибраний батальйон, що є його членом. Кола-межі
+    // показуємо лише для нього, щоб не захаращувати екран, коли полків
+    // багато й гравець зараз не працює з жодним конкретно.
+    private Regiment GetFocusedRegiment()
+    {
+        if (batalionManager.selectRegiment != null)
+            return batalionManager.selectRegiment;
+
+        BattalionScr selected = batalionManager.selectBattalion;
+
+        if (selected != null &&
+            selected.regimentredID >= 0 &&
+            selected.regimentredID < batalionManager.regiments.Count)
+        {
+            return batalionManager.regiments[selected.regimentredID];
+        }
+
+        return null;
+    }
+
+    private void UpdateLimitCircles()
+    {
+        Regiment focused = GetFocusedRegiment();
+
+        if (focused == null || focused.battalions == null)
+        {
+            HideLimitCirclesFrom(0);
+            return;
+        }
+
+        float radius = focused.chainMaxDistance;
+
+        if (radius <= 0f)
+        {
+            HideLimitCirclesFrom(0);
+            return;
+        }
+
+        int used = 0;
+
+        for (int i = 0; i < focused.battalions.Count; i++)
+        {
+            BattalionScr battalion = focused.battalions[i];
+
+            if (battalion == null)
+                continue;
+
+            Vector3 center = battalion.transform.position;
+            center.z = 0f;
+
+            LineRenderer circle = GetLimitCircle(used);
+            used++;
+
+            for (int p = 0; p < limitCircleSegments; p++)
+            {
+                float angle = 2f * Mathf.PI * p / limitCircleSegments;
+                Vector3 point = center + new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * radius;
+                circle.SetPosition(p, point);
+            }
+
+            circle.enabled = true;
+        }
+
+        HideLimitCirclesFrom(used);
+    }
+
     private void Update()
     {
         if (batalionManager == null || batalionManager.regiments == null)
         {
             HideFrom(0);
+            HideLimitCirclesFrom(0);
             return;
         }
 
@@ -99,5 +207,7 @@ public class RegimentChainVisualsScr : MonoBehaviour
         }
 
         HideFrom(used);
+
+        UpdateLimitCircles();
     }
 }
