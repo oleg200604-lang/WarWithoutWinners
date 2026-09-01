@@ -318,7 +318,7 @@ public class RangeIndicatorScr : MonoBehaviour
     }
 
     // Клас: RangeIndicatorScr
-    private void Update()
+    private void LateUpdate()
     {
         if (meshFilter == null)
         {

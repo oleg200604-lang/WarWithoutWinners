@@ -17,6 +17,7 @@ public class BattalionScr : MonoBehaviour
     public int regimentredID = -1;
     public Company[] company;
     [Space]
+    public Officer officer;
     public Command[] command = new Command[3];
     public bool isDefending;
     public Vector3 defendDirection = Vector3.right;
@@ -709,11 +710,75 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
+    // Скільки шкоди сусід по ланцюгу "перебирає" на себе, коли атакують
+    // цей батальйон. 1 сусід -> 25% йому, 75% основному. 2 сусіди -> по
+    // 25% кожному, 50% основному. Немає сусідів (не в полку, або
+    // фланговий без пари) -> 100% основному, як і раніше.
+    private const float RegimentNeighborDamageShare = 0.25f;
+
     public void TakeDamage(float damage, float murder, float injury)
     {
+        if (damage <= 0f)
+            return;
+
+        List<BattalionScr> neighbors = GetChainNeighbors();
+
+        float perNeighborDamage = neighbors.Count > 0 ? damage * RegimentNeighborDamageShare : 0f;
+        float selfDamage = damage - perNeighborDamage * neighbors.Count;
+
+        ApplyDamage(selfDamage, murder, injury);
+
+        for (int i = 0; i < neighbors.Count; i++)
+        {
+            if (neighbors[i] != null)
+                neighbors[i].ApplyDamage(perNeighborDamage, murder, injury);
+        }
+    }
+
+    // Фактичне застосування шкоди — без подальшого розподілу. Сусіди
+    // отримують свою частку саме через цей метод (не через TakeDamage),
+    // інакше шкода каскадно розповзлась би по всьому ланцюгу.
+    private void ApplyDamage(float damage, float murder, float injury)
+    {
+        if (damage <= 0f)
+            return;
+
         print(damage);
 
         personnel.Losses(murder, injury, damage, bar);
+    }
+
+    // Сусіди по ланцюгу цього батальйона в його полку (той самий порядок,
+    // що обмежує рух — Regiment.battalions, максимум 2 сусіди: i-1, i+1).
+    private List<BattalionScr> GetChainNeighbors()
+    {
+        List<BattalionScr> neighbors = new List<BattalionScr>();
+
+        if (batalionManager == null ||
+            batalionManager.regiments == null ||
+            regimentredID < 0 ||
+            regimentredID >= batalionManager.regiments.Count)
+        {
+            return neighbors;
+        }
+
+        Regiment regiment = batalionManager.regiments[regimentredID];
+
+        if (regiment == null || regiment.battalions == null)
+            return neighbors;
+
+        int index = regiment.battalions.IndexOf(this);
+
+        if (index < 0)
+            return neighbors;
+
+        if (index > 0 && regiment.battalions[index - 1] != null)
+            neighbors.Add(regiment.battalions[index - 1]);
+
+        if (index < regiment.battalions.Count - 1 && regiment.battalions[index + 1] != null)
+            neighbors.Add(regiment.battalions[index + 1]);
+
+        return neighbors;
     }
 
     private float ComputeAttackDamage()
@@ -1280,7 +1345,7 @@ public enum CompanyType
 
 public enum EffectType
 {
-    none, suppressed, battle, panic       
+    none, suppressed, battle, panic
 }
 
 [System.Serializable]

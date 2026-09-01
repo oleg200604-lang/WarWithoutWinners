@@ -601,6 +601,7 @@ public class RegimentMember
 [System.Serializable]
 public class Regiment
 {
+    public Officer officer;
     public string nameRegiment;
     public List<BattalionScr> battalions = new List<BattalionScr>();
     public BattalionType battalionType;
@@ -609,11 +610,6 @@ public class Regiment
     public List<RegimentMember> members = new List<RegimentMember>();
     public Vector3 anchor;
 
-    // Автоматично перевпорядковує battalions за принципом найближчого
-    // сусіда (nearest-neighbor), щоб порядок у списку завжди відповідав
-    // реальній геометрії — без цього новий батальйон міг опинитись у
-    // списку не там, де він фізично стоїть, і лінія ланцюга/обмеження руху
-    // "перескакували" би через когось, хто насправді ближче.
     public void ReorderChainByProximity()
     {
         if (battalions == null || battalions.Count <= 2)
