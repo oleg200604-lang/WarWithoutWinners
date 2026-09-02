@@ -4,53 +4,102 @@ using UnityEngine.InputSystem;
 
 public class BatalionManagerScr : MonoBehaviour
 {
+    // =========================================================
+    // TEAM
+    // =========================================================
 
+    [Header("Команда")]
+
+    [Tooltip("Унікальний ID цієї команди.")]
     public int teamID;
 
+    [Tooltip("ID команд, які є ворогами цієї команди.")]
+    public int[] enemyID;
+
+    [Tooltip("ID команд, які є союзниками цієї команди.")]
+    public int[] allyID;
+
     [Header("Туман війни")]
-    [Tooltip("Позначте true, якщо ЦЯ команда — союзник гравця: її батальйони теж розсіюють туман війни разом з гравцем і самі ніколи не приховуються. Команду гравця FogOfWarManagerScr визначає окремо через поле playerManager.")]
+
+    [Tooltip(
+        "Позначте true, якщо ЦЯ команда є командою гравця " +
+        "або її батальйони повинні відкривати туман війни."
+    )]
     public bool isAllyOfPlayer;
+
+    // =========================================================
+    // BATTALION / REGIMENT
+    // =========================================================
 
     public BattalionScr selectBattalion;
     public Regiment selectRegiment;
+
     public BattleManagerScr battleManager;
     public BattalionUIManagerScr battalionUIManager;
+
     public List<Regiment> regiments;
+
     public CommandType commandType;
+
     public Ressurs ressurs = new Ressurs();
+
     [Tooltip("Пункти поповнення боєприпасів (Void), що належать цій команді.")]
     public List<AmmoDepotScr> ammoDepots;
+
     private int commandDuty;
+
     public bool isRedy;
+
     public int CommandDuty => commandDuty;
 
-    [Header("Налаштування полку/ланцюга (застосовуються до НОВОСТВОРЕНИХ полків)")]
-    [Tooltip("Максимальна відстань між сусідніми (за ланцюгом) батальйонами в новому полку.")]
+    // =========================================================
+    // REGIMENT SETTINGS
+    // =========================================================
+
+    [Header("Налаштування полку/ланцюга")]
+
+    [Tooltip(
+        "Максимальна відстань між сусідніми " +
+        "за ланцюгом батальйонами."
+    )]
     public float defaultChainMaxDistance = 6f;
+
+    // =========================================================
+    // UNITY
+    // =========================================================
 
     private void Update()
     {
         if (Keyboard.current.digit1Key.wasPressedThisFrame)
         {
             commandDuty = 0;
+
             print("Наказ 1");
+
             if (battalionUIManager != null)
                 battalionUIManager.CheckButtalion();
         }
+
         if (Keyboard.current.digit2Key.wasPressedThisFrame)
         {
             commandDuty = 1;
+
             print("Наказ 2");
+
             if (battalionUIManager != null)
                 battalionUIManager.CheckButtalion();
         }
+
         if (Keyboard.current.digit3Key.wasPressedThisFrame)
         {
             commandDuty = 2;
+
             print("Наказ 3");
+
             if (battalionUIManager != null)
                 battalionUIManager.CheckButtalion();
         }
+
         switch (commandType)
         {
             case CommandType.None:
@@ -81,15 +130,146 @@ public class BatalionManagerScr : MonoBehaviour
                 break;
         }
 
-
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             NextMove();
         }
     }
+
+    // =========================================================
+    // TEAM RELATIONS
+    // =========================================================
+
+    /// <summary>
+    /// Перевіряє, чи належить переданий ID цій самій команді.
+    /// </summary>
+    public bool IsOwnTeam(int otherTeamID)
+    {
+        return teamID == otherTeamID;
+    }
+
+    /// <summary>
+    /// Перевіряє, чи є інша команда союзною.
+    ///
+    /// Власна команда також вважається союзною.
+    /// </summary>
+    public bool IsAlly(int otherTeamID)
+    {
+        if (otherTeamID == teamID)
+            return true;
+
+        if (allyID == null)
+            return false;
+
+        for (int i = 0; i < allyID.Length; i++)
+        {
+            if (allyID[i] == otherTeamID)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Перевіряє, чи є інша команда ворогом.
+    /// </summary>
+    public bool IsEnemy(int otherTeamID)
+    {
+        if (otherTeamID == teamID)
+            return false;
+
+        if (enemyID == null)
+            return false;
+
+        for (int i = 0; i < enemyID.Length; i++)
+        {
+            if (enemyID[i] == otherTeamID)
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Команда нейтральна, якщо вона не є
+    /// ні союзником, ні ворогом.
+    /// </summary>
+    public bool IsNeutral(int otherTeamID)
+    {
+        if (otherTeamID == teamID)
+            return false;
+
+        return !IsAlly(otherTeamID) &&
+               !IsEnemy(otherTeamID);
+    }
+
+    /// <summary>
+    /// Перевірка відносин з іншою командою.
+    ///
+    /// ВАЖЛИВО:
+    /// Система дозволяє використовувати асиметричні відносини,
+    /// але для нормальної роботи рекомендується задавати
+    /// відносини з обох сторін.
+    /// </summary>
+    public bool IsFriendlyTo(BatalionManagerScr other)
+    {
+        if (other == null)
+            return false;
+
+        return IsAlly(other.teamID);
+    }
+
+    public bool IsEnemyTo(BatalionManagerScr other)
+    {
+        if (other == null)
+            return false;
+
+        return IsEnemy(other.teamID);
+    }
+
+    // =========================================================
+    // FOG OF WAR HELPERS
+    // =========================================================
+
+    /// <summary>
+    /// Чи повинна ця команда відкривати Fog of War
+    /// для гравця.
+    /// </summary>
+    public bool ShouldRevealFog()
+    {
+        return isAllyOfPlayer;
+    }
+
+    /// <summary>
+    /// Чи є ця команда дружньою для гравця.
+    ///
+    /// Використовується FogOfWarManagerScr.
+    /// </summary>
+    public bool IsPlayerFriendly()
+    {
+        if (isAllyOfPlayer)
+            return true;
+
+        FogOfWarManagerScr fog =
+            FogOfWarManagerScr.Instance;
+
+        if (fog == null)
+            return false;
+
+        if (fog.playerManager == null)
+            return false;
+
+        return fog.playerManager.IsAlly(teamID);
+    }
+
+    // =========================================================
+    // TURN
+    // =========================================================
+
     public void NextMove()
     {
         ressurs.command += ressurs.planning;
+
         if (ressurs.command > ressurs.commandMax)
         {
             ressurs.command = ressurs.commandMax;
@@ -98,15 +278,21 @@ public class BatalionManagerScr : MonoBehaviour
         ResupplyAmmoDepots();
 
         isRedy = true;
-        battleManager.IsSrtart();
+
+        if (battleManager != null)
+            battleManager.IsSrtart();
+
         selectBattalion = null;
         selectRegiment = null;
-        battalionUIManager.CommandPanel(false);
+
+        if (battalionUIManager != null)
+            battalionUIManager.CommandPanel(false);
     }
 
-    // Поповнення боєприпасами всіх батальйонів команди, що зараз стоять
-    // у зоні дії будь-якого з "Void" пунктів поповнення (ammoDepots).
-    // Витрачає глобальний запас ressurs.supplies.
+    // =========================================================
+    // AMMO RESUPPLY
+    // =========================================================
+
     private void ResupplyAmmoDepots()
     {
         if (ammoDepots == null)
@@ -119,49 +305,78 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
-    // Поповнює особовий склад батальйону з глобального людського ресурсу
-    // (ressurs.personnel), лише якщо боєздатні+небоєздатні < максимуму.
-    // Частина досвіду розмазується на новобранців (їхній досвід = 0).
-    // Повертає фактично додану кількість людей.
-    public int ReinforceBattalion(BattalionScr battalion, int amount)
+    // =========================================================
+    // REINFORCEMENT
+    // =========================================================
+
+    public int ReinforceBattalion(
+        BattalionScr battalion,
+        int amount)
     {
         if (battalion == null || amount <= 0)
             return 0;
 
-        int missing = battalion.GetMissingPersonnel();
+        int missing =
+            battalion.GetMissingPersonnel();
 
         if (missing <= 0)
         {
-            print(battalion.nameBattalion + ": особовий склад уже повний.");
+            print(
+                battalion.nameBattalion +
+                ": особовий склад уже повний."
+            );
+
             return 0;
         }
 
-        int affordable = Mathf.Min(amount, missing, ressurs.personnel);
+        int affordable =
+            Mathf.Min(
+                amount,
+                missing,
+                ressurs.personnel
+            );
 
         if (affordable <= 0)
         {
-            print("Недостатньо людського ресурсу для поповнення.");
+            print(
+                "Недостатньо людського ресурсу для поповнення."
+            );
+
             return 0;
         }
 
-        int actuallyAdded = battalion.ReinforcePersonnel(affordable);
+        int actuallyAdded =
+            battalion.ReinforcePersonnel(
+                affordable
+            );
 
-        ressurs.personnel -= actuallyAdded;
+        ressurs.personnel -=
+            actuallyAdded;
 
         return actuallyAdded;
     }
+
+    // =========================================================
+    // MOVE
+    // =========================================================
 
     private void Move()
     {
         if (!Mouse.current.rightButton.wasPressedThisFrame)
             return;
 
-        if (selectBattalion == null && selectRegiment == null)
+        if (selectBattalion == null &&
+            selectRegiment == null)
+        {
             return;
+        }
 
         if (!HasEnoughCommand())
         {
-            print("Недостатньо командного ресурсу для наказу.");
+            print(
+                "Недостатньо командного ресурсу для наказу."
+            );
+
             return;
         }
 
@@ -169,36 +384,52 @@ public class BatalionManagerScr : MonoBehaviour
             Mouse.current.position.ReadValue();
 
         Vector3 worldPosition =
-            Camera.main.ScreenToWorldPoint(mousePosition);
+            Camera.main.ScreenToWorldPoint(
+                mousePosition
+            );
 
         worldPosition.z = 0f;
 
         if (selectRegiment != null)
         {
-            if (selectRegiment.IssueMoveOrder(commandDuty, worldPosition))
+            if (selectRegiment.IssueMoveOrder(
+                commandDuty,
+                worldPosition))
             {
-                print("Наказ руху полку встановлено.");
+                print(
+                    "Наказ руху полку встановлено."
+                );
+
                 AdvanceCommandDuty();
             }
             else
             {
-                print("Не вдалося встановити наказ руху полку.");
+                print(
+                    "Не вдалося встановити наказ руху полку."
+                );
             }
 
             return;
         }
 
-        // Якщо цей батальйон є членом полку — обрізаємо ціль руху
-        // відстанню до сусідів по ланцюгу, навіть коли керуємо ним
-        // напряму (не через сам полк). Інакше окремий член полку міг
-        // проігнорувати chainMaxDistance і піти будь-куди.
-        Vector3 clampedTarget = worldPosition;
+        Vector3 clampedTarget =
+            worldPosition;
 
         if (selectBattalion.regimentredID >= 0 &&
-            selectBattalion.regimentredID < regiments.Count)
+            selectBattalion.regimentredID <
+            regiments.Count)
         {
-            Regiment ownRegiment = regiments[selectBattalion.regimentredID];
-            clampedTarget = ownRegiment.ClampToChainNeighbors(selectBattalion, worldPosition, commandDuty);
+            Regiment ownRegiment =
+                regiments[
+                    selectBattalion.regimentredID
+                ];
+
+            clampedTarget =
+                ownRegiment.ClampToChainNeighbors(
+                    selectBattalion,
+                    worldPosition,
+                    commandDuty
+                );
         }
 
         if (selectBattalion.SetMoveOrder(
@@ -219,81 +450,27 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
+    // =========================================================
+    // ATTACK
+    // =========================================================
+
     private void Attack()
     {
         if (!Mouse.current.rightButton.wasPressedThisFrame)
             return;
 
-        if (selectBattalion == null && selectRegiment == null)
+        if (selectBattalion == null &&
+            selectRegiment == null)
+        {
             return;
+        }
 
         if (!HasEnoughCommand())
         {
-            print("Недостатньо командного ресурсу для наказу.");
-            return;
-        }
+            print(
+                "Недостатньо командного ресурсу для наказу."
+            );
 
-        Vector3 mousePosition = Mouse.current.position.ReadValue();
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
-        worldPosition.z = 0;
-
-        if (selectRegiment != null)
-        {
-            Vector3 regimentOrigin = selectRegiment.anchor;
-            Vector3 regimentDirection = worldPosition - regimentOrigin;
-            regimentDirection.z = 0;
-
-            if (regimentDirection.sqrMagnitude < 0.001f)
-                return;
-
-            float regimentDesiredDistance = regimentDirection.magnitude;
-            regimentDirection.Normalize();
-
-            if (selectRegiment.IssueAttackOrder(commandDuty, regimentDirection, regimentDesiredDistance))
-            {
-                print("Наказ атаки полку встановлено.");
-                AdvanceCommandDuty();
-            }
-            else
-            {
-                print("Не вдалося встановити наказ атаки полку.");
-            }
-
-            return;
-        }
-
-        Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
-        Vector3 direction = worldPosition - origin;
-        direction.z = 0;
-
-        if (direction.sqrMagnitude < 0.001f)
-            return;
-
-        float desiredMoveDistance = direction.magnitude;
-        direction.Normalize();
-
-        if (selectBattalion.SetAttackOrder(commandDuty, direction, desiredMoveDistance))
-        {
-            print("Наказ атаки встановлено.");
-            AdvanceCommandDuty();
-        }
-        else
-        {
-            print("Не вдалося встановити наказ атаки — можливо, точка зайнята іншим батальйоном");
-        }
-    }
-
-    private void Defend()
-    {
-        if (!Mouse.current.rightButton.wasPressedThisFrame)
-            return;
-
-        if (selectBattalion == null && selectRegiment == null)
-            return;
-
-        if (!HasEnoughCommand())
-        {
-            print("Недостатньо командного ресурсу для наказу.");
             return;
         }
 
@@ -301,182 +478,430 @@ public class BatalionManagerScr : MonoBehaviour
             Mouse.current.position.ReadValue();
 
         Vector3 worldPosition =
-            Camera.main.ScreenToWorldPoint(mousePosition);
+            Camera.main.ScreenToWorldPoint(
+                mousePosition
+            );
 
-        worldPosition.z = 0;
+        worldPosition.z = 0f;
 
         if (selectRegiment != null)
         {
-            Vector3 regimentOrigin = selectRegiment.anchor;
-            Vector3 regimentDirection = worldPosition - regimentOrigin;
-            regimentDirection.z = 0;
+            Vector3 regimentOrigin =
+                selectRegiment.anchor;
 
-            if (regimentDirection.sqrMagnitude < 0.001f)
+            Vector3 regimentDirection =
+                worldPosition -
+                regimentOrigin;
+
+            regimentDirection.z = 0f;
+
+            if (regimentDirection.sqrMagnitude <
+                0.001f)
+            {
                 return;
+            }
+
+            float regimentDesiredDistance =
+                regimentDirection.magnitude;
 
             regimentDirection.Normalize();
 
-            if (selectRegiment.IssueDefendOrder(commandDuty, regimentDirection))
+            if (selectRegiment.IssueAttackOrder(
+                commandDuty,
+                regimentDirection,
+                regimentDesiredDistance))
             {
-                print("Наказ захисту полку встановлено. Напрямок: " + regimentDirection);
+                print(
+                    "Наказ атаки полку встановлено."
+                );
+
                 AdvanceCommandDuty();
             }
             else
             {
-                print("Не вдалося встановити наказ захисту полку.");
+                print(
+                    "Не вдалося встановити наказ атаки полку."
+                );
             }
 
             return;
         }
 
         Vector3 origin =
-            selectBattalion.GetOrderOrigin(commandDuty);
+            selectBattalion.GetOrderOrigin(
+                commandDuty
+            );
 
-        // На відміну від атаки — дистанція кліку не має значення,
-        // гравець задає лише напрямок захисту.
         Vector3 direction =
-            worldPosition - origin;
+            worldPosition -
+            origin;
 
-        direction.z = 0;
+        direction.z = 0f;
 
         if (direction.sqrMagnitude < 0.001f)
             return;
+
+        float desiredMoveDistance =
+            direction.magnitude;
 
         direction.Normalize();
 
-        if (selectBattalion.SetDefendOrder(commandDuty, direction))
+        if (selectBattalion.SetAttackOrder(
+            commandDuty,
+            direction,
+            desiredMoveDistance))
         {
-            print("Наказ захисту встановлено. Напрямок: " + direction);
+            print(
+                "Наказ атаки встановлено."
+            );
+
             AdvanceCommandDuty();
         }
         else
         {
-            print("Не вдалося встановити наказ захисту");
+            print(
+                "Не вдалося встановити наказ атаки — можливо, точка зайнята іншим батальйоном"
+            );
         }
     }
+
+    // =========================================================
+    // DEFEND
+    // =========================================================
+
+    private void Defend()
+    {
+        if (!Mouse.current.rightButton.wasPressedThisFrame)
+            return;
+
+        if (selectBattalion == null &&
+            selectRegiment == null)
+        {
+            return;
+        }
+
+        if (!HasEnoughCommand())
+        {
+            print(
+                "Недостатньо командного ресурсу для наказу."
+            );
+
+            return;
+        }
+
+        Vector3 mousePosition =
+            Mouse.current.position.ReadValue();
+
+        Vector3 worldPosition =
+            Camera.main.ScreenToWorldPoint(
+                mousePosition
+            );
+
+        worldPosition.z = 0f;
+
+        if (selectRegiment != null)
+        {
+            Vector3 regimentOrigin =
+                selectRegiment.anchor;
+
+            Vector3 regimentDirection =
+                worldPosition -
+                regimentOrigin;
+
+            regimentDirection.z = 0f;
+
+            if (regimentDirection.sqrMagnitude <
+                0.001f)
+            {
+                return;
+            }
+
+            regimentDirection.Normalize();
+
+            if (selectRegiment.IssueDefendOrder(
+                commandDuty,
+                regimentDirection))
+            {
+                print(
+                    "Наказ захисту полку встановлено. Напрямок: " +
+                    regimentDirection
+                );
+
+                AdvanceCommandDuty();
+            }
+            else
+            {
+                print(
+                    "Не вдалося встановити наказ захисту полку."
+                );
+            }
+
+            return;
+        }
+
+        Vector3 origin =
+            selectBattalion.GetOrderOrigin(
+                commandDuty
+            );
+
+        Vector3 direction =
+            worldPosition -
+            origin;
+
+        direction.z = 0f;
+
+        if (direction.sqrMagnitude <
+            0.001f)
+        {
+            return;
+        }
+
+        direction.Normalize();
+
+        if (selectBattalion.SetDefendOrder(
+            commandDuty,
+            direction))
+        {
+            print(
+                "Наказ захисту встановлено. Напрямок: " +
+                direction
+            );
+
+            AdvanceCommandDuty();
+        }
+        else
+        {
+            print(
+                "Не вдалося встановити наказ захисту"
+            );
+        }
+    }
+
+    // =========================================================
+    // DEPLOY
+    // =========================================================
 
     private void Deploy()
     {
-        if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
-            return;
-
-        if (!HasEnoughCommand())
+        if (!Mouse.current.rightButton.wasPressedThisFrame ||
+            selectBattalion == null)
         {
-            print("Недостатньо командного ресурсу для наказу.");
             return;
         }
 
-        Vector3 mousePosition = Mouse.current.position.ReadValue();
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
-        worldPosition.z = 0;
-
-        Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
-        Vector3 direction = worldPosition - origin;
-        direction.z = 0;
-
-        if (selectBattalion.SetDeployOrder(commandDuty, direction))
+        if (!HasEnoughCommand())
         {
-            print("Наказ розкладання/згортання встановлено.");
+            print(
+                "Недостатньо командного ресурсу для наказу."
+            );
+
+            return;
+        }
+
+        Vector3 mousePosition =
+            Mouse.current.position.ReadValue();
+
+        Vector3 worldPosition =
+            Camera.main.ScreenToWorldPoint(
+                mousePosition
+            );
+
+        worldPosition.z = 0f;
+
+        Vector3 origin =
+            selectBattalion.GetOrderOrigin(
+                commandDuty
+            );
+
+        Vector3 direction =
+            worldPosition -
+            origin;
+
+        direction.z = 0f;
+
+        if (selectBattalion.SetDeployOrder(
+            commandDuty,
+            direction))
+        {
+            print(
+                "Наказ розкладання/згортання встановлено."
+            );
+
             AdvanceCommandDuty();
         }
         else
         {
-            print("Не вдалося встановити наказ розкладання/згортання.");
+            print(
+                "Не вдалося встановити наказ розкладання/згортання."
+            );
         }
     }
+
+    // =========================================================
+    // ROTATE
+    // =========================================================
 
     private void Rotate()
     {
-        if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
-            return;
-
-        if (!HasEnoughCommand())
+        if (!Mouse.current.rightButton.wasPressedThisFrame ||
+            selectBattalion == null)
         {
-            print("Недостатньо командного ресурсу для наказу.");
             return;
         }
 
-        Vector3 mousePosition = Mouse.current.position.ReadValue();
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
-        worldPosition.z = 0;
-
-        Vector3 origin = selectBattalion.GetOrderOrigin(commandDuty);
-        Vector3 direction = worldPosition - origin;
-        direction.z = 0;
-
-        if (direction.sqrMagnitude < 0.001f)
-            return;
-
-        if (selectBattalion.SetRotateOrder(commandDuty, direction))
+        if (!HasEnoughCommand())
         {
-            print("Наказ зміни кута наведення встановлено.");
+            print(
+                "Недостатньо командного ресурсу для наказу."
+            );
+
+            return;
+        }
+
+        Vector3 mousePosition =
+            Mouse.current.position.ReadValue();
+
+        Vector3 worldPosition =
+            Camera.main.ScreenToWorldPoint(
+                mousePosition
+            );
+
+        worldPosition.z = 0f;
+
+        Vector3 origin =
+            selectBattalion.GetOrderOrigin(
+                commandDuty
+            );
+
+        Vector3 direction =
+            worldPosition -
+            origin;
+
+        direction.z = 0f;
+
+        if (direction.sqrMagnitude <
+            0.001f)
+        {
+            return;
+        }
+
+        if (selectBattalion.SetRotateOrder(
+            commandDuty,
+            direction))
+        {
+            print(
+                "Наказ зміни кута наведення встановлено."
+            );
+
             AdvanceCommandDuty();
         }
         else
         {
-            print("Не вдалося встановити наказ зміни кута.");
+            print(
+                "Не вдалося встановити наказ зміни кута."
+            );
         }
     }
+
+    // =========================================================
+    // BOMBARD
+    // =========================================================
 
     private void Bombard()
     {
-        if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
-            return;
-
-        if (!HasEnoughCommand())
+        if (!Mouse.current.rightButton.wasPressedThisFrame ||
+            selectBattalion == null)
         {
-            print("Недостатньо командного ресурсу для наказу.");
             return;
         }
 
-        Vector3 mousePosition = Mouse.current.position.ReadValue();
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
-        worldPosition.z = 0;
-
-        if (selectBattalion.SetBombardOrder(commandDuty, worldPosition))
+        if (!HasEnoughCommand())
         {
-            print("Наказ обстрілу встановлено.");
+            print(
+                "Недостатньо командного ресурсу для наказу."
+            );
+
+            return;
+        }
+
+        Vector3 mousePosition =
+            Mouse.current.position.ReadValue();
+
+        Vector3 worldPosition =
+            Camera.main.ScreenToWorldPoint(
+                mousePosition
+            );
+
+        worldPosition.z = 0f;
+
+        if (selectBattalion.SetBombardOrder(
+            commandDuty,
+            worldPosition))
+        {
+            print(
+                "Наказ обстрілу встановлено."
+            );
+
             AdvanceCommandDuty();
         }
         else
         {
-            print("Не вдалося встановити наказ обстрілу — точка поза зоною розкладки.");
+            print(
+                "Не вдалося встановити наказ обстрілу — точка поза зоною розкладки."
+            );
         }
     }
 
-    // Скільки командного ресурсу коштує наказ поточному виділенню.
-    // Полк рахується як ОДИН батальйон — береться вартість першого
-    // батальйона полку (не сума по всіх його батальйонах).
+    // =========================================================
+    // COMMAND RESOURCE
+    // =========================================================
+
     private int GetCurrentCommandCost()
     {
         if (selectRegiment != null)
         {
-            if (selectRegiment.battalions == null || selectRegiment.battalions.Count == 0)
+            if (selectRegiment.battalions == null ||
+                selectRegiment.battalions.Count == 0)
+            {
                 return 0;
+            }
 
-            for (int i = 0; i < selectRegiment.battalions.Count; i++)
+            for (int i = 0;
+                 i < selectRegiment.battalions.Count;
+                 i++)
             {
                 if (selectRegiment.battalions[i] != null)
-                    return selectRegiment.battalions[i].battalion.commandCost;
+                {
+                    return selectRegiment
+                        .battalions[i]
+                        .battalion
+                        .commandCost;
+                }
             }
 
             return 0;
         }
 
         if (selectBattalion != null)
-            return selectBattalion.battalion.commandCost;
+        {
+            return selectBattalion
+                .battalion
+                .commandCost;
+        }
 
         return 0;
     }
 
     private bool HasEnoughCommand()
     {
-        return ressurs.command >= GetCurrentCommandCost();
+        return ressurs.command >=
+               GetCurrentCommandCost();
     }
 
     private void AdvanceCommandDuty()
     {
-        ressurs.command -= GetCurrentCommandCost();
+        ressurs.command -=
+            GetCurrentCommandCost();
 
         if (ressurs.command < 0)
             ressurs.command = 0;
@@ -484,12 +909,19 @@ public class BatalionManagerScr : MonoBehaviour
         if (commandDuty < 2)
         {
             commandDuty++;
-            print("Наказ " + (commandDuty + 1));
+
+            print(
+                "Наказ " +
+                (commandDuty + 1)
+            );
 
             if (battalionUIManager != null)
-                battalionUIManager.CheckButtalion();
+            {
+                battalionUIManager
+                    .CheckButtalion();
+            }
         }
-        else if (commandDuty >= 2)
+        else
         {
             commandDuty = 0;
             selectBattalion = null;
@@ -497,224 +929,386 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
+    // =========================================================
+    // REGIMENT
+    // =========================================================
+
     public void CreateRegiment()
     {
         if (selectBattalion == null)
         {
-            Debug.LogWarning("Немає вибраного батальйону!");
+            Debug.LogWarning(
+                "Немає вибраного батальйону!"
+            );
+
             return;
         }
 
-        Regiment newRegiment = new Regiment
-        {
-            nameRegiment = "Regiment",
-            battalions = new List<BattalionScr>() { },
-            battalionType = selectBattalion.battalion.type,
-            chainMaxDistance = defaultChainMaxDistance
-        };
+        Regiment newRegiment =
+            new Regiment
+            {
+                nameRegiment = "Regiment",
 
-        newRegiment.battalions.Add(selectBattalion);
+                battalions =
+                    new List<BattalionScr>(),
+
+                battalionType =
+                    selectBattalion
+                    .battalion
+                    .type,
+
+                chainMaxDistance =
+                    defaultChainMaxDistance
+            };
+
+        newRegiment.battalions.Add(
+            selectBattalion
+        );
+
         newRegiment.RecalculateFormation();
 
-        regiments.Add(newRegiment);
+        regiments.Add(
+            newRegiment
+        );
 
-        for (int i = 0; i < regiments.Count; i++)
+        for (int i = 0;
+             i < regiments.Count;
+             i++)
         {
-            if (regiments[i] == newRegiment)
+            if (regiments[i] ==
+                newRegiment)
             {
-                selectBattalion.regimentredID = i;
+                selectBattalion.regimentredID =
+                    i;
+
                 break;
             }
         }
-        Debug.Log($"Створено полк: {newRegiment.nameRegiment}");
 
-        battalionUIManager.RefreshRegimentButtons();
+        Debug.Log(
+            $"Створено полк: {newRegiment.nameRegiment}"
+        );
+
+        if (battalionUIManager != null)
+        {
+            battalionUIManager
+                .RefreshRegimentButtons();
+        }
     }
 
-    public void AddRegiment(BattalionScr battalion, Regiment regiment)
+    public void AddRegiment(
+        BattalionScr battalion,
+        Regiment regiment)
     {
-        if (battalion == null || regiment == null)
+        if (battalion == null ||
+            regiment == null)
         {
-            print("Не вдалося додати до полку: не вибрано батальйон.");
+            print(
+                "Не вдалося додати до полку: не вибрано батальйон."
+            );
+
             return;
         }
 
-        if (battalion.battalion.type != regiment.battalionType)
+        if (battalion.battalion.type !=
+            regiment.battalionType)
         {
-            print($"Не вдалося додати до полку: батальйон типу {battalion.battalion.type}, а полк — {regiment.battalionType} (полк приймає лише один тип).");
+            print(
+                $"Не вдалося додати до полку: батальйон типу {battalion.battalion.type}, а полк — {regiment.battalionType}."
+            );
+
             return;
         }
 
-        if (regiment.battalions.Contains(battalion))
+        if (regiment.battalions.Contains(
+            battalion))
         {
-            print("Батальйон уже в цьому полку.");
+            print(
+                "Батальйон уже в цьому полку."
+            );
+
             return;
         }
 
-        for (int i = 0; i < regiments.Count; i++)
+        for (int i = 0;
+             i < regiments.Count;
+             i++)
         {
-            Regiment other = regiments[i];
+            Regiment other =
+                regiments[i];
 
-            if (other != regiment && other.battalions.Contains(battalion))
+            if (other != regiment &&
+                other.battalions.Contains(
+                    battalion))
             {
-                RemovRegiment(battalion, other);
+                RemovRegiment(
+                    battalion,
+                    other
+                );
+
                 break;
             }
         }
 
-        // Умова додавання: один тип (перевірено вище) + близька відстань
-        // ХОЧА Б до одного вже наявного батальйона полку — не обов'язково
-        // до "кінця" списку. Порядок ланцюга після цього перебудовується
-        // автоматично (RecalculateFormation -> ReorderChainByProximity),
-        // тож немає ризику "перескочити" через когось, хто стоїть ближче.
         if (regiment.battalions.Count > 0)
         {
-            float nearestDistance = float.MaxValue;
+            float nearestDistance =
+                float.MaxValue;
 
-            for (int i = 0; i < regiment.battalions.Count; i++)
+            for (int i = 0;
+                 i < regiment.battalions.Count;
+                 i++)
             {
-                if (regiment.battalions[i] == null)
+                if (regiment.battalions[i] ==
+                    null)
+                {
                     continue;
+                }
 
-                float dist = Vector3.Distance(battalion.transform.position, regiment.battalions[i].transform.position);
-                nearestDistance = Mathf.Min(nearestDistance, dist);
+                float distance =
+                    Vector3.Distance(
+                        battalion.transform.position,
+                        regiment.battalions[i]
+                            .transform.position
+                    );
+
+                nearestDistance =
+                    Mathf.Min(
+                        nearestDistance,
+                        distance
+                    );
             }
 
-            if (nearestDistance > regiment.chainMaxDistance)
+            if (nearestDistance >
+                regiment.chainMaxDistance)
             {
-                print($"Не вдалося додати до полку: задалеко від найближчого батальйона полку ({nearestDistance:0.##} > {regiment.chainMaxDistance:0.##}).");
+                print(
+                    $"Не вдалося додати до полку: задалеко від найближчого батальйона ({nearestDistance:0.##} > {regiment.chainMaxDistance:0.##})."
+                );
+
                 return;
             }
         }
 
-        regiment.battalions.Add(battalion);
+        regiment.battalions.Add(
+            battalion
+        );
 
-        for (int i = 0; i < regiments.Count; i++)
+        for (int i = 0;
+             i < regiments.Count;
+             i++)
         {
             if (regiments[i] == regiment)
             {
-                battalion.regimentredID = i;
+                battalion.regimentredID =
+                    i;
+
                 break;
             }
         }
 
-        // Перебудовує і порядок ланцюга (nearest-neighbor), і anchor/offset.
         regiment.RecalculateFormation();
 
         if (battalionUIManager != null)
-            battalionUIManager.RefreshRegimentButtons();
+        {
+            battalionUIManager
+                .RefreshRegimentButtons();
+        }
     }
 
-    public void RemovRegiment(BattalionScr battalion, Regiment regiment)
+    public void RemovRegiment(
+        BattalionScr battalion,
+        Regiment regiment)
     {
-        if (battalion == null || regiment == null)
+        if (battalion == null ||
+            regiment == null)
+        {
             return;
+        }
 
-        if (!regiment.battalions.Contains(battalion))
+        if (!regiment.battalions.Contains(
+            battalion))
+        {
             return;
+        }
 
-        regiment.battalions.Remove(battalion);
+        regiment.battalions.Remove(
+            battalion
+        );
+
         battalion.regimentredID = -1;
+
         regiment.RecalculateFormation();
 
         if (regiment.battalions.Count < 1)
         {
-            DestroyRegiment(regiment);
+            DestroyRegiment(
+                regiment
+            );
         }
 
         if (battalionUIManager != null)
-            battalionUIManager.RefreshRegimentButtons();
+        {
+            battalionUIManager
+                .RefreshRegimentButtons();
+        }
     }
 
-    public void DestroyRegiment(Regiment regiment)
+    public void DestroyRegiment(
+        Regiment regiment)
     {
-        regiments.Remove(regiment);
-
-        if (selectRegiment == regiment)
-            selectRegiment = null;
-
-        if (battalionUIManager != null)
-            battalionUIManager.RefreshRegimentButtons();
-    }
-
-    public void SelectRegimentUnit(Regiment regiment)
-    {
-        commandType = CommandType.None;
+        regiments.Remove(
+            regiment
+        );
 
         if (selectRegiment == regiment)
         {
             selectRegiment = null;
-            battalionUIManager.CommandPanel(false);
+        }
+
+        if (battalionUIManager != null)
+        {
+            battalionUIManager
+                .RefreshRegimentButtons();
+        }
+    }
+
+    public void SelectRegimentUnit(
+        Regiment regiment)
+    {
+        commandType =
+            CommandType.None;
+
+        if (selectRegiment == regiment)
+        {
+            selectRegiment = null;
+
+            if (battalionUIManager != null)
+            {
+                battalionUIManager
+                    .CommandPanel(false);
+            }
         }
         else
         {
             selectBattalion = null;
-            selectRegiment = regiment;
-            battalionUIManager.CommandPanel(true);
+
+            selectRegiment =
+                regiment;
+
+            if (battalionUIManager != null)
+            {
+                battalionUIManager
+                    .CommandPanel(true);
+            }
         }
     }
 
-    public void SelectBattalion(BattalionScr battalion)
+    public void SelectBattalion(
+        BattalionScr battalion)
     {
-        commandType = CommandType.None;
-        battalion.isSelect.SetActive(true);
+        if (battalion == null)
+            return;
+
+        commandType =
+            CommandType.None;
+
+        if (battalion.isSelect != null)
+        {
+            battalion.isSelect
+                .SetActive(true);
+        }
+
         if (teamID == battalion.teamID)
         {
-            if (selectBattalion == battalion)
+            if (selectBattalion ==
+                battalion)
             {
-                selectBattalion = null;
-                battalionUIManager.CommandPanel(false);
+                selectBattalion =
+                    null;
+
+                if (battalionUIManager != null)
+                {
+                    battalionUIManager
+                        .CommandPanel(false);
+                }
             }
             else
             {
-                selectRegiment = null;
-                selectBattalion = battalion;
-                battalionUIManager.CommandPanel(true);
+                selectRegiment =
+                    null;
+
+                selectBattalion =
+                    battalion;
+
+                if (battalionUIManager != null)
+                {
+                    battalionUIManager
+                        .CommandPanel(true);
+                }
             }
 
-            print(battalion.nameBattalion);
+            print(
+                battalion.nameBattalion
+            );
         }
     }
 
-    public void SetCommandType(int type)
+    // =========================================================
+    // COMMAND TYPE
+    // =========================================================
+
+    public void SetCommandType(
+        int type)
     {
         switch (type)
         {
             case 0:
-                commandType = CommandType.None;
+                commandType =
+                    CommandType.None;
                 break;
 
             case 1:
-                commandType = CommandType.Move;
+                commandType =
+                    CommandType.Move;
                 break;
 
             case 2:
-                commandType = CommandType.Attack;
+                commandType =
+                    CommandType.Attack;
                 break;
 
             case 3:
-                commandType = CommandType.Defend;
+                commandType =
+                    CommandType.Defend;
                 break;
 
             case 4:
-                commandType = CommandType.Deploy;
+                commandType =
+                    CommandType.Deploy;
                 break;
 
             case 5:
-                commandType = CommandType.Rotate;
+                commandType =
+                    CommandType.Rotate;
                 break;
 
             case 6:
-                commandType = CommandType.Bombard;
+                commandType =
+                    CommandType.Bombard;
                 break;
 
             default:
-                commandType = CommandType.None;
+                commandType =
+                    CommandType.None;
                 break;
         }
 
         if (battalionUIManager != null)
-            battalionUIManager.CheckButtalion();
+        {
+            battalionUIManager
+                .CheckButtalion();
+        }
     }
 }
 
@@ -729,60 +1323,102 @@ public class RegimentMember
 public class Regiment
 {
     public Officer officer;
+
     public string nameRegiment;
-    public List<BattalionScr> battalions = new List<BattalionScr>();
+
+    public List<BattalionScr> battalions =
+        new List<BattalionScr>();
+
     public BattalionType battalionType;
+
     public float chainMaxDistance = 6f;
 
-    public List<RegimentMember> members = new List<RegimentMember>();
+    public List<RegimentMember> members =
+        new List<RegimentMember>();
+
     public Vector3 anchor;
 
     public void ReorderChainByProximity()
     {
-        if (battalions == null || battalions.Count <= 2)
+        if (battalions == null ||
+            battalions.Count <= 2)
+        {
             return;
+        }
 
-        List<BattalionScr> remaining = new List<BattalionScr>();
+        List<BattalionScr> remaining =
+            new List<BattalionScr>();
 
-        for (int i = 0; i < battalions.Count; i++)
+        for (int i = 0;
+             i < battalions.Count;
+             i++)
         {
             if (battalions[i] != null)
-                remaining.Add(battalions[i]);
+            {
+                remaining.Add(
+                    battalions[i]
+                );
+            }
         }
 
         if (remaining.Count <= 2)
             return;
 
-        List<BattalionScr> ordered = new List<BattalionScr>();
+        List<BattalionScr> ordered =
+            new List<BattalionScr>();
 
-        // Починаємо саме з поточного першого елемента — щоб порядок не
-        // "стрибав" довільно щоразу, коли перебудова взагалі не потрібна.
-        BattalionScr current = remaining[0];
+        BattalionScr current =
+            remaining[0];
+
         ordered.Add(current);
+
         remaining.RemoveAt(0);
 
         while (remaining.Count > 0)
         {
             int nearestIndex = 0;
-            float nearestDist = float.MaxValue;
 
-            for (int i = 0; i < remaining.Count; i++)
+            float nearestDistance =
+                float.MaxValue;
+
+            for (int i = 0;
+                 i < remaining.Count;
+                 i++)
             {
-                float dist = Vector3.Distance(current.transform.position, remaining[i].transform.position);
+                float distance =
+                    Vector3.Distance(
+                        current.transform.position,
+                        remaining[i]
+                            .transform.position
+                    );
 
-                if (dist < nearestDist)
+                if (distance <
+                    nearestDistance)
                 {
-                    nearestDist = dist;
-                    nearestIndex = i;
+                    nearestDistance =
+                        distance;
+
+                    nearestIndex =
+                        i;
                 }
             }
 
-            current = remaining[nearestIndex];
-            ordered.Add(current);
-            remaining.RemoveAt(nearestIndex);
+            current =
+                remaining[
+                    nearestIndex
+                ];
+
+            ordered.Add(
+                current
+            );
+
+            remaining.RemoveAt(
+                nearestIndex
+            );
         }
 
-        battalions = ordered;
+        battalions =
+            ordered;
     }
 
     public void RecalculateFormation()
@@ -791,18 +1427,28 @@ public class Regiment
 
         members.Clear();
 
-        if (battalions == null || battalions.Count == 0)
+        if (battalions == null ||
+            battalions.Count == 0)
+        {
             return;
+        }
 
-        Vector3 center = Vector3.zero;
+        Vector3 center =
+            Vector3.zero;
+
         int counted = 0;
 
-        for (int i = 0; i < battalions.Count; i++)
+        for (int i = 0;
+             i < battalions.Count;
+             i++)
         {
             if (battalions[i] == null)
                 continue;
 
-            center += battalions[i].transform.position;
+            center +=
+                battalions[i]
+                    .transform.position;
+
             counted++;
         }
 
@@ -810,186 +1456,315 @@ public class Regiment
             return;
 
         center /= counted;
+
         center.z = 0f;
 
-        anchor = center;
+        anchor =
+            center;
 
-        for (int i = 0; i < battalions.Count; i++)
+        for (int i = 0;
+             i < battalions.Count;
+             i++)
         {
             if (battalions[i] == null)
                 continue;
 
-            Vector3 offset = battalions[i].transform.position - center;
+            Vector3 offset =
+                battalions[i]
+                    .transform.position -
+                center;
+
             offset.z = 0f;
 
-            members.Add(new RegimentMember { battalion = battalions[i], offset = offset });
+            members.Add(
+                new RegimentMember
+                {
+                    battalion =
+                        battalions[i],
+
+                    offset =
+                        offset
+                }
+            );
         }
     }
 
     public float GetSlowestSpeed()
     {
-        float slowest = float.MaxValue;
+        float slowest =
+            float.MaxValue;
 
-        for (int i = 0; i < battalions.Count; i++)
+        for (int i = 0;
+             i < battalions.Count;
+             i++)
         {
             if (battalions[i] == null)
                 continue;
 
-            slowest = Mathf.Min(slowest, battalions[i].battalion.speed);
+            slowest =
+                Mathf.Min(
+                    slowest,
+                    battalions[i]
+                        .battalion
+                        .speed
+                );
         }
 
-        return slowest == float.MaxValue ? 0f : slowest;
+        return slowest ==
+               float.MaxValue
+            ? 0f
+            : slowest;
     }
 
-    // Обрізає бажану ціль руху ОКРЕМОГО батальйона-члена полку відстанню
-    // до його сусідів по ланцюгу (i-1, i+1 у battalions). Використовується,
-    // коли гравець керує цим батальйоном НАПРЯМУ (не через сам полк) —
-    // без цього наказ окремому батальйону повністю ігнорував ланцюг, і він
-    // міг "втекти" від решти полку на будь-яку відстань.
-    public Vector3 ClampToChainNeighbors(BattalionScr battalion, Vector3 desiredPos, int slot)
+    public Vector3 ClampToChainNeighbors(
+        BattalionScr battalion,
+        Vector3 desiredPos,
+        int slot)
     {
         if (battalions == null)
             return desiredPos;
 
-        int index = battalions.IndexOf(battalion);
+        int index =
+            battalions.IndexOf(
+                battalion
+            );
 
         if (index < 0)
             return desiredPos;
 
-        Vector3 result = desiredPos;
+        Vector3 result =
+            desiredPos;
 
         if (index > 0)
-            result = ClampAgainstNeighbor(result, battalions[index - 1], slot);
+        {
+            result =
+                ClampAgainstNeighbor(
+                    result,
+                    battalions[index - 1],
+                    slot
+                );
+        }
 
-        if (index < battalions.Count - 1)
-            result = ClampAgainstNeighbor(result, battalions[index + 1], slot);
+        if (index <
+            battalions.Count - 1)
+        {
+            result =
+                ClampAgainstNeighbor(
+                    result,
+                    battalions[index + 1],
+                    slot
+                );
+        }
 
         return result;
     }
 
-    private Vector3 ClampAgainstNeighbor(Vector3 desiredPos, BattalionScr neighbor, int slot)
+    private Vector3 ClampAgainstNeighbor(
+        Vector3 desiredPos,
+        BattalionScr neighbor,
+        int slot)
     {
-        if (neighbor == null || chainMaxDistance <= 0f)
+        if (neighbor == null ||
+            chainMaxDistance <= 0f)
+        {
             return desiredPos;
+        }
 
-        Vector3 neighborPos = neighbor.GetOrderOrigin(slot);
+        Vector3 neighborPos =
+            neighbor.GetOrderOrigin(
+                slot
+            );
+
         neighborPos.z = 0f;
 
-        Vector3 toDesired = desiredPos - neighborPos;
+        Vector3 toDesired =
+            desiredPos -
+            neighborPos;
+
         toDesired.z = 0f;
 
-        if (toDesired.magnitude > chainMaxDistance)
-            return neighborPos + toDesired.normalized * chainMaxDistance;
+        if (toDesired.magnitude >
+            chainMaxDistance)
+        {
+            return
+                neighborPos +
+                toDesired.normalized *
+                chainMaxDistance;
+        }
 
         return desiredPos;
     }
 
-    public bool IssueMoveOrder(int slot, Vector3 newAnchor)
+    public bool IssueMoveOrder(
+        int slot,
+        Vector3 newAnchor)
     {
-        if (battalions == null || battalions.Count == 0)
+        if (battalions == null ||
+            battalions.Count == 0)
+        {
             return false;
+        }
 
-        if (members.Count != battalions.Count)
+        if (members.Count !=
+            battalions.Count)
+        {
             RecalculateFormation();
+        }
 
         newAnchor.z = 0f;
 
-        bool anySucceeded = false;
+        bool anySucceeded =
+            false;
 
-        // Ланцюг обробляється послідовно за порядком members (== порядок
-        // battalions): кожен наступний батальйон обмежений відстанню до
-        // ФАКТИЧНОЇ точки зупинки попереднього (не бажаної цілі) — якщо
-        // когось затримав рельєф, ланцюг не дозволить іншим "втекти" далі
-        // ліміту.
-        Vector3? previousResolvedPos = null;
+        Vector3? previousResolvedPos =
+            null;
 
-        for (int i = 0; i < members.Count; i++)
+        for (int i = 0;
+             i < members.Count;
+             i++)
         {
-            BattalionScr battalion = members[i].battalion;
+            BattalionScr battalion =
+                members[i]
+                    .battalion;
 
             if (battalion == null)
                 continue;
 
-            Vector3 targetPos = newAnchor + members[i].offset;
+            Vector3 targetPos =
+                newAnchor +
+                members[i].offset;
+
             targetPos.z = 0f;
 
-            if (previousResolvedPos.HasValue && chainMaxDistance > 0f)
+            if (previousResolvedPos.HasValue &&
+                chainMaxDistance > 0f)
             {
-                Vector3 toTarget = targetPos - previousResolvedPos.Value;
+                Vector3 toTarget =
+                    targetPos -
+                    previousResolvedPos.Value;
+
                 toTarget.z = 0f;
 
-                if (toTarget.magnitude > chainMaxDistance)
-                    targetPos = previousResolvedPos.Value + toTarget.normalized * chainMaxDistance;
+                if (toTarget.magnitude >
+                    chainMaxDistance)
+                {
+                    targetPos =
+                        previousResolvedPos.Value +
+                        toTarget.normalized *
+                        chainMaxDistance;
+                }
             }
 
-            bool moved = battalion.SetMoveOrder(slot, targetPos);
+            bool moved =
+                battalion.SetMoveOrder(
+                    slot,
+                    targetPos
+                );
 
             if (moved)
                 anySucceeded = true;
 
-            // Фактична точка, де батальйон реально стане цього ходу
-            // (SetMoveOrder уже врахував рельєф і зберіг це в command[slot]).
-            // Якщо наказ не вдався — лишається на своєму origin.
             Vector3 resolvedPos;
 
             if (battalion.command != null &&
-                slot >= 0 && slot < battalion.command.Length &&
-                battalion.command[slot] is MoveCommand resolvedMove &&
+                slot >= 0 &&
+                slot <
+                battalion.command.Length &&
+                battalion.command[slot]
+                is MoveCommand resolvedMove &&
                 resolvedMove.isSet)
             {
-                resolvedPos = resolvedMove.pos;
+                resolvedPos =
+                    resolvedMove.pos;
             }
             else
             {
-                resolvedPos = battalion.GetOrderOrigin(slot);
+                resolvedPos =
+                    battalion.GetOrderOrigin(
+                        slot
+                    );
             }
 
-            previousResolvedPos = resolvedPos;
+            previousResolvedPos =
+                resolvedPos;
         }
 
         if (anySucceeded)
-            anchor = newAnchor;
-
-        return anySucceeded;
-    }
-
-    public bool IssueAttackOrder(int slot, Vector3 direction, float desiredMoveDistance)
-    {
-        if (battalions == null || battalions.Count == 0)
-            return false;
-
-        bool anySucceeded = false;
-
-        for (int i = 0; i < battalions.Count; i++)
         {
-            BattalionScr battalion = battalions[i];
-
-            if (battalion == null)
-                continue;
-
-            if (battalion.SetAttackOrder(slot, direction, desiredMoveDistance))
-                anySucceeded = true;
+            anchor =
+                newAnchor;
         }
 
         return anySucceeded;
     }
 
-    public bool IssueDefendOrder(int slot, Vector3 direction)
+    public bool IssueAttackOrder(
+        int slot,
+        Vector3 direction,
+        float desiredMoveDistance)
     {
-        if (battalions == null || battalions.Count == 0)
-            return false;
-
-        bool anySucceeded = false;
-
-        for (int i = 0; i < battalions.Count; i++)
+        if (battalions == null ||
+            battalions.Count == 0)
         {
-            BattalionScr battalion = battalions[i];
+            return false;
+        }
+
+        bool anySucceeded =
+            false;
+
+        for (int i = 0;
+             i < battalions.Count;
+             i++)
+        {
+            BattalionScr battalion =
+                battalions[i];
 
             if (battalion == null)
                 continue;
 
-            if (battalion.SetDefendOrder(slot, direction))
-                anySucceeded = true;
+            if (battalion.SetAttackOrder(
+                slot,
+                direction,
+                desiredMoveDistance))
+            {
+                anySucceeded =
+                    true;
+            }
+        }
+
+        return anySucceeded;
+    }
+
+    public bool IssueDefendOrder(
+        int slot,
+        Vector3 direction)
+    {
+        if (battalions == null ||
+            battalions.Count == 0)
+        {
+            return false;
+        }
+
+        bool anySucceeded =
+            false;
+
+        for (int i = 0;
+             i < battalions.Count;
+             i++)
+        {
+            BattalionScr battalion =
+                battalions[i];
+
+            if (battalion == null)
+                continue;
+
+            if (battalion.SetDefendOrder(
+                slot,
+                direction))
+            {
+                anySucceeded =
+                    true;
+            }
         }
 
         return anySucceeded;
@@ -999,24 +1774,41 @@ public class Regiment
 [System.Serializable]
 public class Ressurs
 {
-    public int personnel, supplies, command, commandMax, planning;
+    public int personnel;
+    public int supplies;
+    public int command;
+    public int commandMax;
+    public int planning;
+
     public float discount;
 
-    public void ByePersonnel(float price, int number)
+    public void ByePersonnel(
+        float price,
+        int number)
     {
-        if ((price * discount) <= command)
+        if ((price * discount) <=
+            command)
         {
-            command -= (int)(price * discount);
-            personnel += number;
+            command -=
+                (int)(price * discount);
+
+            personnel +=
+                number;
         }
     }
 
-    public void ByeSupplies(float price, int number)
+    public void ByeSupplies(
+        float price,
+        int number)
     {
-        if ((price * discount) <= command)
+        if ((price * discount) <=
+            command)
         {
-            command -= (int)(price * discount);
-            supplies += number;
+            command -=
+                (int)(price * discount);
+
+            supplies +=
+                number;
         }
     }
 }
