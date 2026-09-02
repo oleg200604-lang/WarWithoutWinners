@@ -12,6 +12,7 @@ public class BattalionScr : MonoBehaviour
     [Space]
     public string nameBattalion;
     public Personnel personnel;
+    public Ammo ammo;
     public Battalion battalion;
     public int teamID;
     public int regimentredID = -1;
@@ -58,6 +59,8 @@ public class BattalionScr : MonoBehaviour
 
         baseBattalion = battalion.Clone();
         basePersonnelMax = personnel.personnelMax;
+
+        ammo.current = Mathf.Clamp(ammo.current, 0, ammo.max);
 
         RecalculateStats();
     }
@@ -834,6 +837,14 @@ public class BattalionScr : MonoBehaviour
                 // час виконання наказу атаки (рух + постріл).
                 EnterAttackContext();
 
+                if (!ammo.HasEnough(battalion.ammoCostPerAction))
+                {
+                    print(nameBattalion + ": немає боєприпасів для атаки — наказ не виконано.");
+                    ExitCombatContext();
+                    yield return new WaitForSeconds(orderDuration);
+                    continue;
+                }
+
                 Vector3 start = transform.position;
 
                 Vector3 target = start + attack.direction * attack.moveDistance;
@@ -860,6 +871,8 @@ public class BattalionScr : MonoBehaviour
 
                         if (hitTarget != null)
                         {
+                            ammo.TrySpend(battalion.ammoCostPerAction);
+
                             float damage = ComputeAttackDamage();
 
                             hitTarget.TakeDamage(damage, battalion.murder, battalion.injury);
@@ -908,11 +921,18 @@ public class BattalionScr : MonoBehaviour
 
                         if (hitTarget != null)
                         {
-                            float damage = ComputeAttackDamage();
+                            if (!ammo.TrySpend(battalion.ammoCostPerAction))
+                            {
+                                print(nameBattalion + ": немає боєприпасів для пострілу в захисті.");
+                            }
+                            else
+                            {
+                                float damage = ComputeAttackDamage();
 
-                            hitTarget.TakeDamage(damage, battalion.murder, battalion.injury);
+                                hitTarget.TakeDamage(damage, battalion.murder, battalion.injury);
 
-                            print(nameBattalion + ": захист влучив по " + hitTarget.nameBattalion);
+                                print(nameBattalion + ": захист влучив по " + hitTarget.nameBattalion);
+                            }
 
                             hasFired = true;
                         }
@@ -963,7 +983,11 @@ public class BattalionScr : MonoBehaviour
                 // для бонусів рот з умовою AttackOnly/AttackAndDefend.
                 EnterAttackContext();
 
-                if (attackSystem == null)
+                if (!ammo.HasEnough(battalion.ammoCostPerAction))
+                {
+                    print(nameBattalion + ": немає боєприпасів для обстрілу — наказ не виконано.");
+                }
+                else if (attackSystem == null)
                 {
                     Debug.LogWarning(nameBattalion + ": attackSystem не призначено — обстріл не завдає шкоди.", this);
                 }
@@ -973,6 +997,8 @@ public class BattalionScr : MonoBehaviour
 
                     if (hitTargets.Count > 0)
                     {
+                        ammo.TrySpend(battalion.ammoCostPerAction);
+
                         float damage = ComputeAttackDamage();
 
                         foreach (
@@ -1003,6 +1029,42 @@ public class BattalionScr : MonoBehaviour
         }
 
         ClearAllOrders();
+    }
+
+    // Скільки бракує особового складу до максимуму (боєздатні + небоєздатні < максимум).
+    public int GetMissingPersonnel()
+    {
+        int missing = personnel.personnelMax - (personnel.combatCapable + personnel.combatCapableNo);
+        return missing > 0 ? missing : 0;
+    }
+
+    // Додає amount новобранців (боєздатних) і "розмазує" середній досвід
+    // батальйону: новобранці мають досвід 0, тож середнє зважується
+    // старою і новою кількістю особового складу. Повертає фактично
+    // додану кількість (обрізану до того, скільки реально бракувало).
+    public int ReinforcePersonnel(int amount)
+    {
+        int missing = GetMissingPersonnel();
+
+        int actualAmount = Mathf.Min(amount, missing);
+
+        if (actualAmount <= 0)
+            return 0;
+
+        int oldTotal = personnel.combatCapable + personnel.combatCapableNo;
+        int newTotal = oldTotal + actualAmount;
+
+        if (newTotal > 0)
+        {
+            // Новобранці рахуються з досвідом 0, тому загальна сума
+            // досвіду не змінюється — лише "розмазується" на більшу
+            // кількість людей.
+            personnel.experience = personnel.experience * oldTotal / newTotal;
+        }
+
+        personnel.combatCapable += actualAmount;
+
+        return actualAmount;
     }
 
     public bool AddCompany(int selectCompany, CompanyType compan)
@@ -1233,6 +1295,10 @@ public class Personnel
     public int combatCapableNo;
     public int organization;
     public int organizationMax;
+
+    [Tooltip("Середній досвід особового складу батальйону (0..100). При поповненні розмазується на нове поповнення (у новобранців досвід = 0).")]
+    [Range(0f, 100f)]
+    public float experience;
     public void Losses(float deadRatio, float earlyRatio, float damage, BarScr bar)
     {
         if (damage <= 0)
@@ -1282,6 +1348,35 @@ public class Personnel
 }
 
 
+[System.Serializable]
+public class Ammo
+{
+    public int current;
+    public int max;
+
+    public bool HasEnough(int cost)
+    {
+        return current >= cost;
+    }
+
+    public bool TrySpend(int cost)
+    {
+        if (cost <= 0)
+            return true;
+
+        if (current < cost)
+            return false;
+
+        current -= cost;
+        return true;
+    }
+
+    public void Add(int amount)
+    {
+        current = Mathf.Clamp(current + amount, 0, max);
+    }
+}
+
 public enum CommandType
 {
     None, Move, Attack, Defend, Deploy, Rotate, Bombard
@@ -1311,6 +1406,13 @@ public class Battalion
     public float murder;
     public float injury;
     public float speed;
+
+    [Header("Ресурси")]
+    [Tooltip("Скільки боєприпасів витрачається на одну активну дію (постріл при атаці/захисті/обстрілі).")]
+    public int ammoCostPerAction = 10;
+    [Tooltip("Скільки командного ресурсу коштує ОДИН наказ цьому батальйону. Полк рахується як один батальйон — береться це значення з першого батальйона полку.")]
+    public int commandCost = 1;
+
     public Battalion Clone()
     {
         return new Battalion
@@ -1322,7 +1424,9 @@ public class Battalion
             damage = damage,
             murder = murder,
             injury = injury,
-            speed = speed
+            speed = speed,
+            ammoCostPerAction = ammoCostPerAction,
+            commandCost = commandCost
         };
     }
 }

@@ -14,6 +14,8 @@ public class BatalionManagerScr : MonoBehaviour
     public List<Regiment> regiments;
     public CommandType commandType;
     public Ressurs ressurs = new Ressurs();
+    [Tooltip("Пункти поповнення боєприпасів (Void), що належать цій команді.")]
+    public List<AmmoDepotScr> ammoDepots;
     private int commandDuty;
     public bool isRedy;
     public int CommandDuty => commandDuty;
@@ -88,11 +90,61 @@ public class BatalionManagerScr : MonoBehaviour
         {
             ressurs.command = ressurs.commandMax;
         }
+
+        ResupplyAmmoDepots();
+
         isRedy = true;
         battleManager.IsSrtart();
         selectBattalion = null;
         selectRegiment = null;
         battalionUIManager.CommandPanel(false);
+    }
+
+    // Поповнення боєприпасами всіх батальйонів команди, що зараз стоять
+    // у зоні дії будь-якого з "Void" пунктів поповнення (ammoDepots).
+    // Витрачає глобальний запас ressurs.supplies.
+    private void ResupplyAmmoDepots()
+    {
+        if (ammoDepots == null)
+            return;
+
+        for (int i = 0; i < ammoDepots.Count; i++)
+        {
+            if (ammoDepots[i] != null)
+                ammoDepots[i].ResupplyInRange(this);
+        }
+    }
+
+    // Поповнює особовий склад батальйону з глобального людського ресурсу
+    // (ressurs.personnel), лише якщо боєздатні+небоєздатні < максимуму.
+    // Частина досвіду розмазується на новобранців (їхній досвід = 0).
+    // Повертає фактично додану кількість людей.
+    public int ReinforceBattalion(BattalionScr battalion, int amount)
+    {
+        if (battalion == null || amount <= 0)
+            return 0;
+
+        int missing = battalion.GetMissingPersonnel();
+
+        if (missing <= 0)
+        {
+            print(battalion.nameBattalion + ": особовий склад уже повний.");
+            return 0;
+        }
+
+        int affordable = Mathf.Min(amount, missing, ressurs.personnel);
+
+        if (affordable <= 0)
+        {
+            print("Недостатньо людського ресурсу для поповнення.");
+            return 0;
+        }
+
+        int actuallyAdded = battalion.ReinforcePersonnel(affordable);
+
+        ressurs.personnel -= actuallyAdded;
+
+        return actuallyAdded;
     }
 
     private void Move()
@@ -102,6 +154,12 @@ public class BatalionManagerScr : MonoBehaviour
 
         if (selectBattalion == null && selectRegiment == null)
             return;
+
+        if (!HasEnoughCommand())
+        {
+            print("Недостатньо командного ресурсу для наказу.");
+            return;
+        }
 
         Vector3 mousePosition =
             Mouse.current.position.ReadValue();
@@ -165,6 +223,12 @@ public class BatalionManagerScr : MonoBehaviour
         if (selectBattalion == null && selectRegiment == null)
             return;
 
+        if (!HasEnoughCommand())
+        {
+            print("Недостатньо командного ресурсу для наказу.");
+            return;
+        }
+
         Vector3 mousePosition = Mouse.current.position.ReadValue();
         Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
         worldPosition.z = 0;
@@ -222,6 +286,12 @@ public class BatalionManagerScr : MonoBehaviour
 
         if (selectBattalion == null && selectRegiment == null)
             return;
+
+        if (!HasEnoughCommand())
+        {
+            print("Недостатньо командного ресурсу для наказу.");
+            return;
+        }
 
         Vector3 mousePosition =
             Mouse.current.position.ReadValue();
@@ -286,6 +356,12 @@ public class BatalionManagerScr : MonoBehaviour
         if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
             return;
 
+        if (!HasEnoughCommand())
+        {
+            print("Недостатньо командного ресурсу для наказу.");
+            return;
+        }
+
         Vector3 mousePosition = Mouse.current.position.ReadValue();
         Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
         worldPosition.z = 0;
@@ -309,6 +385,12 @@ public class BatalionManagerScr : MonoBehaviour
     {
         if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
             return;
+
+        if (!HasEnoughCommand())
+        {
+            print("Недостатньо командного ресурсу для наказу.");
+            return;
+        }
 
         Vector3 mousePosition = Mouse.current.position.ReadValue();
         Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
@@ -337,6 +419,12 @@ public class BatalionManagerScr : MonoBehaviour
         if (!Mouse.current.rightButton.wasPressedThisFrame || selectBattalion == null)
             return;
 
+        if (!HasEnoughCommand())
+        {
+            print("Недостатньо командного ресурсу для наказу.");
+            return;
+        }
+
         Vector3 mousePosition = Mouse.current.position.ReadValue();
         Vector3 worldPosition = Camera.main.ScreenToWorldPoint(mousePosition);
         worldPosition.z = 0;
@@ -352,8 +440,43 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
+    // Скільки командного ресурсу коштує наказ поточному виділенню.
+    // Полк рахується як ОДИН батальйон — береться вартість першого
+    // батальйона полку (не сума по всіх його батальйонах).
+    private int GetCurrentCommandCost()
+    {
+        if (selectRegiment != null)
+        {
+            if (selectRegiment.battalions == null || selectRegiment.battalions.Count == 0)
+                return 0;
+
+            for (int i = 0; i < selectRegiment.battalions.Count; i++)
+            {
+                if (selectRegiment.battalions[i] != null)
+                    return selectRegiment.battalions[i].battalion.commandCost;
+            }
+
+            return 0;
+        }
+
+        if (selectBattalion != null)
+            return selectBattalion.battalion.commandCost;
+
+        return 0;
+    }
+
+    private bool HasEnoughCommand()
+    {
+        return ressurs.command >= GetCurrentCommandCost();
+    }
+
     private void AdvanceCommandDuty()
     {
+        ressurs.command -= GetCurrentCommandCost();
+
+        if (ressurs.command < 0)
+            ressurs.command = 0;
+
         if (commandDuty < 2)
         {
             commandDuty++;
