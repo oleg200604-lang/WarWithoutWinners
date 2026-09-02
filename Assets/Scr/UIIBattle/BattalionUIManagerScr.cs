@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.UI;
+using TMPro;
 
 public class BattalionUIManagerScr : MonoBehaviour
 {
@@ -10,10 +11,58 @@ public class BattalionUIManagerScr : MonoBehaviour
     [Header("Артилерія: розкладка / обстріл")]
     public GameObject deployButton, undeployButton, rotateButton, bombardButton;
 
+    [Header("Людський ресурс")]
+    public Button reinforceButton;
+    [Tooltip("Скільки особового складу додається за одне натискання кнопки поповнення.")]
+    public int reinforceAmountPerClick = 10;
+
+    [Header("HUD глобальних ресурсів (необов'язково)")]
+    public TextMeshProUGUI personnelText;
+    public TextMeshProUGUI suppliesText;
+    public TextMeshProUGUI commandText;
+
     [Header("По одному слоту buttonRegiment на кожен можливий полк")]
     public List<RegimentButtonGroup> regimentButtonGroups;
 
     public BatalionManagerScr batalionManager;
+
+    private void Awake()
+    {
+        if (reinforceButton != null)
+        {
+            reinforceButton.onClick.AddListener(() =>
+            {
+                if (batalionManager.selectBattalion != null)
+                {
+                    batalionManager.ReinforceBattalion(batalionManager.selectBattalion, reinforceAmountPerClick);
+                    CheckButtalion();
+                }
+            });
+        }
+    }
+
+    private void Update()
+    {
+        RefreshResourceHud();
+    }
+
+    private void RefreshResourceHud()
+    {
+        if (batalionManager == null)
+            return;
+
+        Ressurs r = batalionManager.ressurs;
+
+        if (personnelText != null)
+            personnelText.text = r.personnel.ToString();
+
+        if (suppliesText != null)
+            suppliesText.text = r.supplies.ToString();
+
+        if (commandText != null)
+            commandText.text =  r.command + " +(" + r.planning  + ")/" + r.commandMax;
+    }
+
     public void CommandPanel(bool isActvie)
     {
         if (isActvie)
@@ -50,6 +99,12 @@ public class BattalionUIManagerScr : MonoBehaviour
         undeployButton.SetActive(hasBattalionSelected && isDeployed);
         rotateButton.SetActive(hasBattalionSelected && isDeployed);
         bombardButton.SetActive(hasBattalionSelected && isDeployed);
+
+        if (reinforceButton != null)
+        {
+            bool canReinforce = hasBattalionSelected && !isNone && battalionScr.GetMissingPersonnel() > 0;
+            reinforceButton.gameObject.SetActive(canReinforce);
+        }
 
         RefreshRegimentButtons();
     }
@@ -101,10 +156,6 @@ public class BattalionUIManagerScr : MonoBehaviour
                     RefreshRegimentButtons();
                 });
 
-                // Тип/членство не перевіряємо тут — кнопка лишається клікабельною,
-                // якщо взагалі щось вибрано, а AddRegiment сам друкує причину
-                // відмови (інший тип, вже в цьому полку). Так відмову видно,
-                // а не просто "сіру" кнопку без пояснення.
                 group.addButton.interactable = selected != null;
             }
 

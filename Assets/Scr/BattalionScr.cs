@@ -802,6 +802,8 @@ public class BattalionScr : MonoBehaviour
         bar.SetOrganization(personnel.organization, personnel.organizationMax);
 
         bar.SetcombatCapable(personnel.combatCapable, personnel.combatCapableNo, personnel.personnelMax);
+
+        bar.SetAmmo(ammo.current, ammo.max);
     }
 
     private IEnumerator ExecuteOrders()

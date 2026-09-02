@@ -8,6 +8,8 @@ public class BarScr : MonoBehaviour
     [SerializeField] private Transform combatCapableBar;
     [SerializeField] private Transform combatCapableNoBar;
 
+    //[SerializeField] private Transform ammoBar;
+
     public void SetOrganization(float current, float max)
     {
 
@@ -26,5 +28,15 @@ public class BarScr : MonoBehaviour
         combatCapableBar.localScale = new Vector3(1f, normalized, 1f);
         Vector3 scale1 = combatCapableNoBar.localScale;
         combatCapableNoBar.localScale = new Vector3(1f, normalized1, 1f);
+    }
+
+    public void SetAmmo(float current, float max)
+    {
+        //if (ammoBar == null)
+          //  return;
+
+        float normalized = max > 0f ? Mathf.Clamp01(current / max) : 0f;
+
+        //ammoBar.localScale = new Vector3(1f, normalized, 1f);
     }
 }

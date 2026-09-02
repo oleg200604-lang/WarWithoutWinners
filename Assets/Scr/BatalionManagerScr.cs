@@ -995,7 +995,7 @@ public class Regiment
 [System.Serializable]
 public class Ressurs
 {
-    public int personnel, supplies, command, commandMax, planning;
+    public int personnel, supplies, command, commandMax,planning;
     public float discount;
 
     public void ByePersonnel(float price, int number)
