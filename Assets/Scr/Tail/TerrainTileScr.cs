@@ -18,6 +18,76 @@ public class TerrainTileScr : MonoBehaviour
     [Header("Height")]
     public int height = 0;
 
+    [Header("Туман війни")]
+    [Tooltip("Рендерер затемнення поверх плитки (напр. чорний спрайт з альфою). Вмикається, коли плитка НЕ проглядається жодним дружнім батальйоном.")]
+    public SpriteRenderer fogOverlay;
+
+    [Tooltip("Прозорість затемнення для плиток, які вже досліджені, але зараз поза видимістю (\"туман пам'яті\"). 0 = плитка повністю ховається знову, як на початку гри.")]
+    [Range(0f, 1f)]
+    public float exploredFogAlpha = 0.55f;
+
+    [Tooltip("Прозорість затемнення для плиток, які ще ЖОДНОГО разу не бачили.")]
+    [Range(0f, 1f)]
+    public float unexploredFogAlpha = 0.95f;
+
+    private static readonly System.Collections.Generic.List<TerrainTileScr> AllTiles =
+        new System.Collections.Generic.List<TerrainTileScr>();
+
+    public static System.Collections.Generic.IReadOnlyList<TerrainTileScr> AllActive => AllTiles;
+
+    private bool fogRevealed = true;
+    private bool everExplored;
+
+    public bool IsFogRevealed => fogRevealed;
+
+    private void OnEnable()
+    {
+        AllTiles.Add(this);
+    }
+
+    private void OnDisable()
+    {
+        AllTiles.Remove(this);
+    }
+
+    /// <summary>
+    /// Викликається FogOfWarManagerScr. revealed = true, якщо плитку
+    /// зараз бачить хоч один дружній батальйон. Раз досліджена плитка
+    /// (everExplored) при втраті видимості затемнюється слабше
+    /// (exploredFogAlpha), ніж плитка, якої ще не бачили ніколи
+    /// (unexploredFogAlpha) — класична "пам'ять" тумана війни.
+    /// </summary>
+    public void SetFogRevealed(bool revealed)
+    {
+        if (revealed)
+            everExplored = true;
+
+        if (fogRevealed == revealed)
+            return;
+
+        fogRevealed = revealed;
+
+        ApplyFogVisual();
+    }
+
+    private void ApplyFogVisual()
+    {
+        if (fogOverlay == null)
+            return;
+
+        if (fogRevealed)
+        {
+            fogOverlay.enabled = false;
+            return;
+        }
+
+        fogOverlay.enabled = true;
+
+        Color color = fogOverlay.color;
+        color.a = everExplored ? exploredFogAlpha : unexploredFogAlpha;
+        fogOverlay.color = color;
+    }
+
     [Header("Generation")]
     public GameObject[] prefabs;
 

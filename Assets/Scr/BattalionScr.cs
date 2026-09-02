@@ -31,6 +31,11 @@ public class BattalionScr : MonoBehaviour
     public float deployConeAngle = 90f;
     public float bombardRadius = 1.5f;
     public GameObject isSelect;
+    [Header("Туман війни")]
+    [Tooltip("Корінь візуальних об'єктів батальйону (спрайт, бари здоров'я тощо). Вимикається, коли батальйон прихований туманом війни. Якщо не задано — приховування не діятиме візуально.")]
+    public GameObject visualRoot;
+    [Tooltip("Колайдер, за яким батальйон обирається кліком. Вимикається разом з visualRoot, щоб прихованого ворога не можна було обрати.")]
+    public Collider2D selectionCollider;
     [Header("Terrain sampling")]
     [SerializeField, Min(0.05f)]
     private float terrainSampleStep = 0.15f;
@@ -39,7 +44,14 @@ public class BattalionScr : MonoBehaviour
     private int basePersonnelMax;
     private Battalion restingBattalion;
 
+    // За замовчуванням батальйон видимий (це важливо для дружніх
+    // батальйонів, яких FogOfWarManagerScr ніколи не приховує —
+    // вони мають лишатись видимими навіть якщо туман взагалі не
+    // використовується в сцені).
+    private bool fogVisible = true;
+    public bool IsFogVisible => fogVisible;
 
+    public static IReadOnlyList<BattalionScr> AllActive => AllBattalions;
 
     private void OnEnable()
     {
@@ -49,6 +61,41 @@ public class BattalionScr : MonoBehaviour
     private void OnDisable()
     {
         AllBattalions.Remove(this);
+    }
+
+    /// <summary>
+    /// Викликається FogOfWarManagerScr. Показує/приховує спрайт та
+    /// вимикає можливість обрати прихований батальйон кліком.
+    /// Нічого не робить, якщо стан не змінився (щоб не смикати
+    /// SetActive щокадру).
+    /// </summary>
+    public void SetFogVisible(bool visible)
+    {
+        if (fogVisible == visible)
+            return;
+
+        fogVisible = visible;
+
+        if (visualRoot != null)
+            visualRoot.SetActive(visible);
+
+        if (selectionCollider != null)
+            selectionCollider.enabled = visible;
+
+        if (!visible && isSelect != null)
+            isSelect.SetActive(false);
+    }
+
+    /// <summary>
+    /// Ефективна дальність виявлення (для тумана війни) з
+    /// урахуванням місцевості, на якій зараз стоїть батальйон.
+    /// </summary>
+    public float GetEffectiveVisionRange()
+    {
+        if (TerrainManagerScr.Instance == null)
+            return battalion.visionRange;
+
+        return battalion.visionRange * TerrainManagerScr.Instance.GetVisionRangeMultiplier((Vector2)transform.position);
     }
 
     private void Awake()
@@ -1409,6 +1456,10 @@ public class Battalion
     public float injury;
     public float speed;
 
+    [Header("Видимість (туман війни)")]
+    [Tooltip("Базова дальність, на якій батальйон розсіює туман війни (бачить ворогів).")]
+    public float visionRange = 6f;
+
     [Header("Ресурси")]
     [Tooltip("Скільки боєприпасів витрачається на одну активну дію (постріл при атаці/захисті/обстрілі).")]
     public int ammoCostPerAction = 10;
@@ -1427,6 +1478,7 @@ public class Battalion
             murder = murder,
             injury = injury,
             speed = speed,
+            visionRange = visionRange,
             ammoCostPerAction = ammoCostPerAction,
             commandCost = commandCost
         };

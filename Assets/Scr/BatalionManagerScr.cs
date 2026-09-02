@@ -7,6 +7,10 @@ public class BatalionManagerScr : MonoBehaviour
 
     public int teamID;
 
+    [Header("Туман війни")]
+    [Tooltip("Позначте true, якщо ЦЯ команда — союзник гравця: її батальйони теж розсіюють туман війни разом з гравцем і самі ніколи не приховуються. Команду гравця FogOfWarManagerScr визначає окремо через поле playerManager.")]
+    public bool isAllyOfPlayer;
+
     public BattalionScr selectBattalion;
     public Regiment selectRegiment;
     public BattleManagerScr battleManager;
@@ -995,7 +999,7 @@ public class Regiment
 [System.Serializable]
 public class Ressurs
 {
-    public int personnel, supplies, command, commandMax,planning;
+    public int personnel, supplies, command, commandMax, planning;
     public float discount;
 
     public void ByePersonnel(float price, int number)

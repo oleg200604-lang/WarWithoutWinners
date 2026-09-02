@@ -7678,7 +7678,7 @@ BoxCollider2D:
     drawMode: 0
     adaptiveTiling: 0
   m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 40, y: 30}
   m_EdgeRadius: 0
 --- !u!1 &979798708
 GameObject:
@@ -9937,7 +9937,7 @@ MonoBehaviour:
     ammoCostPerAction: 10
     commandCost: 1
   teamID: 0
-  regimentredID: -1
+  regimentredID: 0
   company:
   - company: 0
   - company: 0
@@ -14229,13 +14229,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BatalionManagerScr
   teamID: 0
   selectBattalion: {fileID: 0}
-  selectRegiment:
-    nameRegiment: 
-    battalions: []
-    battalionType: 1
-    chainMaxDistance: 6
-    members: []
-    anchor: {x: 0, y: 0, z: 0}
   battleManager: {fileID: 1039417165}
   battalionUIManager: {fileID: 1916624632}
   regiments: []
@@ -14243,7 +14236,7 @@ MonoBehaviour:
   ressurs:
     personnel: 1000
     supplies: 1000
-    command: 25
+    command: 50
     commandMax: 50
     planning: 10
     discount: 0

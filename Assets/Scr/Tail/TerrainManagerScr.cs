@@ -261,6 +261,60 @@ public class TerrainManagerScr : MonoBehaviour
     }
 
     // =========================================================
+    // VISION / FOG OF WAR
+    // =========================================================
+
+    /// <summary>
+    /// Множник дальності виявлення (для тумана війни) залежно від
+    /// місцевості, на якій стоїть СПОСТЕРІГАЧ. Той самий принцип,
+    /// що й GetAttackRangeMultiplier: ліс заважає бачити далеко.
+    /// </summary>
+    public float GetVisionRangeMultiplier(Vector2 position)
+    {
+        if (HasTerrainAt(position, LandscapeType.Forest))
+            return 1f / 1.5f;
+
+        return 1f;
+    }
+
+    /// <summary>
+    /// Чи бачить спостерігач у точці "from" ціль у точці "to" —
+    /// тобто чи немає між ними суцільної лісової/гірської плитки,
+    /// що блокує лінію зору (BlocksLineOfSight). Власна плитка
+    /// спостерігача ніколи не блокує його ж огляд (той самий виняток,
+    /// що й у BlocksLineOfSightFrom для атаки).
+    /// </summary>
+    public bool HasLineOfSight(Vector2 from, Vector2 to)
+    {
+        Vector2 offset = to - from;
+        float distance = offset.magnitude;
+
+        if (distance <= 0.001f)
+            return true;
+
+        Vector2 direction = offset / distance;
+
+        List<TerrainTileScr> shooterTiles = GetAllTilesAt(from);
+
+        RaycastHit2D[] hits = Physics2D.RaycastAll(from, direction, distance, terrainLayer);
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D collider = hits[i].collider;
+
+            if (collider == null)
+                continue;
+
+            TerrainTileScr tile = collider.GetComponentInParent<TerrainTileScr>();
+
+            if (BlocksLineOfSightFrom(tile, shooterTiles))
+                return false;
+        }
+
+        return true;
+    }
+
+    // =========================================================
     // ATTACK RANGE
     // =========================================================
 
