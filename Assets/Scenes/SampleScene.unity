@@ -10443,7 +10443,7 @@ MonoBehaviour:
   deployConeAngle: 30
   bombardRadius: 1.5
   isSelect: {fileID: 1586404929}
-  visualRoot: {fileID: 890207164}
+  visualRoot: {fileID: 1307456457}
   selectionCollider: {fileID: 1307456458}
   terrainSampleStep: 0.15
 --- !u!114 &1307456461
@@ -11645,7 +11645,7 @@ MonoBehaviour:
   deployConeAngle: 30
   bombardRadius: 1.5
   isSelect: {fileID: 1404439932}
-  visualRoot: {fileID: 890207164}
+  visualRoot: {fileID: 1446731978}
   selectionCollider: {fileID: 1446731982}
   terrainSampleStep: 0.15
 --- !u!61 &1446731982
@@ -15382,7 +15382,7 @@ MonoBehaviour:
   teamID: 0
   enemyID: 01000000
   allyID: 02000000
-  isAllyOfPlayer: 1
+  isAllyOfPlayer: 0
   selectBattalion: {fileID: 0}
   selectRegiment:
     nameRegiment: 

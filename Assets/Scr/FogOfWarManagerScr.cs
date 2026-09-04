@@ -1,25 +1,55 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Туман війни.
+///
+/// АРХІТЕКТУРА (важливо):
+///
+/// Раніше видимість батальйону зберігалась як ОДНЕ спільне поле
+/// (BattalionScr.fogVisible) — тобто батальйон фізично не міг бути
+/// одночасно "видимим" для однієї команди і "невидимим" для іншої.
+/// Будь-яка помилка в тому, хто/коли це поле виставляє, ламала
+/// картину для всіх одразу.
+///
+/// Тепер це розділено на дві незалежні речі:
+///
+/// 1) РЕНДЕР (те, що фізично намальовано на екрані) — рахується
+///    ЛИШЕ з точки зору playerManager (локальний глядач/гравець).
+///    Це те, що керує сірою заливкою на мапі (FogCell) і тим,
+///    показується/ховається сам спрайт батальйону
+///    (BattalionScr.SetFogVisible) — як і раніше, бо екран один.
+///
+/// 2) ЛОГІЧНИЙ ЗАПИТ "чи бачить команда X батальйон Y" —
+///    IsVisibleTo(viewer, target). Рахується "на льоту" з ВЛАСНОГО
+///    стану видимості кожної команди (TeamVisionState), незалежно
+///    від того, що зараз намальовано на екрані. Це дозволяє AI
+///    ворога чи союзника питати про власну видимість, не
+///    конфліктуючи з рендером гравця і не залежачи від нього.
+///    Один і той самий батальйон може бути true для однієї команди
+///    і false для іншої — одночасно, без спільного прапорця.
+///
+/// Геометрія клітинок (позиції) спільна для всіх команд — рахується
+/// один раз у CreateFogGrid(). Відрізняється лише те, ЯКІ клітинки
+/// кожна команда бачить.
+/// </summary>
 public class FogOfWarManagerScr : MonoBehaviour
 {
-    public static FogOfWarManagerScr Instance
-    {
-        get;
-        private set;
-    }
+    public static FogOfWarManagerScr Instance { get; private set; }
 
-// =========================================================
-// INTEGRATION
-// =========================================================
+    // =========================================================
+    // INTEGRATION
+    // =========================================================
 
-[Header("Integration")]
+    [Header("Integration")]
 
     [Tooltip(
-    "BatalionManagerScr команди гравця. " +
-    "Саме його teamID, allyID та enemyID " +
-    "визначають відносини для Fog of War."
-)]
+        "BatalionManagerScr, з чиєї точки зору малюється туман " +
+        "НА ЕКРАНІ (сіра заливка + приховування ворожих спрайтів). " +
+        "Для логічних запитів \"чи бачить X батальйон Y\" з точки " +
+        "зору БУДЬ-ЯКОЇ іншої команди використовуй IsVisibleTo() — " +
+        "він не залежить від цього поля."
+    )]
     public BatalionManagerScr playerManager;
 
     // =========================================================
@@ -28,27 +58,15 @@ public class FogOfWarManagerScr : MonoBehaviour
 
     [Header("Fog Grid")]
 
-    [Tooltip(
-        "Центр області, яку покриває Fog of War."
-    )]
-    public Vector2 mapCenter =
-        Vector2.zero;
+    [Tooltip("Центр області, яку покриває Fog of War.")]
+    public Vector2 mapCenter = Vector2.zero;
 
-    [Tooltip(
-        "Розмір області Fog of War."
-    )]
-    public Vector2 mapSize =
-        new Vector2(
-            200f,
-            200f
-        );
+    [Tooltip("Розмір області Fog of War.")]
+    public Vector2 mapSize = new Vector2(200f, 200f);
 
-    [Tooltip(
-        "Розмір однієї комірки Fog."
-    )]
+    [Tooltip("Розмір однієї комірки Fog.")]
     [Min(0.5f)]
-    public float cellSize =
-        2f;
+    public float cellSize = 2f;
 
     // =========================================================
     // VISUAL
@@ -58,34 +76,15 @@ public class FogOfWarManagerScr : MonoBehaviour
 
     public Material fogMaterial;
 
-    [Tooltip(
-        "Колір повністю невідомої території."
-    )]
-    public Color unexploredColor =
-        new Color(
-            0f,
-            0f,
-            0f,
-            0.95f
-        );
+    [Tooltip("Колір повністю невідомої території.")]
+    public Color unexploredColor = new Color(0f, 0f, 0f, 0.95f);
 
-    [Tooltip(
-        "Колір дослідженої, але зараз " +
-        "невидимої території."
-    )]
-    public Color exploredColor =
-        new Color(
-            0f,
-            0f,
-            0f,
-            0.55f
-        );
+    [Tooltip("Колір дослідженої, але зараз невидимої території.")]
+    public Color exploredColor = new Color(0f, 0f, 0f, 0.55f);
 
-    public string sortingLayerName =
-        "Default";
+    public string sortingLayerName = "Default";
 
-    public int sortingOrder =
-        100;
+    public int sortingOrder = 100;
 
     // =========================================================
     // UPDATE
@@ -94,26 +93,23 @@ public class FogOfWarManagerScr : MonoBehaviour
     [Header("Update")]
 
     [Min(0.02f)]
-    public float updateInterval =
-        0.15f;
+    public float updateInterval = 0.15f;
 
     // =========================================================
-    // INTERNAL
+    // INTERNAL — RENDER GRID (тільки playerManager)
     // =========================================================
 
     private float visibilityTimer;
 
     /// <summary>
-    /// ЄДИНЕ джерело правди для Fog:
-    /// команда гравця + allyID[].
+    /// Дружні до playerManager команди. Публічне API
+    /// (IsFriendlyTeam/IsEnemyTeam/IsNeutralTeam) і надалі описує
+    /// САМЕ точку зору playerManager — для сумісності з рештою
+    /// коду (напр. BatalionManagerScr.IsPlayerFriendly()).
     /// </summary>
-    private readonly HashSet<int>
-        friendlyTeamIDs =
-            new HashSet<int>();
+    private readonly HashSet<int> friendlyTeamIDs = new HashSet<int>();
 
-    private readonly List<BattalionScr>
-        spottersBuffer =
-            new List<BattalionScr>();
+    private readonly List<BattalionScr> spottersBuffer = new List<BattalionScr>();
 
     private FogCell[,] cells;
 
@@ -125,20 +121,31 @@ public class FogOfWarManagerScr : MonoBehaviour
 
     private Sprite fogSprite;
 
-    // =========================================================
-    // FOG CELL
-    // =========================================================
-
     private class FogCell
     {
         public Vector2 worldPosition;
-
         public bool explored;
-
         public bool visible;
-
         public SpriteRenderer renderer;
     }
+
+    // =========================================================
+    // INTERNAL — VISION PER TEAM (для IsVisibleTo, будь-яка команда)
+    // =========================================================
+
+    private class TeamVisionState
+    {
+        public HashSet<int> friendlyTeamIDs = new HashSet<int>();
+        public bool[,] visibleCells;
+    }
+
+    /// <summary>
+    /// Кеш стану видимості кожної "коаліції" (кореневий teamID
+    /// менеджера -> що ця команда+союзники бачать). Перебудовується
+    /// щоразу в RecalculateVisibility(), тому завжди свіжий.
+    /// </summary>
+    private readonly Dictionary<int, TeamVisionState> visionByTeam =
+        new Dictionary<int, TeamVisionState>();
 
     // =========================================================
     // UNITY
@@ -146,10 +153,20 @@ public class FogOfWarManagerScr : MonoBehaviour
 
     private void Awake()
     {
-        if (Instance != null &&
-            Instance != this)
+        if (Instance != null && Instance != this)
         {
-            Destroy(gameObject);
+            // Знищуємо лише сам компонент, а не весь GameObject —
+            // друга копія цього скрипта не повинна забирати з собою
+            // все інше, що висить на тому самому об'єкті.
+            Debug.LogError(
+                $"FogOfWarManagerScr: знайдено другий екземпляр на " +
+                $"об'єкті '{gameObject.name}' (перший — на " +
+                $"'{Instance.gameObject.name}'). FogOfWarManagerScr " +
+                $"має бути рівно один на сцену.",
+                this
+            );
+
+            Destroy(this);
             return;
         }
 
@@ -158,30 +175,18 @@ public class FogOfWarManagerScr : MonoBehaviour
 
     private void Start()
     {
-        RefreshFriendlyTeams();
-
         CreateFogGrid();
-
         RecalculateVisibility();
     }
 
     private void Update()
     {
-        visibilityTimer -=
-            Time.deltaTime;
+        visibilityTimer -= Time.deltaTime;
 
         if (visibilityTimer > 0f)
             return;
 
-        visibilityTimer =
-            updateInterval;
-
-        // Важливо:
-        //
-        // allyID[] може бути змінений
-        // під час гри, тому оновлюємо
-        // список перед розрахунком.
-        RefreshFriendlyTeams();
+        visibilityTimer = updateInterval;
 
         RecalculateVisibility();
     }
@@ -189,26 +194,18 @@ public class FogOfWarManagerScr : MonoBehaviour
     private void OnDestroy()
     {
         if (Instance == this)
-        {
             Instance = null;
-        }
     }
 
     // =========================================================
-    // TEAM RELATIONS
+    // TEAM RELATIONS (playerManager — для рендеру й старого API)
     // =========================================================
 
     /// <summary>
-    /// Оновлює список команд,
-    /// які відкривають Fog of War.
-    ///
-    /// Використовується ТІЛЬКИ:
-    ///
-    /// playerManager.teamID
-    /// playerManager.allyID[]
-    ///
-    /// enemyID[] тут навмисно
-    /// НЕ додаються.
+    /// Оновлює friendlyTeamIDs для playerManager. Шукає союз В
+    /// ОБИДВА БОКИ (playerManager.IsAlly(x) АБО x.IsAlly(playerManager)),
+    /// тож достатньо прописати allyID один раз — на будь-якому з
+    /// двох менеджерів.
     /// </summary>
     public void RefreshFriendlyTeams()
     {
@@ -216,92 +213,75 @@ public class FogOfWarManagerScr : MonoBehaviour
 
         if (playerManager == null)
         {
-            Debug.LogWarning(
-                "FogOfWarManagerScr: " +
-                "playerManager не призначений."
-            );
-
+            Debug.LogWarning("FogOfWarManagerScr: playerManager не призначений.");
             return;
         }
 
-        // ---------------------------------------------
-        // Команда самого гравця.
-        // ---------------------------------------------
-
-        friendlyTeamIDs.Add(
-            playerManager.teamID
-        );
-
-        // ---------------------------------------------
-        // Союзники гравця.
-        // ---------------------------------------------
-
-        if (playerManager.allyID == null)
-            return;
-
-        for (int i = 0;
-             i < playerManager.allyID.Length;
-             i++)
-        {
-            int allyTeamID =
-                playerManager.allyID[i];
-
-            // Власну команду дублювати
-            // не потрібно, але HashSet
-            // і так захищає від дублікатів.
-            friendlyTeamIDs.Add(
-                allyTeamID
-            );
-        }
+        friendlyTeamIDs.UnionWith(ComputeFriendlyTeamIDs(playerManager));
     }
 
     /// <summary>
-    /// Чи є команда дружньою для гравця
-    /// у контексті Fog of War.
+    /// Дружні команди для довільного менеджера "forManager" —
+    /// той самий білатеральний пошук союзу, що й RefreshFriendlyTeams,
+    /// але для БУДЬ-ЯКОГО менеджера, не тільки playerManager.
+    /// Явно оголошений ворог (в будь-яку сторону) має пріоритет
+    /// над союзом.
     /// </summary>
-    public bool IsFriendlyTeam(
-        int teamID)
+    private HashSet<int> ComputeFriendlyTeamIDs(BatalionManagerScr forManager)
     {
-        return friendlyTeamIDs.Contains(
-            teamID
-        );
+        HashSet<int> result = new HashSet<int>();
+
+        if (forManager == null)
+            return result;
+
+        result.Add(forManager.teamID);
+
+        BatalionManagerScr[] allManagers = FindObjectsOfType<BatalionManagerScr>();
+
+        for (int i = 0; i < allManagers.Length; i++)
+        {
+            BatalionManagerScr manager = allManagers[i];
+
+            if (manager == null || manager == forManager)
+                continue;
+
+            int otherTeamID = manager.teamID;
+
+            bool declaredEnemy =
+                forManager.IsEnemy(otherTeamID) ||
+                manager.IsEnemy(forManager.teamID);
+
+            if (declaredEnemy)
+                continue;
+
+            bool declaredAlly =
+                forManager.IsAlly(otherTeamID) ||
+                manager.IsAlly(forManager.teamID);
+
+            if (declaredAlly)
+                result.Add(otherTeamID);
+        }
+
+        return result;
     }
 
-    /// <summary>
-    /// Чи є команда ворогом гравця.
-    ///
-    /// Використовується для логіки гри,
-    /// але вороги НЕ впливають
-    /// на формування Fog.
-    /// </summary>
-    public bool IsEnemyTeam(
-        int teamID)
+    /// <summary>Чи є команда дружньою для playerManager.</summary>
+    public bool IsFriendlyTeam(int teamID)
+    {
+        return friendlyTeamIDs.Contains(teamID);
+    }
+
+    /// <summary>Чи є команда ворогом playerManager. На туман не впливає.</summary>
+    public bool IsEnemyTeam(int teamID)
     {
         if (playerManager == null)
             return false;
 
-        if (playerManager.enemyID == null)
-            return false;
-
-        for (int i = 0;
-             i < playerManager.enemyID.Length;
-             i++)
-        {
-            if (playerManager.enemyID[i] ==
-                teamID)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return playerManager.IsEnemy(teamID);
     }
 
-    /// <summary>
-    /// Нейтральна команда.
-    /// </summary>
-    public bool IsNeutralTeam(
-        int teamID)
+    /// <summary>Нейтральна щодо playerManager: не дружня і не ворожа.</summary>
+    public bool IsNeutralTeam(int teamID)
     {
         if (IsFriendlyTeam(teamID))
             return false;
@@ -313,133 +293,125 @@ public class FogOfWarManagerScr : MonoBehaviour
     }
 
     // =========================================================
-    // GRID CREATION
+    // PUBLIC: ЗАПИТ ВИДИМОСТІ З ТОЧКИ ЗОРУ БУДЬ-ЯКОГО МЕНЕДЖЕРА
+    // =========================================================
+
+    /// <summary>
+    /// Чи бачить команда "viewer" батальйон "target" — НЕЗАЛЕЖНО
+    /// від того, що зараз намальовано на екрані (playerManager).
+    ///
+    /// Саме цей метод варто використовувати в ігровій логіці (AI
+    /// ворога/союзника: чи можу я вибрати цю ціль, чи бачу я її).
+    /// Дає коректний результат навіть якщо viewer — не playerManager:
+    /// той самий батальйон може одночасно бути visible=true для
+    /// однієї команди і visible=false для іншої.
+    /// </summary>
+    public bool IsVisibleTo(BatalionManagerScr viewer, BattalionScr target)
+    {
+        if (viewer == null || target == null)
+            return false;
+
+        if (!visionByTeam.TryGetValue(viewer.teamID, out TeamVisionState state))
+            return false;
+
+        if (state.friendlyTeamIDs.Contains(target.teamID))
+            return true;
+
+        return IsPositionVisibleInState(state, target.transform.position);
+    }
+
+    /// <summary>Перевантаження за teamID замість посилання на менеджер.</summary>
+    public bool IsVisibleTo(int viewerTeamID, BattalionScr target)
+    {
+        if (target == null)
+            return false;
+
+        if (!visionByTeam.TryGetValue(viewerTeamID, out TeamVisionState state))
+            return false;
+
+        if (state.friendlyTeamIDs.Contains(target.teamID))
+            return true;
+
+        return IsPositionVisibleInState(state, target.transform.position);
+    }
+
+    private bool IsPositionVisibleInState(TeamVisionState state, Vector2 position)
+    {
+        if (state.visibleCells == null || cells == null)
+            return false;
+
+        if (!TryGetCellIndex(position, out int x, out int y))
+            return false;
+
+        return state.visibleCells[x, y];
+    }
+
+    private bool TryGetCellIndex(Vector2 position, out int x, out int y)
+    {
+        Vector2 bottomLeft = mapCenter - mapSize * 0.5f;
+        Vector2 localPosition = position - bottomLeft;
+
+        x = Mathf.FloorToInt(localPosition.x / cellSize);
+        y = Mathf.FloorToInt(localPosition.y / cellSize);
+
+        return x >= 0 && y >= 0 && x < gridWidth && y < gridHeight;
+    }
+
+    // =========================================================
+    // GRID CREATION (геометрія — спільна для всіх команд)
     // =========================================================
 
     private void CreateFogGrid()
     {
         ClearFogGrid();
 
-        gridWidth =
-            Mathf.CeilToInt(
-                mapSize.x /
-                cellSize
-            );
+        gridWidth = Mathf.CeilToInt(mapSize.x / cellSize);
+        gridHeight = Mathf.CeilToInt(mapSize.y / cellSize);
 
-        gridHeight =
-            Mathf.CeilToInt(
-                mapSize.y /
-                cellSize
-            );
+        cells = new FogCell[gridWidth, gridHeight];
 
-        cells =
-            new FogCell[
-                gridWidth,
-                gridHeight
-            ];
-
-        GameObject containerObject =
-            new GameObject(
-                "FogOfWarGrid"
-            );
-
-        containerObject.transform.SetParent(
-            transform
-        );
-
-        containerObject.transform.localPosition =
-            Vector3.zero;
-
-        fogContainer =
-            containerObject.transform;
+        GameObject containerObject = new GameObject("FogOfWarGrid");
+        containerObject.transform.SetParent(transform);
+        containerObject.transform.localPosition = Vector3.zero;
+        fogContainer = containerObject.transform;
 
         CreateFogSprite();
 
-        Vector2 bottomLeft =
-            mapCenter -
-            mapSize * 0.5f;
+        Vector2 bottomLeft = mapCenter - mapSize * 0.5f;
 
-        for (int x = 0;
-             x < gridWidth;
-             x++)
+        for (int x = 0; x < gridWidth; x++)
         {
-            for (int y = 0;
-                 y < gridHeight;
-                 y++)
+            for (int y = 0; y < gridHeight; y++)
             {
-                Vector2 position =
-                    bottomLeft +
-                    new Vector2(
-                        (x + 0.5f) *
-                        cellSize,
-
-                        (y + 0.5f) *
-                        cellSize
-                    );
-
-                FogCell cell =
-                    new FogCell();
-
-                cell.worldPosition =
-                    position;
-
-                GameObject cellObject =
-                    new GameObject(
-                        $"Fog_{x}_{y}"
-                    );
-
-                cellObject.transform.SetParent(
-                    fogContainer
+                Vector2 position = bottomLeft + new Vector2(
+                    (x + 0.5f) * cellSize,
+                    (y + 0.5f) * cellSize
                 );
 
-                cellObject.transform.position =
-                    new Vector3(
-                        position.x,
-                        position.y,
-                        0f
-                    );
+                FogCell cell = new FogCell();
+                cell.worldPosition = position;
 
-                SpriteRenderer renderer =
-                    cellObject.AddComponent<
-                        SpriteRenderer
-                    >();
+                GameObject cellObject = new GameObject($"Fog_{x}_{y}");
+                cellObject.transform.SetParent(fogContainer);
+                cellObject.transform.position = new Vector3(position.x, position.y, 0f);
 
-                renderer.sprite =
-                    fogSprite;
-
-                renderer.sortingLayerName =
-                    sortingLayerName;
-
-                renderer.sortingOrder =
-                    sortingOrder;
+                SpriteRenderer renderer = cellObject.AddComponent<SpriteRenderer>();
+                renderer.sprite = fogSprite;
+                renderer.sortingLayerName = sortingLayerName;
+                renderer.sortingOrder = sortingOrder;
 
                 if (fogMaterial != null)
-                {
-                    renderer.material =
-                        fogMaterial;
-                }
+                    renderer.material = fogMaterial;
 
-                cellObject.transform.localScale =
-                    new Vector3(
-                        cellSize,
-                        cellSize,
-                        1f
-                    );
+                cellObject.transform.localScale = new Vector3(cellSize, cellSize, 1f);
 
-                renderer.color =
-                    unexploredColor;
+                renderer.color = unexploredColor;
 
-                cell.renderer =
-                    renderer;
+                cell.renderer = renderer;
+                cell.explored = false;
+                cell.visible = false;
 
-                cell.explored =
-                    false;
-
-                cell.visible =
-                    false;
-
-                cells[x, y] =
-                    cell;
+                cells[x, y] = cell;
             }
         }
     }
@@ -449,71 +421,34 @@ public class FogOfWarManagerScr : MonoBehaviour
         if (fogContainer != null)
         {
             if (Application.isPlaying)
-            {
-                Destroy(
-                    fogContainer.gameObject
-                );
-            }
+                Destroy(fogContainer.gameObject);
             else
-            {
-                DestroyImmediate(
-                    fogContainer.gameObject
-                );
-            }
+                DestroyImmediate(fogContainer.gameObject);
         }
 
-        fogContainer =
-            null;
-
-        cells =
-            null;
+        fogContainer = null;
+        cells = null;
     }
-
-    // =========================================================
-    // CREATE SPRITE
-    // =========================================================
 
     private void CreateFogSprite()
     {
         if (fogSprite != null)
             return;
 
-        Texture2D texture =
-            new Texture2D(
-                1,
-                1
-            );
-
-        texture.SetPixel(
-            0,
-            0,
-            Color.white
-        );
-
+        Texture2D texture = new Texture2D(1, 1);
+        texture.SetPixel(0, 0, Color.white);
         texture.Apply();
 
-        fogSprite =
-            Sprite.Create(
-                texture,
-
-                new Rect(
-                    0f,
-                    0f,
-                    1f,
-                    1f
-                ),
-
-                new Vector2(
-                    0.5f,
-                    0.5f
-                ),
-
-                1f
-            );
+        fogSprite = Sprite.Create(
+            texture,
+            new Rect(0f, 0f, 1f, 1f),
+            new Vector2(0.5f, 0.5f),
+            1f
+        );
     }
 
     // =========================================================
-    // VISIBILITY
+    // VISIBILITY — ГОЛОВНИЙ ПЕРЕРАХУНОК
     // =========================================================
 
     public void RecalculateVisibility()
@@ -521,305 +456,199 @@ public class FogOfWarManagerScr : MonoBehaviour
         if (cells == null)
             return;
 
-        CollectSpotters();
+        RefreshFriendlyTeams();
 
-        ResetVisibility();
+        RebuildVisionStates();
 
-        RevealVisibleCells();
+        ApplyRenderStateFromPlayer();
 
         UpdateFogVisuals();
 
         RecalculateBattalionVisibility();
     }
 
-    // =========================================================
-    // COLLECT SPOTTERS
-    // =========================================================
-
     /// <summary>
-    /// Тільки батальйони гравця
-    /// та його союзників відкривають Fog.
-    ///
-    /// Вороги та нейтральні
-    /// НЕ можуть прибирати Fog.
+    /// Перераховує TeamVisionState для КОЖНОЇ команди, що зараз
+    /// представлена BatalionManagerScr у сцені (гравець, союзники,
+    /// вороги, нейтрали — усі отримують власний, повністю незалежний
+    /// стан видимості).
     /// </summary>
-    private void CollectSpotters()
+    private void RebuildVisionStates()
     {
-        spottersBuffer.Clear();
+        visionByTeam.Clear();
 
-        IReadOnlyList<BattalionScr> all =
-            BattalionScr.AllActive;
+        BatalionManagerScr[] allManagers = FindObjectsOfType<BatalionManagerScr>();
+        IReadOnlyList<BattalionScr> allBattalions = BattalionScr.AllActive;
 
-        for (int i = 0;
-             i < all.Count;
-             i++)
+        for (int m = 0; m < allManagers.Length; m++)
         {
-            BattalionScr battalion =
-                all[i];
+            BatalionManagerScr manager = allManagers[m];
 
-            if (battalion == null)
+            if (manager == null)
                 continue;
 
-            if (IsFriendlyTeam(
-                battalion.teamID
-            ))
+            // Одна коаліція (кореневий teamID) рахується лише раз,
+            // навіть якщо в сцені кілька менеджерів з тим самим teamID.
+            if (visionByTeam.ContainsKey(manager.teamID))
+                continue;
+
+            TeamVisionState state = new TeamVisionState
             {
-                spottersBuffer.Add(
-                    battalion
-                );
+                friendlyTeamIDs = ComputeFriendlyTeamIDs(manager),
+                visibleCells = new bool[gridWidth, gridHeight]
+            };
+
+            spottersBuffer.Clear();
+
+            for (int i = 0; i < allBattalions.Count; i++)
+            {
+                BattalionScr battalion = allBattalions[i];
+
+                if (battalion != null && state.friendlyTeamIDs.Contains(battalion.teamID))
+                    spottersBuffer.Add(battalion);
             }
+
+            RevealVisibleCellsInto(state.visibleCells, spottersBuffer);
+
+            visionByTeam[manager.teamID] = state;
         }
     }
 
-    // =========================================================
-    // RESET VISIBILITY
-    // =========================================================
-
-    private void ResetVisibility()
+    private void RevealVisibleCellsInto(bool[,] grid, List<BattalionScr> spotters)
     {
-        for (int x = 0;
-             x < gridWidth;
-             x++)
+        for (int i = 0; i < spotters.Count; i++)
         {
-            for (int y = 0;
-                 y < gridHeight;
-                 y++)
-            {
-                cells[x, y].visible =
-                    false;
-            }
-        }
-    }
-
-    // =========================================================
-    // REVEAL CELLS
-    // =========================================================
-
-    private void RevealVisibleCells()
-    {
-        for (int i = 0;
-             i < spottersBuffer.Count;
-             i++)
-        {
-            BattalionScr spotter =
-                spottersBuffer[i];
+            BattalionScr spotter = spotters[i];
 
             if (spotter == null)
                 continue;
 
-            RevealFromBattalion(
-                spotter
-            );
-        }
-    }
+            Vector2 origin = spotter.transform.position;
 
-    private void RevealFromBattalion(
-        BattalionScr spotter)
-    {
-        Vector2 origin =
-            spotter.transform.position;
+            float visionRange = spotter.GetEffectiveVisionRange();
+            float visionRangeSquared = visionRange * visionRange;
 
-        float visionRange =
-            spotter.GetEffectiveVisionRange();
-
-        float visionRangeSquared =
-            visionRange *
-            visionRange;
-
-        for (int x = 0;
-             x < gridWidth;
-             x++)
-        {
-            for (int y = 0;
-                 y < gridHeight;
-                 y++)
+            for (int x = 0; x < gridWidth; x++)
             {
-                FogCell cell =
-                    cells[x, y];
-
-                if (cell.visible)
-                    continue;
-
-                Vector2 offset =
-                    cell.worldPosition -
-                    origin;
-
-                if (offset.sqrMagnitude >
-                    visionRangeSquared)
+                for (int y = 0; y < gridHeight; y++)
                 {
-                    continue;
-                }
+                    if (grid[x, y])
+                        continue;
 
-                if (TerrainManagerScr.Instance !=
-                    null)
-                {
-                    if (!TerrainManagerScr.Instance
-                        .HasLineOfSight(
-                            origin,
-                            cell.worldPosition
-                        ))
+                    Vector2 cellPos = cells[x, y].worldPosition;
+                    Vector2 offset = cellPos - origin;
+
+                    if (offset.sqrMagnitude > visionRangeSquared)
+                        continue;
+
+                    if (TerrainManagerScr.Instance != null &&
+                        !TerrainManagerScr.Instance.HasLineOfSight(origin, cellPos))
                     {
                         continue;
                     }
+
+                    grid[x, y] = true;
                 }
+            }
+        }
+    }
 
-                cell.visible =
-                    true;
+    /// <summary>
+    /// Копіює TeamVisionState гравця (playerManager) у cells[,] —
+    /// саме це фактично малюється на екрані.
+    /// </summary>
+    private void ApplyRenderStateFromPlayer()
+    {
+        if (playerManager == null)
+            return;
 
-                cell.explored =
-                    true;
+        if (!visionByTeam.TryGetValue(playerManager.teamID, out TeamVisionState state))
+            return;
+
+        for (int x = 0; x < gridWidth; x++)
+        {
+            for (int y = 0; y < gridHeight; y++)
+            {
+                bool visible = state.visibleCells[x, y];
+
+                cells[x, y].visible = visible;
+
+                if (visible)
+                    cells[x, y].explored = true;
             }
         }
     }
 
     // =========================================================
-    // UPDATE FOG VISUALS
+    // UPDATE FOG VISUALS (сіра заливка на екрані)
     // =========================================================
 
     private void UpdateFogVisuals()
     {
-        for (int x = 0;
-             x < gridWidth;
-             x++)
+        for (int x = 0; x < gridWidth; x++)
         {
-            for (int y = 0;
-                 y < gridHeight;
-                 y++)
+            for (int y = 0; y < gridHeight; y++)
             {
-                FogCell cell =
-                    cells[x, y];
+                FogCell cell = cells[x, y];
 
                 if (cell.renderer == null)
                     continue;
 
                 if (cell.visible)
                 {
-                    cell.renderer.enabled =
-                        false;
-
+                    cell.renderer.enabled = false;
                     continue;
                 }
 
-                cell.renderer.enabled =
-                    true;
+                cell.renderer.enabled = true;
 
-                if (cell.explored)
-                {
-                    cell.renderer.color =
-                        exploredColor;
-                }
-                else
-                {
-                    cell.renderer.color =
-                        unexploredColor;
-                }
+                cell.renderer.color = cell.explored ? exploredColor : unexploredColor;
             }
         }
     }
 
     // =========================================================
-    // BATTALION VISIBILITY
+    // BATTALION VISIBILITY (спрайт на екрані — теж лише playerManager)
     // =========================================================
 
     /// <summary>
-    /// Визначає, чи видно конкретний батальйон.
-    ///
-    /// Союзники:
-    ///     завжди видимі.
-    ///
-    /// Вороги:
-    ///     видимі тільки якщо їхня
-    ///     позиція знаходиться
-    ///     у відкритій зоні Fog.
-    ///
-    /// Нейтральні:
-    ///     така сама логіка,
-    ///     як у ворогів.
+    /// Ховає/показує спрайт батальйону на екрані. Це рендер, тому
+    /// рахується виключно з точки зору playerManager — так само,
+    /// як і сіра заливка. Для запиту з точки зору ІНШОЇ команди
+    /// використовуй IsVisibleTo(), він на battalion.SetFogVisible
+    /// не впливає і від нього не залежить.
     /// </summary>
     private void RecalculateBattalionVisibility()
     {
-        IReadOnlyList<BattalionScr> all =
-            BattalionScr.AllActive;
+        if (playerManager == null)
+            return;
 
-        for (int i = 0;
-             i < all.Count;
-             i++)
+        IReadOnlyList<BattalionScr> all = BattalionScr.AllActive;
+
+        for (int i = 0; i < all.Count; i++)
         {
-            BattalionScr battalion =
-                all[i];
+            BattalionScr battalion = all[i];
 
             if (battalion == null)
                 continue;
 
-            // ---------------------------------------------
-            // Гравець + союзники.
-            // Вони ніколи не ховаються.
-            // ---------------------------------------------
+            bool visible = IsVisibleTo(playerManager, battalion);
 
-            if (IsFriendlyTeam(
-                battalion.teamID
-            ))
-            {
-                battalion.SetFogVisible(
-                    true
-                );
-
-                continue;
-            }
-
-            // ---------------------------------------------
-            // Вороги + нейтральні.
-            // Видимі тільки у відкритій зоні.
-            // ---------------------------------------------
-
-            bool visible =
-                IsWorldPositionVisible(
-                    battalion.transform.position
-                );
-
-            battalion.SetFogVisible(
-                visible
-            );
+            battalion.SetFogVisible(visible);
         }
     }
 
     // =========================================================
-    // POSITION VISIBILITY
+    // POSITION VISIBILITY (сумісність зі старим API — точка зору playerManager)
     // =========================================================
 
-    public bool IsWorldPositionVisible(
-        Vector2 position)
+    public bool IsWorldPositionVisible(Vector2 position)
     {
         if (cells == null)
             return false;
 
-        Vector2 bottomLeft =
-            mapCenter -
-            mapSize * 0.5f;
-
-        Vector2 localPosition =
-            position -
-            bottomLeft;
-
-        int x =
-            Mathf.FloorToInt(
-                localPosition.x /
-                cellSize
-            );
-
-        int y =
-            Mathf.FloorToInt(
-                localPosition.y /
-                cellSize
-            );
-
-        if (x < 0 ||
-            y < 0 ||
-            x >= gridWidth ||
-            y >= gridHeight)
-        {
+        if (!TryGetCellIndex(position, out int x, out int y))
             return false;
-        }
 
         return cells[x, y].visible;
     }
@@ -828,23 +657,16 @@ public class FogOfWarManagerScr : MonoBehaviour
     // PUBLIC REBUILD
     // =========================================================
 
-    [ContextMenu(
-        "Rebuild Fog Grid"
-    )]
+    [ContextMenu("Rebuild Fog Grid")]
     public void RebuildFogGrid()
     {
         CreateFogGrid();
-
         RecalculateVisibility();
     }
 
-    [ContextMenu(
-        "Refresh Team Relations"
-    )]
+    [ContextMenu("Refresh Team Relations")]
     public void RefreshTeamRelations()
     {
-        RefreshFriendlyTeams();
-
         RecalculateVisibility();
     }
 
@@ -854,18 +676,7 @@ public class FogOfWarManagerScr : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color =
-            new Color(
-                0f,
-                1f,
-                1f,
-                0.5f
-            );
-
-        Gizmos.DrawWireCube(
-            mapCenter,
-            mapSize
-        );
+        Gizmos.color = new Color(0f, 1f, 1f, 0.5f);
+        Gizmos.DrawWireCube(mapCenter, mapSize);
     }
-
 }
