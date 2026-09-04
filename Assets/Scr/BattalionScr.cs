@@ -32,9 +32,18 @@ public class BattalionScr : MonoBehaviour
     public float bombardRadius = 1.5f;
     public GameObject isSelect;
     [Header("Туман війни")]
-    [Tooltip("Корінь візуальних об'єктів батальйону (спрайт, бари здоров'я тощо). Вимикається, коли батальйон прихований туманом війни. Якщо не задано — приховування не діятиме візуально.")]
-    public GameObject visualRoot;
-    [Tooltip("Колайдер, за яким батальйон обирається кліком. Вимикається разом з visualRoot, щоб прихованого ворога не можна було обрати.")]
+    [Tooltip(
+        "Рендерери (спрайти/меші), які МАСКУЮТЬСЯ під туманом війни " +
+        "(renderer.enabled = false — сам GameObject і всі його " +
+        "компоненти лишаються повністю живими, батальйон НЕ зникає " +
+        "з AllBattalions/AI). Якщо лишити порожнім — заповнюється " +
+        "автоматично всіма Renderer у дочірніх об'єктах при Awake. " +
+        "НІКОЛИ не використовуй тут GameObject.SetActive — саме " +
+        "так туман випадково \"вимикав\" батальйон замість того, " +
+        "щоб його промаскувати."
+    )]
+    public Renderer[] visualRenderers;
+    [Tooltip("Колайдер, за яким батальйон обирається кліком. Вимикається (enabled=false, GameObject лишається активним) разом із visualRenderers, щоб прихованого ворога не можна було обрати.")]
     public Collider2D selectionCollider;
     [Header("Terrain sampling")]
     [SerializeField, Min(0.05f)]
@@ -63,11 +72,24 @@ public class BattalionScr : MonoBehaviour
         AllBattalions.Remove(this);
     }
 
+    private void Awake_FogSetup()
+    {
+        if (visualRenderers == null || visualRenderers.Length == 0)
+            visualRenderers = GetComponentsInChildren<Renderer>(true);
+    }
+
     /// <summary>
-    /// Викликається FogOfWarManagerScr. Показує/приховує спрайт та
-    /// вимикає можливість обрати прихований батальйон кліком.
-    /// Нічого не робить, якщо стан не змінився (щоб не смикати
-    /// SetActive щокадру).
+    /// Викликається FogOfWarManagerScr. МАСКУЄ (не вимикає) спрайт:
+    /// вимикає лише Renderer.enabled на дочірніх рендерерах і
+    /// selectionCollider.enabled — сам GameObject лишається active
+    /// весь час, тому OnEnable/OnDisable (і, відповідно,
+    /// AllBattalions) ніколи не спрацьовують через туман. Раніше тут
+    /// стояв GameObject.SetActive(visible) на окремому полі
+    /// visualRoot — якщо туди помилково призначали КОРІНЬ самого
+    /// батальйона (а не дочірній об'єкт), туман фактично вимикав
+    /// батальйон повністю, і той зникав з усіх розрахунків замість
+    /// того, щоб просто стати невидимим. Renderer.enabled такої
+    /// помилки в принципі не допускає.
     /// </summary>
     public void SetFogVisible(bool visible)
     {
@@ -76,8 +98,14 @@ public class BattalionScr : MonoBehaviour
 
         fogVisible = visible;
 
-        if (visualRoot != null)
-            visualRoot.SetActive(visible);
+        if (visualRenderers != null)
+        {
+            for (int i = 0; i < visualRenderers.Length; i++)
+            {
+                if (visualRenderers[i] != null)
+                    visualRenderers[i].enabled = visible;
+            }
+        }
 
         if (selectionCollider != null)
             selectionCollider.enabled = visible;
@@ -98,29 +126,10 @@ public class BattalionScr : MonoBehaviour
         return battalion.visionRange * TerrainManagerScr.Instance.GetVisionRangeMultiplier((Vector2)transform.position);
     }
 
-    /// <summary>
-    /// Чи бачить команда "viewer" цей батальйон ЗАРАЗ — незалежно
-    /// від того, що намальовано на екрані гравця (IsFogVisible
-    /// відображає лише поточний рендер, тобто точку зору
-    /// FogOfWarManagerScr.playerManager). Делегує в
-    /// FogOfWarManagerScr.IsVisibleTo(viewer, this) — придатно для
-    /// AI-логіки будь-якої команди.
-    /// </summary>
-    public bool IsVisibleTo(BatalionManagerScr viewer)
-    {
-        if (viewer == null)
-            return false;
-
-        FogOfWarManagerScr fog = FogOfWarManagerScr.Instance;
-
-        if (fog == null)
-            return true; // немає тумана в сцені — вважаємо все видимим
-
-        return fog.IsVisibleTo(viewer, this);
-    }
-
     private void Awake()
     {
+        Awake_FogSetup();
+
         command[0] = new MoveCommand();
         command[1] = new MoveCommand();
         command[2] = new MoveCommand();
