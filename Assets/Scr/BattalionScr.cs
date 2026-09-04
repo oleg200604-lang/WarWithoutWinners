@@ -98,6 +98,27 @@ public class BattalionScr : MonoBehaviour
         return battalion.visionRange * TerrainManagerScr.Instance.GetVisionRangeMultiplier((Vector2)transform.position);
     }
 
+    /// <summary>
+    /// Чи бачить команда "viewer" цей батальйон ЗАРАЗ — незалежно
+    /// від того, що намальовано на екрані гравця (IsFogVisible
+    /// відображає лише поточний рендер, тобто точку зору
+    /// FogOfWarManagerScr.playerManager). Делегує в
+    /// FogOfWarManagerScr.IsVisibleTo(viewer, this) — придатно для
+    /// AI-логіки будь-якої команди.
+    /// </summary>
+    public bool IsVisibleTo(BatalionManagerScr viewer)
+    {
+        if (viewer == null)
+            return false;
+
+        FogOfWarManagerScr fog = FogOfWarManagerScr.Instance;
+
+        if (fog == null)
+            return true; // немає тумана в сцені — вважаємо все видимим
+
+        return fog.IsVisibleTo(viewer, this);
+    }
+
     private void Awake()
     {
         command[0] = new MoveCommand();

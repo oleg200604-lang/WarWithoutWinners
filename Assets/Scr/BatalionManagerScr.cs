@@ -19,14 +19,6 @@ public class BatalionManagerScr : MonoBehaviour
     [Tooltip("ID команд, які є союзниками цієї команди.")]
     public int[] allyID;
 
-    [Header("Туман війни")]
-
-    [Tooltip(
-        "Позначте true, якщо ЦЯ команда є командою гравця " +
-        "або її батальйони повинні відкривати туман війни."
-    )]
-    public bool isAllyOfPlayer;
-
     // =========================================================
     // BATTALION / REGIMENT
     // =========================================================
@@ -232,34 +224,40 @@ public class BatalionManagerScr : MonoBehaviour
     // =========================================================
 
     /// <summary>
-    /// Чи повинна ця команда відкривати Fog of War
-    /// для гравця.
+    /// Чи бачить ЦЯ команда конкретний батальйон "target" зараз —
+    /// незалежно від того, що намальовано на екрані гравця.
+    /// Делегує в FogOfWarManagerScr.IsVisibleTo(this, target).
+    /// Придатно для AI: "чи можу я вибрати/атакувати цю ціль".
     /// </summary>
-    public bool ShouldRevealFog()
+    public bool CanSee(BattalionScr target)
     {
-        return isAllyOfPlayer;
+        if (target == null)
+            return false;
+
+        FogOfWarManagerScr fog = FogOfWarManagerScr.Instance;
+
+        if (fog == null)
+            return true; // немає тумана в сцені — вважаємо все видимим
+
+        return fog.IsVisibleTo(this, target);
     }
 
     /// <summary>
-    /// Чи є ця команда дружньою для гравця.
-    ///
-    /// Використовується FogOfWarManagerScr.
+    /// Чи є ця команда дружньою для гравця (playerManager фог-скрипта).
+    /// Використовується FogOfWarManagerScr / рештою коду, коли потрібна
+    /// саме точка зору гравця, а не власна (для власної — CanSee/IsAlly).
     /// </summary>
     public bool IsPlayerFriendly()
     {
-        if (isAllyOfPlayer)
+        FogOfWarManagerScr fog = FogOfWarManagerScr.Instance;
+
+        if (fog == null || fog.playerManager == null)
+            return false;
+
+        if (fog.playerManager == this)
             return true;
 
-        FogOfWarManagerScr fog =
-            FogOfWarManagerScr.Instance;
-
-        if (fog == null)
-            return false;
-
-        if (fog.playerManager == null)
-            return false;
-
-        return fog.playerManager.IsAlly(teamID);
+        return fog.playerManager.IsAlly(teamID) || IsAlly(fog.playerManager.teamID);
     }
 
     // =========================================================

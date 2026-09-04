@@ -15382,7 +15382,6 @@ MonoBehaviour:
   teamID: 0
   enemyID: 01000000
   allyID: 02000000
-  isAllyOfPlayer: 0
   selectBattalion: {fileID: 0}
   selectRegiment:
     nameRegiment: 
