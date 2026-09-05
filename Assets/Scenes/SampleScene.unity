@@ -10344,7 +10344,7 @@ MonoBehaviour:
   isDefending: 0
   defendDirection: {x: 1, y: 0, z: 0}
   orderDuration: 1
-  footprintRadius: 1.98
+  footprintRadius: 0.6
   isDeployed: 0
   deployDirection: {x: 1, y: 0, z: 0}
   deployRange: 4
@@ -11510,7 +11510,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8612b02ba5db6ef48852c5b000fdca26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattalionScr
-  batalionManager: {fileID: 1916624630}
+  batalionManager: {fileID: 0}
   battleManager: {fileID: 1039417165}
   attackSystem: {fileID: 1446731979}
   bar: {fileID: 1196580176}
@@ -11547,7 +11547,7 @@ MonoBehaviour:
   isDefending: 0
   defendDirection: {x: 1, y: 0, z: 0}
   orderDuration: 1
-  footprintRadius: 1.98
+  footprintRadius: 0.4
   isDeployed: 0
   deployDirection: {x: 1, y: 0, z: 0}
   deployRange: 4
@@ -11612,7 +11612,7 @@ Transform:
   m_GameObject: {fileID: 1446731978}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -3.5, y: -0.28, z: 0}
+  m_LocalPosition: {x: 2.77, y: 0.4, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

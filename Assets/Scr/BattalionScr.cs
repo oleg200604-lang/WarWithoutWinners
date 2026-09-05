@@ -23,7 +23,30 @@ public class BattalionScr : MonoBehaviour
     public bool isDefending;
     public Vector3 defendDirection = Vector3.right;
     public float orderDuration = 1f;
+    [Tooltip("Резервний радіус \"footprint\" для колізій (рух/ближній бій), якщо selectionCollider не заданий. Коли selectionCollider є — радіус береться з нього (EffectiveFootprintRadius), це поле ігнорується.")]
     public float footprintRadius = 0.6f;
+
+    /// <summary>
+    /// Радіус, що фактично використовується для колізій (блокування
+    /// точок наказів, ближній бій). Береться з selectionCollider
+    /// (щоб не тримати окреме "фантомне" число, яке розходиться з
+    /// реальним колайдером батальйона) — half-extent його world-space
+    /// bounds, усереднений по X/Y. Якщо selectionCollider не заданий,
+    /// відкатується на footprintRadius.
+    /// </summary>
+    public float EffectiveFootprintRadius
+    {
+        get
+        {
+            if (selectionCollider != null)
+            {
+                Bounds b = selectionCollider.bounds;
+                return (b.extents.x + b.extents.y) * 0.5f;
+            }
+
+            return footprintRadius;
+        }
+    }
     public bool isDeployed;
     public Vector3 deployDirection = Vector3.right;
     public float deployRange = 4f;
@@ -401,7 +424,7 @@ public class BattalionScr : MonoBehaviour
 
         if (!IsPositionFree(
             finalPosition,
-            footprintRadius,
+            EffectiveFootprintRadius,
             this))
         {
             return false;
@@ -473,7 +496,7 @@ public class BattalionScr : MonoBehaviour
 
             if (!IsPositionFree(
                 targetPoint,
-                footprintRadius,
+                EffectiveFootprintRadius,
                 this))
             {
                 return false;
@@ -762,14 +785,14 @@ public class BattalionScr : MonoBehaviour
                 continue;
             }
 
-            float minDist = radius + other.footprintRadius;
+            float minDist = radius + other.EffectiveFootprintRadius;
             float distance = Vector3.Distance(other.transform.position, point);
 
             if (distance < minDist)
             {
                 // Діагностика: друкуємо, ХТО саме заблокував точку —
                 // ім'я об'єкта, повний шлях в ієрархії, teamID і
-                // footprintRadius. Якщо блокувальник — не реальний
+                // EffectiveFootprintRadius. Якщо блокувальник — не реальний
                 // ворожий/дружній батальйон, а, наприклад, об'єкт
                 // індикатора зони огляду (LineRenderer), це означає,
                 // що на ньому випадково теж висить BattalionScr і він
@@ -778,7 +801,7 @@ public class BattalionScr : MonoBehaviour
                 Debug.LogWarning(
                     $"IsPositionFree: точку {point} заблокував " +
                     $"'{other.gameObject.name}' (шлях: {GetHierarchyPath(other.transform)}), " +
-                    $"teamID={other.TeamID}, footprintRadius={other.footprintRadius}, " +
+                    $"teamID={other.TeamID}, footprintRadius={other.EffectiveFootprintRadius}, " +
                     $"позиція={other.transform.position}, дистанція={distance:F2}, " +
                     $"поріг={minDist:F2}",
                     other
@@ -994,16 +1017,13 @@ public class BattalionScr : MonoBehaviour
             if (other == null || other == this)
                 continue;
 
-            if (other.batalionManager == null)
-                continue;
-
-            if (!batalionManager.IsEnemyTo(other.batalionManager))
+            if (!IsEnemy(other))
                 continue;
 
             Vector3 delta = other.transform.position - transform.position;
             delta.z = 0f;
 
-            float combinedRadius = footprintRadius + other.footprintRadius;
+            float combinedRadius = EffectiveFootprintRadius + other.EffectiveFootprintRadius;
 
             if (delta.magnitude <= combinedRadius)
                 return other;
