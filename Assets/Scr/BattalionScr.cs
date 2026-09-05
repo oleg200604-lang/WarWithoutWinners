@@ -705,13 +705,62 @@ public class BattalionScr : MonoBehaviour
             if (other == null || other == self)
                 continue;
 
-            float minDist = radius + other.footprintRadius;
+            // Прихований туманом війни ворог/нейтрал НЕ повинен
+            // блокувати розміщення наказу. Інакше сама відмова
+            // "точка зайнята" опосередковано видає гравцю, що там
+            // хтось є, хоча візуально там порожньо (класичний витік
+            // інформації через туман, тільки не через клік, а через
+            // фізичну колізію). Власна команда і будь-хто, кого
+            // спостерігач ЗАРАЗ бачить (CanSee), блокують як і раніше
+            // — тут нічого нового не розкривається.
+            if (self != null &&
+                self.batalionManager != null &&
+                other.teamID != self.teamID &&
+                !self.batalionManager.CanSee(other))
+            {
+                continue;
+            }
 
-            if (Vector3.Distance(other.transform.position, point) < minDist)
+            float minDist = radius + other.footprintRadius;
+            float distance = Vector3.Distance(other.transform.position, point);
+
+            if (distance < minDist)
+            {
+                // Діагностика: друкуємо, ХТО саме заблокував точку —
+                // ім'я об'єкта, повний шлях в ієрархії, teamID і
+                // footprintRadius. Якщо блокувальник — не реальний
+                // ворожий/дружній батальйон, а, наприклад, об'єкт
+                // індикатора зони огляду (LineRenderer), це означає,
+                // що на ньому випадково теж висить BattalionScr і він
+                // зареєструвався в AllBattalions як окрема "фантомна"
+                // одиниця точно в тій самій точці.
+                Debug.LogWarning(
+                    $"IsPositionFree: точку {point} заблокував " +
+                    $"'{other.gameObject.name}' (шлях: {GetHierarchyPath(other.transform)}), " +
+                    $"teamID={other.teamID}, footprintRadius={other.footprintRadius}, " +
+                    $"позиція={other.transform.position}, дистанція={distance:F2}, " +
+                    $"поріг={minDist:F2}",
+                    other
+                );
+
                 return false;
+            }
         }
 
         return true;
+    }
+
+    private static string GetHierarchyPath(Transform t)
+    {
+        string path = t.name;
+
+        while (t.parent != null)
+        {
+            t = t.parent;
+            path = t.name + "/" + path;
+        }
+
+        return path;
     }
     public float GetEffectiveSpeed(Vector3 origin)
     {
@@ -759,6 +808,13 @@ public class BattalionScr : MonoBehaviour
 
     private void OnMouseDown()
     {
+        // Не можна навіть натиснути на батальйон, прихований
+        // туманом війни — інакше клік сам по собі "видає" точну
+        // позицію ворога (контур виділення/ім'я в консолі), а це
+        // фактично дозволяє наводити накази "через" туман.
+        if (!fogVisible)
+            return;
+
         batalionManager.SelectBattalion(this);
     }
 

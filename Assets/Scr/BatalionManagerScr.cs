@@ -1208,8 +1208,26 @@ public class BatalionManagerScr : MonoBehaviour
         if (battalion == null)
             return;
 
+        // Другий, незалежний бар'єр (крім fogVisible на самому
+        // клікові): навіть якщо хтось викличе SelectBattalion
+        // напряму (не через клік), команда, яка не бачить цей
+        // батальйон зараз (CanSee -> IsVisibleTo), не повинна
+        // мати змогу ані виділити його контур, ані обрати його.
+        // Власні батальйони завжди проходять цю перевірку
+        // (CanSee повертає true для дружніх без розрахунку тумана).
+        if (!CanSee(battalion))
+            return;
+
         commandType =
             CommandType.None;
+
+        if (teamID != battalion.teamID)
+        {
+            // Чужий (навіть видимий, напр. союзний) батальйон —
+            // лише короткий "огляд", без контуру виділення,
+            // без friendly-only даних і без можливості ним керувати.
+            return;
+        }
 
         if (battalion.isSelect != null)
         {
@@ -1217,39 +1235,36 @@ public class BatalionManagerScr : MonoBehaviour
                 .SetActive(true);
         }
 
-        if (teamID == battalion.teamID)
+        if (selectBattalion ==
+            battalion)
         {
-            if (selectBattalion ==
-                battalion)
+            selectBattalion =
+                null;
+
+            if (battalionUIManager != null)
             {
-                selectBattalion =
-                    null;
-
-                if (battalionUIManager != null)
-                {
-                    battalionUIManager
-                        .CommandPanel(false);
-                }
+                battalionUIManager
+                    .CommandPanel(false);
             }
-            else
-            {
-                selectRegiment =
-                    null;
-
-                selectBattalion =
-                    battalion;
-
-                if (battalionUIManager != null)
-                {
-                    battalionUIManager
-                        .CommandPanel(true);
-                }
-            }
-
-            print(
-                battalion.nameBattalion
-            );
         }
+        else
+        {
+            selectRegiment =
+                null;
+
+            selectBattalion =
+                battalion;
+
+            if (battalionUIManager != null)
+            {
+                battalionUIManager
+                    .CommandPanel(true);
+            }
+        }
+
+        print(
+            battalion.nameBattalion
+        );
     }
 
     // =========================================================
