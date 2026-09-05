@@ -62,9 +62,45 @@ public class BattalionScr : MonoBehaviour
 
     public static IReadOnlyList<BattalionScr> AllActive => AllBattalions;
 
+    public int TeamID => batalionManager != null ? batalionManager.teamID : teamID;
+
+    private void SyncManagerReference()
+    {
+        if (batalionManager == null)
+            batalionManager = GetComponentInParent<BatalionManagerScr>();
+
+        if (batalionManager != null)
+            teamID = batalionManager.teamID;
+    }
+
+    public bool IsEnemy(BattalionScr other)
+    {
+        if (other == null || other == this)
+            return false;
+
+        if (batalionManager != null && other.batalionManager != null)
+            return batalionManager.IsEnemyTo(other.batalionManager);
+
+        return TeamID != other.TeamID;
+    }
+
+    public bool IsAlly(BattalionScr other)
+    {
+        if (other == null)
+            return false;
+
+        if (batalionManager != null && other.batalionManager != null)
+            return batalionManager.IsAlly(other.batalionManager.teamID);
+
+        return TeamID == other.TeamID;
+    }
+
     private void OnEnable()
     {
-        AllBattalions.Add(this);
+        if (!AllBattalions.Contains(this))
+            AllBattalions.Add(this);
+
+        SyncManagerReference();
     }
 
     private void OnDisable()
@@ -129,15 +165,20 @@ public class BattalionScr : MonoBehaviour
     private void Awake()
     {
         Awake_FogSetup();
+        SyncManagerReference();
 
         command[0] = new MoveCommand();
         command[1] = new MoveCommand();
         command[2] = new MoveCommand();
 
-        baseBattalion = battalion.Clone();
-        basePersonnelMax = personnel.personnelMax;
+        if (battalion != null)
+            baseBattalion = battalion.Clone();
 
-        ammo.current = Mathf.Clamp(ammo.current, 0, ammo.max);
+        if (personnel != null)
+            basePersonnelMax = personnel.personnelMax;
+
+        if (ammo != null)
+            ammo.current = Mathf.Clamp(ammo.current, 0, ammo.max);
 
         RecalculateStats();
     }
@@ -715,7 +756,7 @@ public class BattalionScr : MonoBehaviour
             // — тут нічого нового не розкривається.
             if (self != null &&
                 self.batalionManager != null &&
-                other.teamID != self.teamID &&
+                other.TeamID != self.TeamID &&
                 !self.batalionManager.CanSee(other))
             {
                 continue;
@@ -737,7 +778,7 @@ public class BattalionScr : MonoBehaviour
                 Debug.LogWarning(
                     $"IsPositionFree: точку {point} заблокував " +
                     $"'{other.gameObject.name}' (шлях: {GetHierarchyPath(other.transform)}), " +
-                    $"teamID={other.teamID}, footprintRadius={other.footprintRadius}, " +
+                    $"teamID={other.TeamID}, footprintRadius={other.footprintRadius}, " +
                     $"позиція={other.transform.position}, дистанція={distance:F2}, " +
                     $"поріг={minDist:F2}",
                     other
@@ -890,15 +931,23 @@ public class BattalionScr : MonoBehaviour
     {
         List<BattalionScr> neighbors = new List<BattalionScr>();
 
-        if (batalionManager == null ||
-            batalionManager.regiments == null ||
-            regimentredID < 0 ||
-            regimentredID >= batalionManager.regiments.Count)
-        {
+        if (batalionManager == null || batalionManager.regiments == null)
             return neighbors;
-        }
 
-        Regiment regiment = batalionManager.regiments[regimentredID];
+        Regiment regiment = null;
+
+        // regimentredID залишаємо лише як кеш/сумісність зі старими даними.
+        // Фактичний полк визначається за присутністю цього батальйону в списку.
+        for (int i = 0; i < batalionManager.regiments.Count; i++)
+        {
+            Regiment candidate = batalionManager.regiments[i];
+            if (candidate != null && candidate.battalions != null && candidate.battalions.Contains(this))
+            {
+                regiment = candidate;
+                regimentredID = i;
+                break;
+            }
+        }
 
         if (regiment == null || regiment.battalions == null)
             return neighbors;

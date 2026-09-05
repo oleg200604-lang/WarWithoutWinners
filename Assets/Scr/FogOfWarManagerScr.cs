@@ -1757,8 +1757,7 @@ public class FogOfWarManagerScr : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color =
-            new Color(
+        Gizmos.color = new Color(
                 0f,
                 1f,
                 1f,
