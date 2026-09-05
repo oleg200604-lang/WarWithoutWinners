@@ -10331,6 +10331,7 @@ MonoBehaviour:
     murder: 1
     injury: 3
     speed: 2
+    meleeAttack: 0
     visionRange: 6
     ammoCostPerAction: 10
     commandCost: 1
@@ -11533,6 +11534,7 @@ MonoBehaviour:
     murder: 1
     injury: 3
     speed: 2
+    meleeAttack: 0
     visionRange: 6
     ammoCostPerAction: 10
     commandCost: 1
@@ -15391,6 +15393,7 @@ MonoBehaviour:
       murder: 1
       injury: 3
       speed: -0.25
+      meleeAttack: 0
       visionRange: 6
       ammoCostPerAction: 10
       commandCost: 1
@@ -15406,6 +15409,7 @@ MonoBehaviour:
       murder: 0
       injury: 0
       speed: 0
+      meleeAttack: 0
       visionRange: 6
       ammoCostPerAction: 10
       commandCost: 1
@@ -15421,6 +15425,7 @@ MonoBehaviour:
       murder: 1
       injury: 3
       speed: -0.5
+      meleeAttack: 0
       visionRange: 6
       ammoCostPerAction: 10
       commandCost: 1
@@ -15436,6 +15441,7 @@ MonoBehaviour:
       murder: 2
       injury: 1
       speed: 0
+      meleeAttack: 0
       visionRange: 6
       ammoCostPerAction: 10
       commandCost: 1

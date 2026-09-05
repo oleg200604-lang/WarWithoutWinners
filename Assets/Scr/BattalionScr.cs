@@ -917,6 +917,75 @@ public class BattalionScr : MonoBehaviour
         return neighbors;
     }
 
+    // =========================================================
+    // БЛИЖНІЙ БІЙ (не окремий наказ)
+    // =========================================================
+    //
+    // Батальйон може випадково зіштовхнутися з ворогом під час
+    // виконання будь-якого наказу, що рухає його по мапі (Move).
+    // Це НЕ окремий CommandType — перевіряється щокадру всередині
+    // ExecuteOrders, і при зіткненні негайно зупиняє весь ланцюжок
+    // наказів на цей хід (наступні слоти command[] не виконуються).
+
+    /// <summary>
+    /// Шукає ворожий батальйон, з яким сталося фізичне зіткнення
+    /// (перетин "footprint"-кіл) прямо зараз.
+    /// </summary>
+    private BattalionScr FindMeleeCollision()
+    {
+        if (batalionManager == null)
+            return null;
+
+        IReadOnlyList<BattalionScr> all = AllActive;
+
+        for (int i = 0; i < all.Count; i++)
+        {
+            BattalionScr other = all[i];
+
+            if (other == null || other == this)
+                continue;
+
+            if (other.batalionManager == null)
+                continue;
+
+            if (!batalionManager.IsEnemyTo(other.batalionManager))
+                continue;
+
+            Vector3 delta = other.transform.position - transform.position;
+            delta.z = 0f;
+
+            float combinedRadius = footprintRadius + other.footprintRadius;
+
+            if (delta.magnitude <= combinedRadius)
+                return other;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Обидва батальйони, що зіткнулись, б'ють один одного своїм
+    /// meleeAttack (якщо він заданий > 0). Наказ, під час якого
+    /// сталось зіткнення, вважається перерваним.
+    /// </summary>
+    private void ResolveMeleeCollision(BattalionScr enemy)
+    {
+        if (enemy == null)
+            return;
+
+        print(nameBattalion + ": зіткнення в ближньому бою з " + enemy.nameBattalion + "!");
+
+        if (battalion.meleeAttack > 0)
+        {
+            enemy.TakeDamage(battalion.meleeAttack, battalion.murder, battalion.injury);
+        }
+
+        if (enemy.battalion.meleeAttack > 0)
+        {
+            TakeDamage(enemy.battalion.meleeAttack, enemy.battalion.murder, enemy.battalion.injury);
+        }
+    }
+
     private float ComputeAttackDamage()
     {
         return battalion.damage
@@ -957,6 +1026,20 @@ public class BattalionScr : MonoBehaviour
                     t += Time.deltaTime;
 
                     transform.position = Vector3.Lerp(start, target, t / orderDuration);
+
+                    BattalionScr meleeEnemy = FindMeleeCollision();
+
+                    if (meleeEnemy != null)
+                    {
+                        ResolveMeleeCollision(meleeEnemy);
+
+                        // Зіткнення зупиняє виконання ВСІХ подальших
+                        // наказів цього ходу — це не окремий наказ,
+                        // а перерваний Move.
+                        ClearAllOrders();
+
+                        yield break;
+                    }
 
                     yield return null;
                 }
@@ -1542,6 +1625,9 @@ public class Battalion
     public float injury;
     public float speed;
 
+    [Tooltip("Шкода ближнього бою — застосовується автоматично, коли батальйон під час виконання наказу зіштовхується з ворожим батальйоном (не є окремим наказом).")]
+    public int meleeAttack;
+
     [Header("Видимість (туман війни)")]
     [Tooltip("Базова дальність, на якій батальйон розсіює туман війни (бачить ворогів).")]
     public float visionRange = 6f;
@@ -1564,6 +1650,7 @@ public class Battalion
             murder = murder,
             injury = injury,
             speed = speed,
+            meleeAttack = meleeAttack,
             visionRange = visionRange,
             ammoCostPerAction = ammoCostPerAction,
             commandCost = commandCost
