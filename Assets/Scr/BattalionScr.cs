@@ -47,6 +47,19 @@ public class BattalionScr : MonoBehaviour
             return footprintRadius;
         }
     }
+
+    [Tooltip("Додатковий запас радіусу ТІЛЬКИ для виявлення ближнього бою (щоб зіткнення реагувало трохи раніше, до фактичного накладання спрайтів). На IsPositionFree (розміщення наказів Move/Attack) НЕ впливає — командування лишається таким самим, як і з реальним розміром колайдера.")]
+    public float meleeCollisionPadding = 0.15f;
+
+    /// <summary>
+    /// Радіус, що використовується ЛИШЕ для виявлення ближнього бою —
+    /// EffectiveFootprintRadius + meleeCollisionPadding. Навмисно
+    /// відрізняється від EffectiveFootprintRadius, який лишається
+    /// "чесним" розміром колайдера для перевірки вільних точок під
+    /// час видачі наказів (IsPositionFree), щоб запас для бою не
+    /// заважав гравцю ставити накази впритул.
+    /// </summary>
+    public float EffectiveMeleeRadius => EffectiveFootprintRadius + meleeCollisionPadding;
     public bool isDeployed;
     public Vector3 deployDirection = Vector3.right;
     public float deployRange = 4f;
@@ -1005,6 +1018,17 @@ public class BattalionScr : MonoBehaviour
     /// </summary>
     private BattalionScr FindMeleeCollision()
     {
+        return FindMeleeCollisionAt(transform.position);
+    }
+
+    /// <summary>
+    /// Те саме, що FindMeleeCollision(), але перевіряє задану
+    /// (потенційно ще не застосовану) позицію self замість поточної
+    /// transform.position — потрібно, щоб виявити зіткнення ДО того,
+    /// як батальйон реально в нього зайде.
+    /// </summary>
+    private BattalionScr FindMeleeCollisionAt(Vector3 selfPos)
+    {
         if (batalionManager == null)
             return null;
 
@@ -1020,16 +1044,60 @@ public class BattalionScr : MonoBehaviour
             if (!IsEnemy(other))
                 continue;
 
-            Vector3 delta = other.transform.position - transform.position;
+            Vector3 delta = other.transform.position - selfPos;
             delta.z = 0f;
 
-            float combinedRadius = EffectiveFootprintRadius + other.EffectiveFootprintRadius;
+            float combinedRadius = EffectiveMeleeRadius + other.EffectiveMeleeRadius;
 
             if (delta.magnitude <= combinedRadius)
                 return other;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Знаходить точку на відрізку [from, to], в якій self вперше
+    /// торкається enemy (дистанція між ними == combinedRadius),
+    /// щоб зупинити рух рівно на дотику замість накладання. Якщо
+    /// розв'язку немає (не мало б статись, якщо колізію взагалі
+    /// виявлено), повертає from як безпечний фолбек.
+    /// </summary>
+    private Vector3 ClampToContactPoint(Vector3 from, Vector3 to, BattalionScr enemy)
+    {
+        Vector3 enemyPos = enemy.transform.position;
+        float combinedRadius = EffectiveMeleeRadius + enemy.EffectiveMeleeRadius;
+
+        Vector3 d = to - from;
+        Vector3 f = from - enemyPos;
+        d.z = 0f;
+        f.z = 0f;
+
+        float a = Vector3.Dot(d, d);
+
+        if (a <= Mathf.Epsilon)
+            return from;
+
+        float b = 2f * Vector3.Dot(f, d);
+        float c = Vector3.Dot(f, f) - combinedRadius * combinedRadius;
+
+        float discriminant = b * b - 4f * a * c;
+
+        if (discriminant < 0f)
+            return from;
+
+        float sqrtDiscriminant = Mathf.Sqrt(discriminant);
+        float s1 = (-b - sqrtDiscriminant) / (2f * a);
+        float s2 = (-b + sqrtDiscriminant) / (2f * a);
+
+        float s = Mathf.Min(s1, s2);
+
+        if (s < 0f)
+            s = Mathf.Max(s1, s2);
+
+        s = Mathf.Clamp01(s);
+
+        return from + d * s;
     }
 
     /// <summary>
@@ -1094,12 +1162,22 @@ public class BattalionScr : MonoBehaviour
                 {
                     t += Time.deltaTime;
 
-                    transform.position = Vector3.Lerp(start, target, t / orderDuration);
+                    Vector3 candidate = Vector3.Lerp(start, target, t / orderDuration);
 
-                    BattalionScr meleeEnemy = FindMeleeCollision();
+                    BattalionScr meleeEnemy = FindMeleeCollisionAt(candidate);
 
                     if (meleeEnemy != null)
                     {
+                        // Не застосовуємо candidate (він вже може бути
+                        // ВСЕРЕДИНІ ворога) — зупиняємось рівно в точці
+                        // дотику, порахованій від фактичної поточної
+                        // позиції (transform.position), щоб не було
+                        // візуального накладання батальйонів.
+                        transform.position = ClampToContactPoint(
+                            transform.position,
+                            candidate,
+                            meleeEnemy);
+
                         ResolveMeleeCollision(meleeEnemy);
 
                         // Зіткнення зупиняє виконання ВСІХ подальших
@@ -1109,6 +1187,8 @@ public class BattalionScr : MonoBehaviour
 
                         yield break;
                     }
+
+                    transform.position = candidate;
 
                     yield return null;
                 }
