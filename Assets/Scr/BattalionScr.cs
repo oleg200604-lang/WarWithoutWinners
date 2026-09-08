@@ -17,23 +17,17 @@ public class BattalionScr : MonoBehaviour
     public int teamID;
     public int regimentredID = -1;
     public Company[] company;
-    [Space]
     public Officer officer;
+    public Officer officerRegiment;
+    public Proficiency proficiency;
+    [Space]
     public Command[] command = new Command[3];
+    
     public bool isDefending;
     public Vector3 defendDirection = Vector3.right;
     public float orderDuration = 1f;
     [Tooltip("Резервний радіус \"footprint\" для колізій (рух/ближній бій), якщо selectionCollider не заданий. Коли selectionCollider є — радіус береться з нього (EffectiveFootprintRadius), це поле ігнорується.")]
     public float footprintRadius = 0.6f;
-
-    /// <summary>
-    /// Радіус, що фактично використовується для колізій (блокування
-    /// точок наказів, ближній бій). Береться з selectionCollider
-    /// (щоб не тримати окреме "фантомне" число, яке розходиться з
-    /// реальним колайдером батальйона) — half-extent його world-space
-    /// bounds, усереднений по X/Y. Якщо selectionCollider не заданий,
-    /// відкатується на footprintRadius.
-    /// </summary>
     public float EffectiveFootprintRadius
     {
         get
@@ -50,15 +44,6 @@ public class BattalionScr : MonoBehaviour
 
     [Tooltip("Додатковий запас радіусу ТІЛЬКИ для виявлення ближнього бою (щоб зіткнення реагувало трохи раніше, до фактичного накладання спрайтів). На IsPositionFree (розміщення наказів Move/Attack) НЕ впливає — командування лишається таким самим, як і з реальним розміром колайдера.")]
     public float meleeCollisionPadding = 0.15f;
-
-    /// <summary>
-    /// Радіус, що використовується ЛИШЕ для виявлення ближнього бою —
-    /// EffectiveFootprintRadius + meleeCollisionPadding. Навмисно
-    /// відрізняється від EffectiveFootprintRadius, який лишається
-    /// "чесним" розміром колайдера для перевірки вільних точок під
-    /// час видачі наказів (IsPositionFree), щоб запас для бою не
-    /// заважав гравцю ставити накази впритул.
-    /// </summary>
     public float EffectiveMeleeRadius => EffectiveFootprintRadius + meleeCollisionPadding;
     public bool isDeployed;
     public Vector3 deployDirection = Vector3.right;
@@ -68,16 +53,7 @@ public class BattalionScr : MonoBehaviour
     public float bombardRadius = 1.5f;
     public GameObject isSelect;
     [Header("Туман війни")]
-    [Tooltip(
-        "Рендерери (спрайти/меші), які МАСКУЮТЬСЯ під туманом війни " +
-        "(renderer.enabled = false — сам GameObject і всі його " +
-        "компоненти лишаються повністю живими, батальйон НЕ зникає " +
-        "з AllBattalions/AI). Якщо лишити порожнім — заповнюється " +
-        "автоматично всіма Renderer у дочірніх об'єктах при Awake. " +
-        "НІКОЛИ не використовуй тут GameObject.SetActive — саме " +
-        "так туман випадково \"вимикав\" батальйон замість того, " +
-        "щоб його промаскувати."
-    )]
+    [Tooltip("Рендерери (спрайти/меші), які МАСКУЮТЬСЯ під туманом війни " + "(renderer.enabled = false — сам GameObject і всі його " + "компоненти лишаються повністю живими, батальйон НЕ зникає " + "з AllBattalions/AI). Якщо лишити порожнім — заповнюється " + "автоматично всіма Renderer у дочірніх об'єктах при Awake. " + "НІКОЛИ не використовуй тут GameObject.SetActive — саме " + "так туман випадково \"вимикав\" батальйон замість того, " + "щоб його промаскувати.")]
     public Renderer[] visualRenderers;
     [Tooltip("Колайдер, за яким батальйон обирається кліком. Вимикається (enabled=false, GameObject лишається активним) разом із visualRenderers, щоб прихованого ворога не можна було обрати.")]
     public Collider2D selectionCollider;
@@ -88,11 +64,6 @@ public class BattalionScr : MonoBehaviour
     private Battalion baseBattalion;
     private int basePersonnelMax;
     private Battalion restingBattalion;
-
-    // За замовчуванням батальйон видимий (це важливо для дружніх
-    // батальйонів, яких FogOfWarManagerScr ніколи не приховує —
-    // вони мають лишатись видимими навіть якщо туман взагалі не
-    // використовується в сцені).
     private bool fogVisible = true;
     public bool IsFogVisible => fogVisible;
 
@@ -150,19 +121,6 @@ public class BattalionScr : MonoBehaviour
             visualRenderers = GetComponentsInChildren<Renderer>(true);
     }
 
-    /// <summary>
-    /// Викликається FogOfWarManagerScr. МАСКУЄ (не вимикає) спрайт:
-    /// вимикає лише Renderer.enabled на дочірніх рендерерах і
-    /// selectionCollider.enabled — сам GameObject лишається active
-    /// весь час, тому OnEnable/OnDisable (і, відповідно,
-    /// AllBattalions) ніколи не спрацьовують через туман. Раніше тут
-    /// стояв GameObject.SetActive(visible) на окремому полі
-    /// visualRoot — якщо туди помилково призначали КОРІНЬ самого
-    /// батальйона (а не дочірній об'єкт), туман фактично вимикав
-    /// батальйон повністю, і той зникав з усіх розрахунків замість
-    /// того, щоб просто стати невидимим. Renderer.enabled такої
-    /// помилки в принципі не допускає.
-    /// </summary>
     public void SetFogVisible(bool visible)
     {
         if (fogVisible == visible)
@@ -186,10 +144,6 @@ public class BattalionScr : MonoBehaviour
             isSelect.SetActive(false);
     }
 
-    /// <summary>
-    /// Ефективна дальність виявлення (для тумана війни) з
-    /// урахуванням місцевості, на якій зараз стоїть батальйон.
-    /// </summary>
     public float GetEffectiveVisionRange()
     {
         if (TerrainManagerScr.Instance == null)
@@ -1397,18 +1351,31 @@ public class BattalionScr : MonoBehaviour
 
         ClearAllOrders();
     }
+    public void SelectOfficer(Officer officers)
+    {
+        if (officers.officetType == baseBattalion.type)
+        {
+            if (officers.isSelect == false)
+            {
+                officer = officers;
+                officer.isSelect = true;
+            }
+            else
+            {
+                if (officer.rank == Rank.General)
+                {
 
-    // Скільки бракує особового складу до максимуму (боєздатні + небоєздатні < максимум).
+                }
+            }
+
+        }
+    }
     public int GetMissingPersonnel()
     {
         int missing = personnel.personnelMax - (personnel.combatCapable + personnel.combatCapableNo);
         return missing > 0 ? missing : 0;
     }
 
-    // Додає amount новобранців (боєздатних) і "розмазує" середній досвід
-    // батальйону: новобранці мають досвід 0, тож середнє зважується
-    // старою і новою кількістю особового складу. Повертає фактично
-    // додану кількість (обрізану до того, скільки реально бракувало).
     public int ReinforcePersonnel(int amount)
     {
         int missing = GetMissingPersonnel();
@@ -1480,11 +1447,6 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
-    // Перераховує battalion/personnel.personnelMax як (базові значення) + (сума бонусів усіх активних рот).
-    // Викликати щоразу після зміни складу рот батальйону.
-    // personnelMaxBonus діє завжди; бойові statBonus зберігаються у
-    // restingBattalion лише ті, чия умова — Always (решта додаються
-    // тимчасово через EnterAttackContext/EnterDefendContext).
     public void RecalculateStats()
     {
         int personnelMax = basePersonnelMax;
@@ -1517,9 +1479,6 @@ public class BattalionScr : MonoBehaviour
         battalion = restingBattalion.Clone();
     }
 
-    // Складає ефективні бойові стати: базові + бонуси рот, чия умова
-    // дозволяє застосування у поточному контексті.
-    // includeAttack/includeDefend — чи триває зараз атака/обстріл чи захист.
     private Battalion BuildBattalion(bool includeAttack, bool includeDefend)
     {
         Battalion result = baseBattalion.Clone();
@@ -1578,22 +1537,16 @@ public class BattalionScr : MonoBehaviour
 
         return result;
     }
-
-    // Тимчасово вмикає бонуси рот з умовою "лише атака"/"атака і захист".
-    // Викликати перед розрахунками, пов'язаними з атакою/обстрілом,
-    // і обов'язково повернутись у стан спокою через ExitCombatContext().
     public void EnterAttackContext()
     {
         battalion = BuildBattalion(true, false);
     }
 
-    // Тимчасово вмикає бонуси рот з умовою "лише захист"/"атака і захист".
     public void EnterDefendContext()
     {
         battalion = BuildBattalion(false, true);
     }
 
-    // Повертає battalion у "стан спокою" (базові стати + бонуси Always).
     public void ExitCombatContext()
     {
         battalion = restingBattalion.Clone();
@@ -1623,7 +1576,7 @@ public class AttackOrder : Command
 public class DefendOrder : Command
 {
     public CommandType commandType;
-    public Vector3 direction; // гравець визначає лише напрямок (окрім розкладеної артилерії — там deployDirection)
+    public Vector3 direction; 
     public float range;
     public bool isSet;
 }
@@ -1632,8 +1585,8 @@ public class DefendOrder : Command
 public class DeployOrder : Command
 {
     public CommandType commandType;
-    public bool deploy;       // true = розкладаємось, false = згортаємось (Undeploy)
-    public Vector3 direction; // напрямок фронту; має значення лише коли deploy == true
+    public bool deploy;       
+    public Vector3 direction;
     public bool isSet;
 }
 
@@ -1641,7 +1594,7 @@ public class DeployOrder : Command
 public class RotateOrder : Command
 {
     public CommandType commandType;
-    public Vector3 direction; // новий напрямок наведення розкладеної гармати
+    public Vector3 direction; 
     public bool isSet;
 }
 
@@ -1663,8 +1616,7 @@ public class Personnel
     public int organization;
     public int organizationMax;
 
-    [Tooltip("Середній досвід особового складу батальйону (0..100). При поповненні розмазується на нове поповнення (у новобранців досвід = 0).")]
-    [Range(0f, 100f)]
+    [Range(0f, 1000f)]
     public float experience;
     public void Losses(float deadRatio, float earlyRatio, float damage, BarScr bar)
     {
@@ -1805,6 +1757,10 @@ public class Battalion
             commandCost = commandCost
         };
     }
+}
+public enum Proficiency
+{
+    recruits, trained, experienced, veterans, elite
 }
 
 [System.Serializable]

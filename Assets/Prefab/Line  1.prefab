@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 6849315157583122861}
   - component: {fileID: 3752538377118433710}
   m_Layer: 0
-  m_Name: 'Line '
+  m_Name: Line  1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -58,7 +58,7 @@ LineRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 6c790e70e37c5b845a189038e2fd3dd5, type: 2}
+  - {fileID: 2100000, guid: 720c8f658d32343458b56cca8db12c2c, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0

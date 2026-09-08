@@ -1425,6 +1425,64 @@ public class Regiment
 
     public Vector3 anchor;
 
+    public void SelectOfficer(Officer officers)
+    {
+        if (officers.officetType == battalionType)
+        {
+            if (officers.isSelect == false)
+            {
+                switch (officer.rank)
+                {
+                    case Rank.LieutenantColonel:
+                        if (battalions.Count <= 4)
+                        {
+                            officer = officers;
+                            officer.isSelect = true;
+
+
+                            for (int i = 0; i < battalions.Count; i++)
+                            {
+                                battalions[i].officerRegiment = officer;
+                            }
+                        }
+                        break;
+
+                    case Rank.Colonel:
+                        officer = officers;
+                        officer.isSelect = true;
+
+                        for (int i = 0; i < battalions.Count; i++)
+                        {
+                            battalions[i].officerRegiment = officer;
+                        }
+                        break;
+
+                    case Rank.General:
+                        officer = officers;
+                        officer.isSelect = true;
+
+                        for (int i = 0; i < battalions.Count; i++)
+                        {
+                            battalions[i].officerRegiment = officer;
+                        }
+                        break;
+                }
+
+            }
+            else
+            {
+                if(officer.rank == Rank.General)
+                {
+                    officer = officers;
+                    for (int i = 0; i < battalions.Count; i++)
+                    {
+                        battalions[i].officerRegiment = officer;
+                    }
+                }
+            }
+
+        }
+    }
 
     // =========================================================
     // CHAIN ORDER
@@ -1934,11 +1992,6 @@ public class Regiment
         return anySucceeded;
     }
 }
-
-
-// =============================================================
-// RESOURCES
-// =============================================================
 
 [System.Serializable]
 public class Ressurs

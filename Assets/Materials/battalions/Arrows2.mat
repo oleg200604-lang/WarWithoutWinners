@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Arrows1
+  m_Name: Arrows2
   m_Shader: {fileID: 4800000, guid: cf81c85f95fe47e1a27f6ae460cf182c, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
@@ -28,9 +28,9 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 2800000, guid: 683537bea176d7248bb84f83ea20b7e4, type: 3}
-        m_Scale: {x: 1, y: 3}
-        m_Offset: {x: 0, y: -1}
+        m_Texture: {fileID: 2800000, guid: 8e09df3067d03dd4b8c66592b1cf9804, type: 3}
+        m_Scale: {x: 1, y: 2}
+        m_Offset: {x: 0, y: -0.5}
     - _MaskTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}

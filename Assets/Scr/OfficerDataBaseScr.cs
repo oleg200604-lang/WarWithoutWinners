@@ -15,6 +15,7 @@ public class Officer
     public Features[] features;
     public Rank rank;
     public BattalionType officetType;
+    public bool isSelect;
 }
 public enum Features
 {
