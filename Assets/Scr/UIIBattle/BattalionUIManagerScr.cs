@@ -198,6 +198,9 @@ public class OfiicerButton
     public Button selectOfficer;
     public TextMeshProUGUI Name;
     public Officer officer;
+    public Button buttonRaise;
+    public Button buttonLower;
+
 
     public void ButtonRaise()
     {
