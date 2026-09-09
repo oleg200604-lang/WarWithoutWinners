@@ -20,6 +20,7 @@ public class BattalionScr : MonoBehaviour
     public Officer officer;
     public Officer officerRegiment;
     public Proficiency proficiency;
+    public float baseRestoration;
     [Space]
     public Command[] command = new Command[3];
     
@@ -66,9 +67,7 @@ public class BattalionScr : MonoBehaviour
     private Battalion restingBattalion;
     private bool fogVisible = true;
     public bool IsFogVisible => fogVisible;
-
     public static IReadOnlyList<BattalionScr> AllActive => AllBattalions;
-
     public int TeamID => batalionManager != null ? batalionManager.teamID : teamID;
 
     private void SyncManagerReference()
@@ -421,9 +420,6 @@ public class BattalionScr : MonoBehaviour
             return false;
         }
 
-        // На час розрахунку наказу атаки вмикаємо бонуси рот з умовою
-        // "атака"/"атака і захист" — щоб дальність/швидкість вже
-        // враховували їх ще на етапі постановки наказу.
         EnterAttackContext();
 
         try
@@ -503,8 +499,6 @@ public class BattalionScr : MonoBehaviour
         Vector3 finalDirection;
         float finalRange;
 
-        // На час розрахунку наказу захисту вмикаємо бонуси рот з умовою
-        // "захист"/"атака і захист".
         EnterDefendContext();
 
         try
@@ -736,14 +730,6 @@ public class BattalionScr : MonoBehaviour
             if (other == null || other == self)
                 continue;
 
-            // Прихований туманом війни ворог/нейтрал НЕ повинен
-            // блокувати розміщення наказу. Інакше сама відмова
-            // "точка зайнята" опосередковано видає гравцю, що там
-            // хтось є, хоча візуально там порожньо (класичний витік
-            // інформації через туман, тільки не через клік, а через
-            // фізичну колізію). Власна команда і будь-хто, кого
-            // спостерігач ЗАРАЗ бачить (CanSee), блокують як і раніше
-            // — тут нічого нового не розкривається.
             if (self != null &&
                 self.batalionManager != null &&
                 other.TeamID != self.TeamID &&
@@ -757,14 +743,6 @@ public class BattalionScr : MonoBehaviour
 
             if (distance < minDist)
             {
-                // Діагностика: друкуємо, ХТО саме заблокував точку —
-                // ім'я об'єкта, повний шлях в ієрархії, teamID і
-                // EffectiveFootprintRadius. Якщо блокувальник — не реальний
-                // ворожий/дружній батальйон, а, наприклад, об'єкт
-                // індикатора зони огляду (LineRenderer), це означає,
-                // що на ньому випадково теж висить BattalionScr і він
-                // зареєструвався в AllBattalions як окрема "фантомна"
-                // одиниця точно в тій самій точці.
                 Debug.LogWarning(
                     $"IsPositionFree: точку {point} заблокував " +
                     $"'{other.gameObject.name}' (шлях: {GetHierarchyPath(other.transform)}), " +
@@ -839,10 +817,6 @@ public class BattalionScr : MonoBehaviour
 
     private void OnMouseDown()
     {
-        // Не можна навіть натиснути на батальйон, прихований
-        // туманом війни — інакше клік сам по собі "видає" точну
-        // позицію ворога (контур виділення/ім'я в консолі), а це
-        // фактично дозволяє наводити накази "через" туман.
         if (!fogVisible)
             return;
 
@@ -877,10 +851,6 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
-    // Скільки шкоди сусід по ланцюгу "перебирає" на себе, коли атакують
-    // цей батальйон. 1 сусід -> 25% йому, 75% основному. 2 сусіди -> по
-    // 25% кожному, 50% основному. Немає сусідів (не в полку, або
-    // фланговий без пари) -> 100% основному, як і раніше.
     private const float RegimentNeighborDamageShare = 0.25f;
 
     public void TakeDamage(float damage, float murder, float injury)
@@ -902,9 +872,6 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
-    // Фактичне застосування шкоди — без подальшого розподілу. Сусіди
-    // отримують свою частку саме через цей метод (не через TakeDamage),
-    // інакше шкода каскадно розповзлась би по всьому ланцюгу.
     private void ApplyDamage(float damage, float murder, float injury)
     {
         if (damage <= 0f)
@@ -912,7 +879,9 @@ public class BattalionScr : MonoBehaviour
 
         print(damage);
 
-        personnel.Losses(murder, injury, damage, bar);
+        personnel.LossesPersonnel(murder, injury, damage);
+
+        personnel.organization -= damage/2;
     }
 
     // Сусіди по ланцюгу цього батальйона в його полку (той самий порядок,
@@ -955,32 +924,11 @@ public class BattalionScr : MonoBehaviour
 
         return neighbors;
     }
-
-    // =========================================================
-    // БЛИЖНІЙ БІЙ (не окремий наказ)
-    // =========================================================
-    //
-    // Батальйон може випадково зіштовхнутися з ворогом під час
-    // виконання будь-якого наказу, що рухає його по мапі (Move).
-    // Це НЕ окремий CommandType — перевіряється щокадру всередині
-    // ExecuteOrders, і при зіткненні негайно зупиняє весь ланцюжок
-    // наказів на цей хід (наступні слоти command[] не виконуються).
-
-    /// <summary>
-    /// Шукає ворожий батальйон, з яким сталося фізичне зіткнення
-    /// (перетин "footprint"-кіл) прямо зараз.
-    /// </summary>
     private BattalionScr FindMeleeCollision()
     {
         return FindMeleeCollisionAt(transform.position);
     }
 
-    /// <summary>
-    /// Те саме, що FindMeleeCollision(), але перевіряє задану
-    /// (потенційно ще не застосовану) позицію self замість поточної
-    /// transform.position — потрібно, щоб виявити зіткнення ДО того,
-    /// як батальйон реально в нього зайде.
-    /// </summary>
     private BattalionScr FindMeleeCollisionAt(Vector3 selfPos)
     {
         if (batalionManager == null)
@@ -1010,13 +958,6 @@ public class BattalionScr : MonoBehaviour
         return null;
     }
 
-    /// <summary>
-    /// Знаходить точку на відрізку [from, to], в якій self вперше
-    /// торкається enemy (дистанція між ними == combinedRadius),
-    /// щоб зупинити рух рівно на дотику замість накладання. Якщо
-    /// розв'язку немає (не мало б статись, якщо колізію взагалі
-    /// виявлено), повертає from як безпечний фолбек.
-    /// </summary>
     private Vector3 ClampToContactPoint(Vector3 from, Vector3 to, BattalionScr enemy)
     {
         Vector3 enemyPos = enemy.transform.position;
@@ -1054,11 +995,6 @@ public class BattalionScr : MonoBehaviour
         return from + d * s;
     }
 
-    /// <summary>
-    /// Обидва батальйони, що зіткнулись, б'ють один одного своїм
-    /// meleeAttack (якщо він заданий > 0). Наказ, під час якого
-    /// сталось зіткнення, вважається перерваним.
-    /// </summary>
     private void ResolveMeleeCollision(BattalionScr enemy)
     {
         if (enemy == null)
@@ -1079,9 +1015,7 @@ public class BattalionScr : MonoBehaviour
 
     private float ComputeAttackDamage()
     {
-        return battalion.damage
-            * (float)(personnel.personnelMax / (personnel.combatCapable + (personnel.combatCapableNo / 2)))
-            * (float)(personnel.organizationMax / personnel.organization);
+        return battalion.damage * (float)(personnel.personnelMax / (personnel.combatCapable + (personnel.combatCapableNo / 2))) * (personnel.organizationMax / personnel.organization);
     }
 
     private void Update()
@@ -1351,6 +1285,7 @@ public class BattalionScr : MonoBehaviour
 
         ClearAllOrders();
     }
+
     public void SelectOfficer(Officer officers)
     {
         if (officers.officetType == baseBattalion.type)
@@ -1370,6 +1305,7 @@ public class BattalionScr : MonoBehaviour
 
         }
     }
+
     public int GetMissingPersonnel()
     {
         int missing = personnel.personnelMax - (personnel.combatCapable + personnel.combatCapableNo);
@@ -1552,6 +1488,13 @@ public class BattalionScr : MonoBehaviour
         battalion = restingBattalion.Clone();
     }
 
+    public void RecoveryOrganization(float restoration)
+    {
+        if (personnel.organization < personnel.organizationMax)
+        {
+            personnel.organization += (int)restoration;
+        }
+    }
 }
 
 [System.Serializable]
@@ -1613,12 +1556,12 @@ public class Personnel
     public int personnelMax;
     public int combatCapable;
     public int combatCapableNo;
-    public int organization;
-    public int organizationMax;
+    public float organization;
+    public float organizationMax;
 
     [Range(0f, 1000f)]
     public float experience;
-    public void Losses(float deadRatio, float earlyRatio, float damage, BarScr bar)
+    public void LossesPersonnel(float deadRatio, float earlyRatio, float damage)
     {
         if (damage <= 0)
             return;
@@ -1664,6 +1607,12 @@ public class Personnel
 
 
     }
+    public void LossesOrganization(float damage)
+    {
+
+    }
+
+
 }
 
 
