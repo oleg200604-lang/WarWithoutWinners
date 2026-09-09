@@ -26,8 +26,8 @@ public class BattalionUIManagerScr : MonoBehaviour
     [Header("По одному слоту buttonRegiment на кожен можливий полк")]
     public List<RegimentButtonGroup> regimentButtonGroups;
     public BatalionManagerScr batalionManager;
-
-    
+    public OfiicerButton[] officers;
+    public Button officerSelect;
 
 
     private void Awake()
@@ -57,7 +57,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
     public void SelectOfficer(Officer officers)
     {
-
+        //officerSelect
     }
     private void RefreshResourceHud()
     {
@@ -198,4 +198,13 @@ public class OfiicerButton
     public Button selectOfficer;
     public TextMeshProUGUI Name;
     public Officer officer;
+
+    public void ButtonRaise()
+    {
+        officer.Raise();
+    }
+    public void ButtonLower()
+    {
+        officer.Lower();
+    }
 }

@@ -57,6 +57,51 @@ public class Officer
     {
         return organizationLv * OrganizationPercentPerLevel * OfficerDataBaseScr.GetRankEfficiency(rank);
     }
+
+    public void Raise()
+    {
+        switch (rank)
+        {
+            case Rank.Major:
+                rank= Rank.LieutenantColonel;
+                break;
+
+
+            case Rank.LieutenantColonel:
+                rank = Rank.Colonel;
+                break;
+
+            case Rank.Colonel:
+                rank = Rank.General;
+                break;
+
+            case Rank.General:
+                rank = Rank.General;
+                break;
+        }
+    }
+
+    public void Lower()
+    {
+        switch (rank)
+        {
+            case Rank.Major:
+                rank = Rank.Major;
+                break;
+
+            case Rank.LieutenantColonel:
+                rank = Rank.Major;
+                break;
+
+            case Rank.Colonel:
+                rank = Rank.LieutenantColonel;
+                break;
+
+            case Rank.General:
+                rank = Rank.Colonel;
+                break;
+        }
+    }
 }
 public enum Features
 {
