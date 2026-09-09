@@ -23,7 +23,7 @@ public class BattalionScr : MonoBehaviour
     public float baseRestoration;
     [Space]
     public Command[] command = new Command[3];
-    
+
     public bool isDefending;
     public Vector3 defendDirection = Vector3.right;
     public float orderDuration = 1f;
@@ -64,6 +64,7 @@ public class BattalionScr : MonoBehaviour
     private static readonly List<BattalionScr> AllBattalions = new List<BattalionScr>();
     private Battalion baseBattalion;
     private int basePersonnelMax;
+    private float baseOrganizationMax;
     private Battalion restingBattalion;
     private bool fogVisible = true;
     public bool IsFogVisible => fogVisible;
@@ -164,7 +165,10 @@ public class BattalionScr : MonoBehaviour
             baseBattalion = battalion.Clone();
 
         if (personnel != null)
+        {
             basePersonnelMax = personnel.personnelMax;
+            baseOrganizationMax = personnel.organizationMax;
+        }
 
         if (ammo != null)
             ammo.current = Mathf.Clamp(ammo.current, 0, ammo.max);
@@ -877,11 +881,16 @@ public class BattalionScr : MonoBehaviour
         if (damage <= 0f)
             return;
 
-        print(damage);
+        // Бонус "Захист" зменшує реально отриману шкоду: damage / defenseMultiplier.
+        float defenseMultiplier = (battalion != null && battalion.defenseMultiplier > 0f) ? battalion.defenseMultiplier : 1f;
+        float mitigatedDamage = damage / defenseMultiplier;
 
-        personnel.LossesPersonnel(murder, injury, damage);
+        print(mitigatedDamage);
 
-        personnel.organization -= damage/2;
+        int losses = personnel.LossesPersonnel(murder, injury, mitigatedDamage);
+
+        // Втрата організації: шкода/10 + втрати/10.
+        personnel.LossesOrganization(mitigatedDamage, losses);
     }
 
     // Сусіди по ланцюгу цього батальйона в його полку (той самий порядок,
@@ -1294,6 +1303,8 @@ public class BattalionScr : MonoBehaviour
             {
                 officer = officers;
                 officer.isSelect = true;
+
+                RecalculateStats();
             }
             else
             {
@@ -1383,6 +1394,21 @@ public class BattalionScr : MonoBehaviour
         return true;
     }
 
+    // Сумарний відсотковий бонус вміння від ОБОХ офіцерів батальйону (особистий + полковий),
+    // кожен вже з поправкою на ефективність свого звання.
+    private float GetOfficerBonusPercent(System.Func<Officer, float> bonusSelector)
+    {
+        float total = 0f;
+
+        if (officer != null)
+            total += bonusSelector(officer);
+
+        if (officerRegiment != null)
+            total += bonusSelector(officerRegiment);
+
+        return total;
+    }
+
     public void RecalculateStats()
     {
         int personnelMax = basePersonnelMax;
@@ -1411,6 +1437,13 @@ public class BattalionScr : MonoBehaviour
 
         personnel.personnelMax = personnelMax;
 
+        // Вміння "Організація": +10% максимальної організації за рівень (з ефективністю звання).
+        float organizationBonusPercent = GetOfficerBonusPercent(o => o.GetOrganizationBonusPercent());
+        personnel.organizationMax = baseOrganizationMax * (1f + organizationBonusPercent);
+
+        if (personnel.organization > personnel.organizationMax)
+            personnel.organization = personnel.organizationMax;
+
         restingBattalion = BuildBattalion(false, false);
         battalion = restingBattalion.Clone();
     }
@@ -1418,6 +1451,16 @@ public class BattalionScr : MonoBehaviour
     private Battalion BuildBattalion(bool includeAttack, bool includeDefend)
     {
         Battalion result = baseBattalion.Clone();
+
+        // Пасивні бонуси від вмінь офіцерів (Майор/Підполковник/Полковник/Генерал),
+        // ефективність вже врахована в GetXBonusPercent().
+        float tacticsBonusPercent = GetOfficerBonusPercent(o => o.GetTacticsBonusPercent());
+        float attackBonusPercent = GetOfficerBonusPercent(o => o.GetAttackBonusPercent());
+        float defenseBonusPercent = GetOfficerBonusPercent(o => o.GetDefenseBonusPercent());
+
+        result.speed *= 1f + tacticsBonusPercent;
+        result.damage *= 1f + attackBonusPercent;
+        result.defenseMultiplier = 1f + defenseBonusPercent;
 
         if (company == null ||
             CompanyDatabaseScr.Instance == null)
@@ -1519,7 +1562,7 @@ public class AttackOrder : Command
 public class DefendOrder : Command
 {
     public CommandType commandType;
-    public Vector3 direction; 
+    public Vector3 direction;
     public float range;
     public bool isSet;
 }
@@ -1528,7 +1571,7 @@ public class DefendOrder : Command
 public class DeployOrder : Command
 {
     public CommandType commandType;
-    public bool deploy;       
+    public bool deploy;
     public Vector3 direction;
     public bool isSet;
 }
@@ -1537,7 +1580,7 @@ public class DeployOrder : Command
 public class RotateOrder : Command
 {
     public CommandType commandType;
-    public Vector3 direction; 
+    public Vector3 direction;
     public bool isSet;
 }
 
@@ -1561,22 +1604,23 @@ public class Personnel
 
     [Range(0f, 1000f)]
     public float experience;
-    public void LossesPersonnel(float deadRatio, float earlyRatio, float damage)
+    // Повертає фактичну кількість втраченого особового складу (для розрахунку втрати організації).
+    public int LossesPersonnel(float deadRatio, float earlyRatio, float damage)
     {
         if (damage <= 0)
-            return;
+            return 0;
 
         int damageAmount = (int)damage;
 
         if (damageAmount <= 0)
-            return;
+            return 0;
 
 
         if (combatCapable <= 0)
         {
             int killedEarly = System.Math.Min(damageAmount, combatCapableNo);
             combatCapableNo -= killedEarly;
-            return;
+            return killedEarly;
         }
 
 
@@ -1585,7 +1629,7 @@ public class Personnel
         float ratioSum = deadRatio + earlyRatio;
 
         if (ratioSum <= 0)
-            return;
+            return 0;
 
         int newDead = (int)(actualDamage * deadRatio / ratioSum);
 
@@ -1605,11 +1649,18 @@ public class Personnel
 
         combatCapableNo += newEarly;
 
-
+        return actualDamage;
     }
-    public void LossesOrganization(float damage)
-    {
 
+    // Втрата організації = шкода/10 + втрати(особового складу)/10.
+    public void LossesOrganization(float damage, float losses)
+    {
+        float reduction = damage / 10f + losses / 10f;
+
+        organization -= reduction;
+
+        if (organization < 0f)
+            organization = 0f;
     }
 
 
@@ -1688,6 +1739,9 @@ public class Battalion
     [Tooltip("Скільки командного ресурсу коштує ОДИН наказ цьому батальйону. Полк рахується як один батальйон — береться це значення з першого батальйона полку.")]
     public int commandCost = 1;
 
+    [Tooltip("Множник пасивного бонусу \"Захист\" від офіцера: 1 = без бонусу, 1.25 = -20% отримуваної шкоди тощо. Застосовується як damage / defenseMultiplier.")]
+    public float defenseMultiplier = 1f;
+
     public Battalion Clone()
     {
         return new Battalion
@@ -1703,7 +1757,8 @@ public class Battalion
             meleeAttack = meleeAttack,
             visionRange = visionRange,
             ammoCostPerAction = ammoCostPerAction,
-            commandCost = commandCost
+            commandCost = commandCost,
+            defenseMultiplier = defenseMultiplier
         };
     }
 }

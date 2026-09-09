@@ -1443,6 +1443,7 @@ public class Regiment
                             for (int i = 0; i < battalions.Count; i++)
                             {
                                 battalions[i].officerRegiment = officer;
+                                battalions[i].RecalculateStats();
                             }
                         }
                         break;
@@ -1454,6 +1455,7 @@ public class Regiment
                         for (int i = 0; i < battalions.Count; i++)
                         {
                             battalions[i].officerRegiment = officer;
+                            battalions[i].RecalculateStats();
                         }
                         break;
 
@@ -1464,6 +1466,7 @@ public class Regiment
                         for (int i = 0; i < battalions.Count; i++)
                         {
                             battalions[i].officerRegiment = officer;
+                            battalions[i].RecalculateStats();
                         }
                         break;
                 }
@@ -1471,12 +1474,13 @@ public class Regiment
             }
             else
             {
-                if(officer.rank == Rank.General)
+                if (officer.rank == Rank.General)
                 {
                     officer = officers;
                     for (int i = 0; i < battalions.Count; i++)
                     {
                         battalions[i].officerRegiment = officer;
+                        battalions[i].RecalculateStats();
                     }
                 }
             }

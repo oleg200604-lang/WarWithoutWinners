@@ -5,14 +5,16 @@ using TMPro;
 
 public class BattalionUIManagerScr : MonoBehaviour
 {
-
     public GameObject commandPanel;
+    public GameObject officerPanel;
     public GameObject noneButton, moveButton, attackButton, defendButton;
+
     [Header("Артилерія: розкладка / обстріл")]
     public GameObject deployButton, undeployButton, rotateButton, bombardButton;
 
     [Header("Людський ресурс")]
     public Button reinforceButton;
+
     [Tooltip("Скільки особового складу додається за одне натискання кнопки поповнення.")]
     public int reinforceAmountPerClick = 10;
 
@@ -23,8 +25,10 @@ public class BattalionUIManagerScr : MonoBehaviour
 
     [Header("По одному слоту buttonRegiment на кожен можливий полк")]
     public List<RegimentButtonGroup> regimentButtonGroups;
-
     public BatalionManagerScr batalionManager;
+
+    
+
 
     private void Awake()
     {
@@ -46,6 +50,15 @@ public class BattalionUIManagerScr : MonoBehaviour
         RefreshResourceHud();
     }
 
+    public void SelectOfficerPanel()
+    {
+        
+    }
+
+    public void SelectOfficer(Officer officers)
+    {
+
+    }
     private void RefreshResourceHud()
     {
         if (batalionManager == null)
@@ -80,8 +93,6 @@ public class BattalionUIManagerScr : MonoBehaviour
         bool hasBattalionSelected = battalionScr != null;
         bool hasRegimentSelected = regiment != null;
 
-        // Move/Attack/Defend — одна й та сама панель для батальйона і для
-        // полку: BatalionManagerScr сам розрізняє ціль всередині обробників.
         bool hasSelection = hasBattalionSelected || hasRegimentSelected;
 
         bool isNone = hasBattalionSelected && battalionScr.battalion.type == BattalionType.none;
@@ -93,8 +104,6 @@ public class BattalionUIManagerScr : MonoBehaviour
         attackButton.SetActive(hasSelection && !isNone && !isDeployed);
         defendButton.SetActive(hasSelection && !isNone);
 
-        // Розкладка/обстріл — специфічні для окремого артилерійського
-        // батальйону, полк такі накази поки не підтримує.
         deployButton.SetActive(hasBattalionSelected && isArtillery && !isDeployed);
         undeployButton.SetActive(hasBattalionSelected && isDeployed);
         rotateButton.SetActive(hasBattalionSelected && isDeployed);
@@ -109,9 +118,6 @@ public class BattalionUIManagerScr : MonoBehaviour
         RefreshRegimentButtons();
     }
 
-    // Єдине місце, що керує всіма buttonRegiment-слотами: показ/приховування,
-    // підписки на кнопки та їх interactable-стан. Викликати після будь-якої
-    // зміни — вибір батальйону, створення/додавання/видалення з полку.
     public void RefreshRegimentButtons()
     {
         BattalionScr selected = batalionManager.selectBattalion;
@@ -182,4 +188,14 @@ public class RegimentButtonGroup
     public Button selectButton;
     public Button addButton;
     public Button removeButton;
+}
+
+
+[System.Serializable]
+public class OfiicerButton 
+{
+    public Image imageOfficer;
+    public Button selectOfficer;
+    public TextMeshProUGUI Name;
+    public Officer officer;
 }
