@@ -838,6 +838,11 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
+
+    // =========================================================
+    // SELECTION
+    // =========================================================
+
     private bool HasSelection()
     {
         return selectBattalion != null ||
@@ -932,7 +937,9 @@ public class BatalionManagerScr : MonoBehaviour
     // REGIMENT HELPERS
     // =========================================================
 
-    private bool TryGetBattalionRegiment(BattalionScr battalion,out Regiment regiment)
+    private bool TryGetBattalionRegiment(
+        BattalionScr battalion,
+        out Regiment regiment)
     {
         regiment = null;
 
@@ -957,7 +964,8 @@ public class BatalionManagerScr : MonoBehaviour
         return regiment != null;
     }
 
-    private int GetRegimentIndex(Regiment regiment)
+    private int GetRegimentIndex(
+        Regiment regiment)
     {
         if (regiment == null ||
             regiments == null)
@@ -1199,6 +1207,10 @@ public class BatalionManagerScr : MonoBehaviour
             battalion
         );
 
+        // Батальйон покинув полк — бонус офіцера полку більше не має діяти на нього.
+        // isSelect самого офіцера НЕ чіпаємо: він і далі командує рештою полку.
+        battalion.ClearOfficerRegiment();
+
         regiment.RecalculateFormation();
 
         if (regiment.battalions.Count == 0)
@@ -1423,7 +1435,10 @@ public class Regiment
         {
             if (officers.isSelect == false)
             {
-                switch (officer.rank)
+                // Було: switch (officer.rank) — це звання ВЖЕ призначеного офіцера
+                // (null при першому призначенні -> NullReferenceException).
+                // Тут має перевірятись звання кандидата, якого призначаємо.
+                switch (officers.rank)
                 {
                     case Rank.LieutenantColonel:
                         if (battalions.Count <= 4)
@@ -1466,7 +1481,7 @@ public class Regiment
             }
             else
             {
-                if (officer.rank == Rank.General)
+                if (officers.rank == Rank.General)
                 {
                     officer = officers;
                     for (int i = 0; i < battalions.Count; i++)
@@ -1477,6 +1492,22 @@ public class Regiment
                 }
             }
 
+        }
+    }
+
+    // Знімає офіцера полку повністю: звільняє isSelect і прибирає бонус
+    // з усіх батальйонів полку, яким він зараз призначений.
+    public void UnassignOfficer()
+    {
+        if (officer == null)
+            return;
+
+        officer.isSelect = false;
+        officer = null;
+
+        for (int i = 0; i < battalions.Count; i++)
+        {
+            battalions[i].ClearOfficerRegiment();
         }
     }
 

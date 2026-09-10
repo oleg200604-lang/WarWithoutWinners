@@ -1317,6 +1317,32 @@ public class BattalionScr : MonoBehaviour
         }
     }
 
+    // Знімає особистого офіцера з батальйону (звільняє його для повторного призначення)
+    // і перераховує статистику батальйону без його бонусів.
+    public void UnassignOfficer()
+    {
+        if (officer == null)
+            return;
+
+        officer.isSelect = false;
+        officer = null;
+
+        RecalculateStats();
+    }
+
+    // Знімає офіцера полку з цього конкретного батальйону (наприклад, при виході
+    // батальйону з полку). isSelect офіцера НЕ скидається тут — цим керує сам
+    // Regiment, бо один офіцер полку належить одразу кільком батальйонам.
+    public void ClearOfficerRegiment()
+    {
+        if (officerRegiment == null)
+            return;
+
+        officerRegiment = null;
+
+        RecalculateStats();
+    }
+
     public int GetMissingPersonnel()
     {
         int missing = personnel.personnelMax - (personnel.combatCapable + personnel.combatCapableNo);

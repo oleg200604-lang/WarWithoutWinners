@@ -5,8 +5,6 @@ public class OfficerDataBaseScr : MonoBehaviour
 {
     public Officer[] officers;
 
-    // Ефективність пасивних бонусів вміння залежно від звання.
-    // Майор — 100%, підполковник — 75%, полковник — 50%, генерал — 25%.
     public static float GetRankEfficiency(Rank rank)
     {
         switch (rank)
@@ -24,7 +22,7 @@ public class OfficerDataBaseScr : MonoBehaviour
         }
     }
 }
-
+[System.Serializable]
 public class Officer
 {
     public string name;
@@ -63,7 +61,7 @@ public class Officer
         switch (rank)
         {
             case Rank.Major:
-                rank= Rank.LieutenantColonel;
+                rank = Rank.LieutenantColonel;
                 break;
 
 

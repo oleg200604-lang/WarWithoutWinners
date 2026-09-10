@@ -465,10 +465,10 @@ RectTransform:
   - {fileID: 1303135455}
   m_Father: {fileID: 1795635705}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 37.5, y: -93.75}
-  m_SizeDelta: {x: 75, y: 42.5}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: -37.5, y: -54.372986}
+  m_SizeDelta: {x: 75, y: 28.746}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &32648549
 MonoBehaviour:
@@ -3903,6 +3903,7 @@ RectTransform:
   - {fileID: 361164525}
   - {fileID: 1117267825}
   - {fileID: 984040225}
+  - {fileID: 1114118940}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -7968,7 +7969,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 970759084}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -7976,10 +7977,10 @@ RectTransform:
   - {fileID: 112129017}
   m_Father: {fileID: 1795635705}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -37.5, y: -93.75}
-  m_SizeDelta: {x: 75, y: 42.5}
+  m_AnchorMin: {x: 1, y: 1}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: -37.5, y: -99.262}
+  m_SizeDelta: {x: 75, y: 31.4767}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &970759086
 MonoBehaviour:
@@ -9591,12 +9592,12 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1795635705}
-  m_Father: {fileID: 1117267825}
+  m_Father: {fileID: 409897734}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 425}
-  m_SizeDelta: {x: 0, y: 390}
+  m_AnchoredPosition: {x: 751.25, y: -230}
+  m_SizeDelta: {x: -1502.5, y: -460}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1114118941
 MonoBehaviour:
@@ -9605,7 +9606,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1114118939}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8a8695521f0d02e499659fee002a26c2, type: 3}
   m_Name: 
@@ -9618,7 +9619,7 @@ MonoBehaviour:
   m_ChildAlignment: 4
   m_StartCorner: 0
   m_StartAxis: 0
-  m_CellSize: {x: 150, y: 230}
+  m_CellSize: {x: 350, y: 145}
   m_Spacing: {x: 15, y: 20}
   m_Constraint: 0
   m_ConstraintCount: 2
@@ -9694,7 +9695,6 @@ RectTransform:
   - {fileID: 162013083}
   - {fileID: 547465970}
   - {fileID: 1795118068}
-  - {fileID: 1114118940}
   m_Father: {fileID: 409897734}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
@@ -11097,6 +11097,26 @@ MonoBehaviour:
   - company: 0
   - company: 0
   - company: 0
+  officer:
+    name: 
+    tacticsLv: 0
+    attackLv: 0
+    defenseLv: 0
+    organizationLv: 0
+    features: 
+    rank: 0
+    officetType: 0
+    isSelect: 0
+  officerRegiment:
+    name: 
+    tacticsLv: 0
+    attackLv: 0
+    defenseLv: 0
+    organizationLv: 0
+    features: 
+    rank: 0
+    officetType: 0
+    isSelect: 0
   proficiency: 0
   baseRestoration: 0
   isDefending: 0
@@ -12304,6 +12324,26 @@ MonoBehaviour:
   - company: 0
   - company: 0
   - company: 0
+  officer:
+    name: 
+    tacticsLv: 0
+    attackLv: 0
+    defenseLv: 0
+    organizationLv: 0
+    features: 
+    rank: 0
+    officetType: 0
+    isSelect: 0
+  officerRegiment:
+    name: 
+    tacticsLv: 0
+    attackLv: 0
+    defenseLv: 0
+    organizationLv: 0
+    features: 
+    rank: 0
+    officetType: 0
+    isSelect: 0
   proficiency: 0
   baseRestoration: 0
   isDefending: 0
@@ -14168,6 +14208,7 @@ GameObject:
   - component: {fileID: 1717998601}
   - component: {fileID: 1717998603}
   - component: {fileID: 1717998602}
+  - component: {fileID: 1717998604}
   m_Layer: 5
   m_Name: Image
   m_TagString: Untagged
@@ -14189,10 +14230,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1795635705}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 150, y: 145}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 37.5, y: -77.500015}
+  m_SizeDelta: {x: 75, y: 75}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1717998602
 MonoBehaviour:
@@ -14232,6 +14273,50 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1717998600}
   m_CullTransparentMesh: 1
+--- !u!114 &1717998604
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1717998600}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_PressedColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 1717998602}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &1744709521
 GameObject:
   m_ObjectHideFlags: 0
@@ -15148,8 +15233,9 @@ GameObject:
   - component: {fileID: 1795635705}
   - component: {fileID: 1795635708}
   - component: {fileID: 1795635707}
+  - component: {fileID: 1795635709}
   m_Layer: 5
-  m_Name: Panel (3)
+  m_Name: officer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -15167,16 +15253,16 @@ RectTransform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 970759085}
   - {fileID: 1717998601}
   - {fileID: 1958012438}
   - {fileID: 32648548}
-  - {fileID: 970759085}
   m_Father: {fileID: 1114118940}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 542.5, y: -310}
-  m_SizeDelta: {x: 150, y: 230}
+  m_AnchoredPosition: {x: 208.75, y: -295.27716}
+  m_SizeDelta: {x: 350, y: 115}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1795635707
 MonoBehaviour:
@@ -15216,6 +15302,33 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1795635704}
   m_CullTransparentMesh: 1
+--- !u!114 &1795635709
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1795635704}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8caa67f0bf4530142a61d8dfa15057ae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OfiicerButtonScr
+  imageOfficer: {fileID: 1717998602}
+  selectOfficer: {fileID: 1717998604}
+  Name: {fileID: 1958012439}
+  officer:
+    name: 
+    tacticsLv: 0
+    attackLv: 0
+    defenseLv: 0
+    organizationLv: 0
+    features: 
+    rank: 0
+    officetType: 0
+    isSelect: 0
+  buttonRaise: {fileID: 32648549}
+  buttonLower: {fileID: 970759086}
 --- !u!1 &1800564736
 GameObject:
   m_ObjectHideFlags: 0
@@ -16232,6 +16345,7 @@ GameObject:
   - component: {fileID: 1916624630}
   - component: {fileID: 1916624632}
   - component: {fileID: 1916624633}
+  - component: {fileID: 1916624634}
   m_Layer: 0
   m_Name: Division
   m_TagString: Untagged
@@ -16256,6 +16370,16 @@ MonoBehaviour:
   allyID: 02000000
   selectBattalion: {fileID: 0}
   selectRegiment:
+    officer:
+      name: 
+      tacticsLv: 0
+      attackLv: 0
+      defenseLv: 0
+      organizationLv: 0
+      features: 
+      rank: 0
+      officetType: 0
+      isSelect: 0
     nameRegiment: 
     battalions: []
     battalionType: 0
@@ -16304,7 +16428,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattalionUIManagerScr
   commandPanel: {fileID: 1117267824}
-  officerPanel: {fileID: 0}
+  officerPanel: {fileID: 1114118939}
   noneButton: {fileID: 911615732}
   moveButton: {fileID: 755558388}
   attackButton: {fileID: 1575233364}
@@ -16332,8 +16456,9 @@ MonoBehaviour:
     addButton: {fileID: 2055075486}
     removeButton: {fileID: 881185910}
   batalionManager: {fileID: 1916624630}
-  officers: []
-  officerSelect: {fileID: 0}
+  officers:
+  - {fileID: 1795635709}
+  officerSelect: {fileID: 1795118071}
 --- !u!114 &1916624633
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -16415,6 +16540,28 @@ MonoBehaviour:
       ammoCostPerAction: 10
       commandCost: 1
       defenseMultiplier: 1
+--- !u!114 &1916624634
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1916624629}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62b022fa214127e4a83b0a62120b3fc1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OfficerDataBaseScr
+  officers:
+  - name: "\u0413\u0435\u0442\u044C\u043C\u0430\u043D"
+    tacticsLv: 0
+    attackLv: 0
+    defenseLv: 0
+    organizationLv: 0
+    features: 
+    rank: 0
+    officetType: 1
+    isSelect: 0
 --- !u!1 &1922096715
 GameObject:
   m_ObjectHideFlags: 0
@@ -16878,10 +17025,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 1795635705}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 93.75}
-  m_SizeDelta: {x: 150, y: 42.501}
+  m_AnchorMin: {x: 0, y: 1}
+  m_AnchorMax: {x: 0, y: 1}
+  m_AnchoredPosition: {x: 175, y: -20}
+  m_SizeDelta: {x: 350, y: 40}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1958012439
 MonoBehaviour:

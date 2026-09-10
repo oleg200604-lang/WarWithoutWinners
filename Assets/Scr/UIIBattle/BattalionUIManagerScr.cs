@@ -28,7 +28,7 @@ public class BattalionUIManagerScr : MonoBehaviour
     public BatalionManagerScr batalionManager;
 
     [Header("Офіцери (фіксовані слоти під усіх офіцерів з бази)")]
-    public OfiicerButton[] officers;
+    public OfiicerButtonScr[] officers;
     [Tooltip("Кнопка, яка відкриває/закриває панель вибору офіцера.")]
     public Button officerSelect;
 
@@ -52,14 +52,12 @@ public class BattalionUIManagerScr : MonoBehaviour
             officerSelect.onClick.AddListener(SelectOfficerPanel);
         }
 
-        // Кожен слот у officers — фіксована UI-кнопка під конкретного офіцера з бази.
-        // Підписуємось один раз тут, індекс захоплюємо в локальну змінну (замикання).
         if (officers != null)
         {
             for (int i = 0; i < officers.Length; i++)
             {
                 int index = i;
-                OfiicerButton slot = officers[index];
+                OfiicerButtonScr slot = officers[index];
 
                 if (slot == null)
                     continue;
@@ -90,20 +88,19 @@ public class BattalionUIManagerScr : MonoBehaviour
         RefreshResourceHud();
     }
 
-    // Відкриває/закриває панель вибору офіцера та оновлює список слотів під поточний вибір.
     public void SelectOfficerPanel()
     {
         if (officerPanel == null)
             return;
 
+        bool willBeActive = !officerPanel.activeSelf;
 
-        officerPanel.SetActive(!officerPanel.activeSelf);
-        RefreshOfficerButtons();
+        officerPanel.SetActive(willBeActive);
+
+        if (willBeActive)
+            RefreshOfficerButtons();
     }
 
-    // Викликається кнопкою конкретного слота (officers[officerIndex]).
-    // Куди призначити офіцера, вирішується поточним вибором:
-    // обрано батальйон -> офіцер іде батальйону, обрано полк -> офіцер іде полку.
     public void SelectOfficer(int officerIndex)
     {
         if (officers == null || officerIndex < 0 || officerIndex >= officers.Length)
@@ -131,10 +128,7 @@ public class BattalionUIManagerScr : MonoBehaviour
         CheckButtalion();
     }
 
-    // Кнопки підвищення/пониження звання конкретного офіцера. Звання впливає на
-    // ефективність пасивних бонусів, тож перераховуємо статистику всіх батальйонів,
-    // де цей офіцер зараз призначений (особисто або як офіцер полку).
-    private void OnOfficerRankButton(OfiicerButton slot, bool raise)
+    private void OnOfficerRankButton(OfiicerButtonScr slot, bool raise)
     {
         if (slot == null || slot.officer == null)
             return;
@@ -161,8 +155,6 @@ public class BattalionUIManagerScr : MonoBehaviour
         }
     }
 
-    // Оновлює вигляд усіх слотів офіцерів під поточний вибір батальйона/полку:
-    // підпис, підсвітка вже призначеного, доступність кнопки вибору.
     private void RefreshOfficerButtons()
     {
         if (officers == null)
@@ -184,7 +176,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
         for (int i = 0; i < officers.Length; i++)
         {
-            OfiicerButton slot = officers[i];
+            OfiicerButtonScr slot = officers[i];
 
             if (slot == null || slot.officer == null)
                 continue;
@@ -207,7 +199,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
     private string GetOfficerLabel(Officer officer)
     {
-        return officer.name + " (" + GetRankLabel(officer.rank) + ")";
+        return officer.name + GetRankLabel(officer.rank);
     }
 
     private string GetRankLabel(Rank rank)
@@ -362,26 +354,4 @@ public class RegimentButtonGroup
     public Button selectButton;
     public Button addButton;
     public Button removeButton;
-}
-
-
-[System.Serializable]
-public class OfiicerButton
-{
-    public Image imageOfficer;
-    public Button selectOfficer;
-    public TextMeshProUGUI Name;
-    public Officer officer;
-    public Button buttonRaise;
-    public Button buttonLower;
-
-
-    public void ButtonRaise()
-    {
-        officer.Raise();
-    }
-    public void ButtonLower()
-    {
-        officer.Lower();
-    }
 }
