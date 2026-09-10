@@ -1,24 +1,49 @@
 using UnityEngine;
-using System.Collections.Generic;
 using UnityEngine.UI;
 using TMPro;
 
 public class OfiicerButtonScr : MonoBehaviour
 {
+    [Header("UI")]
     public Image imageOfficer;
     public Button selectOfficer;
     public TextMeshProUGUI Name;
-    public Officer officer;
     public Button buttonRaise;
     public Button buttonLower;
+    public int officerIndex = -1;
 
 
-    public void ButtonRaise()
+    // =========================================================
+    // DISPLAY
+    // =========================================================
+
+    public void SetOfficerIndex(int index)
     {
-        officer.Raise();
+        officerIndex = index;
     }
-    public void ButtonLower()
+
+    public void SetOfficerName(string officerName)
     {
-        officer.Lower();
+        if (Name != null)
+            Name.text = officerName;
+    }
+
+    public void SetInteractable(bool value)
+    {
+        if (selectOfficer != null)
+            selectOfficer.interactable = value;
+    }
+
+    public void SetSelectedVisual(bool selected)
+    {
+        if (selectOfficer == null)
+            return;
+
+        Image image = selectOfficer.image;
+
+        if (image != null)
+            image.color = selected
+                ? Color.yellow
+                : Color.white;
     }
 }

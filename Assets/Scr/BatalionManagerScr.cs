@@ -391,7 +391,276 @@ public class BatalionManagerScr : MonoBehaviour
     // =========================================================
     // WORLD POSITION
     // =========================================================
+    // =========================================================
+    // OFFICER SYSTEM
+    // =========================================================
 
+    public bool IsOfficerAssigned(Officer officer)
+    {
+        if (officer == null)
+            return false;
+
+        // Перевіряємо батальйони.
+        IReadOnlyList<BattalionScr> allBattalions =
+            BattalionScr.AllActive;
+
+        for (int i = 0; i < allBattalions.Count; i++)
+        {
+            BattalionScr battalion =
+                allBattalions[i];
+
+            if (battalion == null)
+                continue;
+
+            // Офіцер належить іншій команді.
+            if (battalion.TeamID != teamID)
+                continue;
+
+            if (battalion.officer == officer ||
+                battalion.officerRegiment == officer)
+            {
+                return true;
+            }
+        }
+
+        // Додаткова перевірка безпосередньо по полках.
+        if (regiments != null)
+        {
+            for (int i = 0; i < regiments.Count; i++)
+            {
+                Regiment regiment =
+                    regiments[i];
+
+                if (regiment == null)
+                    continue;
+
+                if (regiment.officer == officer)
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+
+    // =========================================================
+    // CAN ASSIGN
+    // =========================================================
+
+    public bool CanAssignOfficerToCurrentSelection(
+        Officer officer)
+    {
+        if (officer == null)
+            return false;
+
+        if (selectBattalion != null)
+        {
+            return CanAssignOfficerToBattalion(
+                officer,
+                selectBattalion
+            );
+        }
+
+        if (selectRegiment != null)
+        {
+            return CanAssignOfficerToRegiment(
+                officer,
+                selectRegiment
+            );
+        }
+
+        return false;
+    }
+
+
+    // =========================================================
+    // BATTALION VALIDATION
+    // =========================================================
+
+    public bool CanAssignOfficerToBattalion(
+        Officer officer,
+        BattalionScr battalion)
+    {
+        if (officer == null ||
+            battalion == null)
+        {
+            return false;
+        }
+
+        if (battalion.teamID != teamID)
+            return false;
+
+        if (battalion.battalion == null)
+            return false;
+
+        // Майор командує окремим батальйоном.
+        if (officer.rank != Rank.Major)
+            return false;
+
+        // Тип офіцера повинен відповідати типу батальйону.
+        if (officer.officetType !=
+            battalion.battalion.type)
+        {
+            return false;
+        }
+
+        // Не можна призначити офіцера,
+        // який вже командує іншим підрозділом.
+        if (IsOfficerAssigned(officer))
+        {
+            // Якщо він уже стоїть саме тут —
+            // повторне призначення не потрібне.
+            if (battalion.officer == officer)
+                return false;
+
+            return false;
+        }
+
+        return true;
+    }
+
+
+    // =========================================================
+    // REGIMENT VALIDATION
+    // =========================================================
+
+    public bool CanAssignOfficerToRegiment(
+        Officer officer,
+        Regiment regiment)
+    {
+        if (officer == null ||
+            regiment == null)
+        {
+            return false;
+        }
+
+        if (regiment.battalions == null ||
+            regiment.battalions.Count == 0)
+        {
+            return false;
+        }
+
+        // Майор не командує полком.
+        if (officer.rank == Rank.Major)
+            return false;
+
+        // Тип офіцера повинен відповідати типу полку.
+        if (officer.officetType !=
+            regiment.battalionType)
+        {
+            return false;
+        }
+
+        // Підполковник може командувати
+        // малим полком до 4 батальйонів.
+        if (officer.rank ==
+            Rank.LieutenantColonel)
+        {
+            if (regiment.battalions.Count > 4)
+                return false;
+        }
+
+        // Один офіцер не може одночасно
+        // командувати двома підрозділами.
+        if (IsOfficerAssigned(officer))
+            return false;
+
+        return true;
+    }
+
+
+    // =========================================================
+    // ASSIGN TO BATTALION
+    // =========================================================
+
+    public bool AssignOfficerToBattalion(
+        Officer officer,
+        BattalionScr battalion)
+    {
+        if (!CanAssignOfficerToBattalion(
+            officer,
+            battalion))
+        {
+            return false;
+        }
+
+        // Якщо тут вже був офіцер —
+        // знімаємо його.
+        if (battalion.officer != null)
+        {
+            Officer oldOfficer =
+                battalion.officer;
+
+            battalion.officer = null;
+
+            battalion.RecalculateStats();
+        }
+
+        battalion.officer =
+            officer;
+
+        battalion.RecalculateStats();
+
+        return true;
+    }
+
+
+    // =========================================================
+    // ASSIGN TO REGIMENT
+    // =========================================================
+
+    public bool AssignOfficerToRegiment(
+        Officer officer,
+        Regiment regiment)
+    {
+        if (!CanAssignOfficerToRegiment(
+            officer,
+            regiment))
+        {
+            return false;
+        }
+
+        regiment.AssignOfficer(
+            officer
+        );
+
+        return true;
+    }
+
+
+    // =========================================================
+    // RECALCULATE OFFICER
+    // =========================================================
+
+    public void RecalculateStatsForOfficer(
+        Officer officer)
+    {
+        if (officer == null)
+            return;
+
+        IReadOnlyList<BattalionScr> allBattalions =
+            BattalionScr.AllActive;
+
+        for (int i = 0;
+             i < allBattalions.Count;
+             i++)
+        {
+            BattalionScr battalion =
+                allBattalions[i];
+
+            if (battalion == null)
+                continue;
+
+            if (battalion.TeamID != teamID)
+                continue;
+
+            if (battalion.officer == officer ||
+                battalion.officerRegiment == officer)
+            {
+                battalion.RecalculateStats();
+            }
+        }
+    }
     private bool TryGetMouseWorldPosition(
         out Vector3 worldPosition)
     {
@@ -1429,6 +1698,75 @@ public class Regiment
 
     public Vector3 anchor;
 
+    // =========================================================
+    // OFFICER
+    // =========================================================
+
+    public void AssignOfficer(Officer newOfficer)
+    {
+        if (newOfficer == null)
+            return;
+
+        // Якщо це той самий офіцер,
+        // просто переконаємось, що всі батальйони
+        // мають актуальне посилання.
+        if (officer == newOfficer)
+        {
+            ApplyOfficerToBattalions();
+            return;
+        }
+
+        // Старий офіцер більше не командує полком.
+        officer = newOfficer;
+
+        ApplyOfficerToBattalions();
+    }
+
+
+    private void ApplyOfficerToBattalions()
+    {
+        if (battalions == null)
+            return;
+
+        for (int i = 0;
+             i < battalions.Count;
+             i++)
+        {
+            BattalionScr battalion =
+                battalions[i];
+
+            if (battalion == null)
+                continue;
+
+            battalion.officerRegiment =
+                officer;
+
+            battalion.RecalculateStats();
+        }
+    }
+
+
+    public void UnassignOfficer()
+    {
+        officer = null;
+
+        if (battalions == null)
+            return;
+
+        for (int i = 0;
+             i < battalions.Count;
+             i++)
+        {
+            BattalionScr battalion =
+                battalions[i];
+
+            if (battalion == null)
+                continue;
+
+            battalion.ClearOfficerRegiment();
+        }
+    }
+
     public void SelectOfficer(Officer officers)
     {
         if (officers.officetType == battalionType)
@@ -1492,22 +1830,6 @@ public class Regiment
                 }
             }
 
-        }
-    }
-
-    // Знімає офіцера полку повністю: звільняє isSelect і прибирає бонус
-    // з усіх батальйонів полку, яким він зараз призначений.
-    public void UnassignOfficer()
-    {
-        if (officer == null)
-            return;
-
-        officer.isSelect = false;
-        officer = null;
-
-        for (int i = 0; i < battalions.Count; i++)
-        {
-            battalions[i].ClearOfficerRegiment();
         }
     }
 

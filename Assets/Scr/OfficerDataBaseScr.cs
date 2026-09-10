@@ -1,9 +1,30 @@
-using NUnit.Framework;
 using UnityEngine;
 
 public class OfficerDataBaseScr : MonoBehaviour
 {
+    [Header("Усі офіцери цієї армії")]
     public Officer[] officers;
+
+    public int OfficerCount
+    {
+        get
+        {
+            return officers != null
+                ? officers.Length
+                : 0;
+        }
+    }
+
+    public Officer GetOfficer(int index)
+    {
+        if (officers == null)
+            return null;
+
+        if (index < 0 || index >= officers.Length)
+            return null;
+
+        return officers[index];
+    }
 
     public static float GetRankEfficiency(Rank rank)
     {
@@ -11,50 +32,83 @@ public class OfficerDataBaseScr : MonoBehaviour
         {
             case Rank.Major:
                 return 1f;
+
             case Rank.LieutenantColonel:
                 return 0.75f;
+
             case Rank.Colonel:
                 return 0.5f;
+
             case Rank.General:
                 return 0.25f;
+
             default:
                 return 0f;
         }
     }
 }
+
 [System.Serializable]
 public class Officer
 {
     public string name;
-    public int tacticsLv, attackLv, defenseLv, organizationLv;
+
+    [Header("Навички")]
+    public int tacticsLv;
+    public int attackLv;
+    public int defenseLv;
+    public int organizationLv;
+    public bool isSelect;
+
+    [Header("Особливості")]
     public Features[] features;
+
+    [Header("Командування")]
     public Rank rank;
     public BattalionType officetType;
-    public bool isSelect;
+
     private const float TacticsPercentPerLevel = 0.10f;
     private const float AttackPercentPerLevel = 0.25f;
     private const float DefensePercentPerLevel = 0.25f;
     private const float OrganizationPercentPerLevel = 0.10f;
 
+
+    // =========================================================
+    // BONUSES
+    // =========================================================
+
     public float GetTacticsBonusPercent()
     {
-        return tacticsLv * TacticsPercentPerLevel * OfficerDataBaseScr.GetRankEfficiency(rank);
+        return tacticsLv *
+               TacticsPercentPerLevel *
+               OfficerDataBaseScr.GetRankEfficiency(rank);
     }
 
     public float GetAttackBonusPercent()
     {
-        return attackLv * AttackPercentPerLevel * OfficerDataBaseScr.GetRankEfficiency(rank);
+        return attackLv *
+               AttackPercentPerLevel *
+               OfficerDataBaseScr.GetRankEfficiency(rank);
     }
 
     public float GetDefenseBonusPercent()
     {
-        return defenseLv * DefensePercentPerLevel * OfficerDataBaseScr.GetRankEfficiency(rank);
+        return defenseLv *
+               DefensePercentPerLevel *
+               OfficerDataBaseScr.GetRankEfficiency(rank);
     }
 
     public float GetOrganizationBonusPercent()
     {
-        return organizationLv * OrganizationPercentPerLevel * OfficerDataBaseScr.GetRankEfficiency(rank);
+        return organizationLv *
+               OrganizationPercentPerLevel *
+               OfficerDataBaseScr.GetRankEfficiency(rank);
     }
+
+
+    // =========================================================
+    // RANK
+    // =========================================================
 
     public void Raise()
     {
@@ -63,7 +117,6 @@ public class Officer
             case Rank.Major:
                 rank = Rank.LieutenantColonel;
                 break;
-
 
             case Rank.LieutenantColonel:
                 rank = Rank.Colonel;
@@ -74,7 +127,6 @@ public class Officer
                 break;
 
             case Rank.General:
-                rank = Rank.General;
                 break;
         }
     }
@@ -84,7 +136,6 @@ public class Officer
         switch (rank)
         {
             case Rank.Major:
-                rank = Rank.Major;
                 break;
 
             case Rank.LieutenantColonel:
