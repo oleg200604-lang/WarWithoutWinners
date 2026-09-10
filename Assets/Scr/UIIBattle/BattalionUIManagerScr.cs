@@ -26,7 +26,10 @@ public class BattalionUIManagerScr : MonoBehaviour
     [Header("По одному слоту buttonRegiment на кожен можливий полк")]
     public List<RegimentButtonGroup> regimentButtonGroups;
     public BatalionManagerScr batalionManager;
+
+    [Header("Офіцери (фіксовані слоти під усіх офіцерів з бази)")]
     public OfiicerButton[] officers;
+    [Tooltip("Кнопка, яка відкриває/закриває панель вибору офіцера.")]
     public Button officerSelect;
 
 
@@ -43,6 +46,43 @@ public class BattalionUIManagerScr : MonoBehaviour
                 }
             });
         }
+
+        if (officerSelect != null)
+        {
+            officerSelect.onClick.AddListener(SelectOfficerPanel);
+        }
+
+        // Кожен слот у officers — фіксована UI-кнопка під конкретного офіцера з бази.
+        // Підписуємось один раз тут, індекс захоплюємо в локальну змінну (замикання).
+        if (officers != null)
+        {
+            for (int i = 0; i < officers.Length; i++)
+            {
+                int index = i;
+                OfiicerButton slot = officers[index];
+
+                if (slot == null)
+                    continue;
+
+                if (slot.selectOfficer != null)
+                {
+                    slot.selectOfficer.onClick.RemoveAllListeners();
+                    slot.selectOfficer.onClick.AddListener(() => SelectOfficer(index));
+                }
+
+                if (slot.buttonRaise != null)
+                {
+                    slot.buttonRaise.onClick.RemoveAllListeners();
+                    slot.buttonRaise.onClick.AddListener(() => OnOfficerRankButton(slot, raise: true));
+                }
+
+                if (slot.buttonLower != null)
+                {
+                    slot.buttonLower.onClick.RemoveAllListeners();
+                    slot.buttonLower.onClick.AddListener(() => OnOfficerRankButton(slot, raise: false));
+                }
+            }
+        }
     }
 
     private void Update()
@@ -50,15 +90,143 @@ public class BattalionUIManagerScr : MonoBehaviour
         RefreshResourceHud();
     }
 
+    // Відкриває/закриває панель вибору офіцера та оновлює список слотів під поточний вибір.
     public void SelectOfficerPanel()
     {
-        
+        if (officerPanel == null)
+            return;
+
+
+        officerPanel.SetActive(!officerPanel.activeSelf);
+        RefreshOfficerButtons();
     }
 
-    public void SelectOfficer(Officer officers)
+    // Викликається кнопкою конкретного слота (officers[officerIndex]).
+    // Куди призначити офіцера, вирішується поточним вибором:
+    // обрано батальйон -> офіцер іде батальйону, обрано полк -> офіцер іде полку.
+    public void SelectOfficer(int officerIndex)
     {
-        //officerSelect
+        if (officers == null || officerIndex < 0 || officerIndex >= officers.Length)
+            return;
+
+        Officer officer = officers[officerIndex].officer;
+
+        if (officer == null)
+            return;
+
+        if (batalionManager.selectBattalion != null)
+        {
+            batalionManager.selectBattalion.SelectOfficer(officer);
+        }
+        else if (batalionManager.selectRegiment != null)
+        {
+            batalionManager.selectRegiment.SelectOfficer(officer);
+        }
+        else
+        {
+            return;
+        }
+
+        RefreshOfficerButtons();
+        CheckButtalion();
     }
+
+    // Кнопки підвищення/пониження звання конкретного офіцера. Звання впливає на
+    // ефективність пасивних бонусів, тож перераховуємо статистику всіх батальйонів,
+    // де цей офіцер зараз призначений (особисто або як офіцер полку).
+    private void OnOfficerRankButton(OfiicerButton slot, bool raise)
+    {
+        if (slot == null || slot.officer == null)
+            return;
+
+        if (raise)
+            slot.ButtonRaise();
+        else
+            slot.ButtonLower();
+
+        RecalculateBattalionsForOfficer(slot.officer);
+        RefreshOfficerButtons();
+    }
+
+    private void RecalculateBattalionsForOfficer(Officer officer)
+    {
+        BattalionScr[] allBattalions = FindObjectsOfType<BattalionScr>();
+
+        for (int i = 0; i < allBattalions.Length; i++)
+        {
+            BattalionScr battalionScr = allBattalions[i];
+
+            if (battalionScr.officer == officer || battalionScr.officerRegiment == officer)
+                battalionScr.RecalculateStats();
+        }
+    }
+
+    // Оновлює вигляд усіх слотів офіцерів під поточний вибір батальйона/полку:
+    // підпис, підсвітка вже призначеного, доступність кнопки вибору.
+    private void RefreshOfficerButtons()
+    {
+        if (officers == null)
+            return;
+
+        BattalionType currentType = BattalionType.none;
+        bool hasTarget = false;
+
+        if (batalionManager.selectBattalion != null)
+        {
+            currentType = batalionManager.selectBattalion.battalion.type;
+            hasTarget = true;
+        }
+        else if (batalionManager.selectRegiment != null)
+        {
+            currentType = batalionManager.selectRegiment.battalionType;
+            hasTarget = true;
+        }
+
+        for (int i = 0; i < officers.Length; i++)
+        {
+            OfiicerButton slot = officers[i];
+
+            if (slot == null || slot.officer == null)
+                continue;
+
+            if (slot.Name != null)
+                slot.Name.text = GetOfficerLabel(slot.officer);
+
+            if (slot.selectOfficer != null)
+            {
+                bool matchesType = slot.officer.officetType == currentType;
+
+                slot.selectOfficer.interactable = hasTarget && matchesType && !slot.officer.isSelect;
+
+                Image selectImage = slot.selectOfficer.image;
+                if (selectImage != null)
+                    selectImage.color = slot.officer.isSelect ? Color.yellow : Color.white;
+            }
+        }
+    }
+
+    private string GetOfficerLabel(Officer officer)
+    {
+        return officer.name + " (" + GetRankLabel(officer.rank) + ")";
+    }
+
+    private string GetRankLabel(Rank rank)
+    {
+        switch (rank)
+        {
+            case Rank.Major:
+                return "Майор";
+            case Rank.LieutenantColonel:
+                return "Підполковник";
+            case Rank.Colonel:
+                return "Полковник";
+            case Rank.General:
+                return "Генерал";
+            default:
+                return rank.ToString();
+        }
+    }
+
     private void RefreshResourceHud()
     {
         if (batalionManager == null)
@@ -73,7 +241,7 @@ public class BattalionUIManagerScr : MonoBehaviour
             suppliesText.text = r.supplies.ToString();
 
         if (commandText != null)
-            commandText.text =  r.command + " +(" + r.planning  + ")/" + r.commandMax;
+            commandText.text = r.command + " +(" + r.planning + ")/" + r.commandMax;
     }
 
     public void CommandPanel(bool isActvie)
@@ -114,6 +282,12 @@ public class BattalionUIManagerScr : MonoBehaviour
             bool canReinforce = hasBattalionSelected && !isNone && battalionScr.GetMissingPersonnel() > 0;
             reinforceButton.gameObject.SetActive(canReinforce);
         }
+
+        if (officerSelect != null)
+            officerSelect.gameObject.SetActive(hasSelection);
+
+        if (officerPanel != null && officerPanel.activeSelf)
+            RefreshOfficerButtons();
 
         RefreshRegimentButtons();
     }
@@ -192,7 +366,7 @@ public class RegimentButtonGroup
 
 
 [System.Serializable]
-public class OfiicerButton 
+public class OfiicerButton
 {
     public Image imageOfficer;
     public Button selectOfficer;

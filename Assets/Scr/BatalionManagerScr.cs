@@ -838,11 +838,6 @@ public class BatalionManagerScr : MonoBehaviour
         }
     }
 
-
-    // =========================================================
-    // SELECTION
-    // =========================================================
-
     private bool HasSelection()
     {
         return selectBattalion != null ||
@@ -937,9 +932,7 @@ public class BatalionManagerScr : MonoBehaviour
     // REGIMENT HELPERS
     // =========================================================
 
-    private bool TryGetBattalionRegiment(
-        BattalionScr battalion,
-        out Regiment regiment)
+    private bool TryGetBattalionRegiment(BattalionScr battalion,out Regiment regiment)
     {
         regiment = null;
 
@@ -964,8 +957,7 @@ public class BatalionManagerScr : MonoBehaviour
         return regiment != null;
     }
 
-    private int GetRegimentIndex(
-        Regiment regiment)
+    private int GetRegimentIndex(Regiment regiment)
     {
         if (regiment == null ||
             regiments == null)
