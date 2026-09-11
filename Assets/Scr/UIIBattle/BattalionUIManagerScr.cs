@@ -39,6 +39,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
     [Tooltip("Кнопка, яка відкриває/закриває панель вибору офіцера.")]
     public Button officerSelect;
+    public TextMeshProUGUI[] textOfficerStatic;
     public Image officerImage;
 
 

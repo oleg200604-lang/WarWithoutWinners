@@ -7,7 +7,8 @@ public class OfficerButtonScr : MonoBehaviour
     [Header("UI")]
     public Image imageOfficer;
     public Button selectOfficer;
-    public TextMeshProUGUI Name;
+    public TextMeshProUGUI textName;
+    public TextMeshProUGUI[] textOfficerStatic;
     public Button buttonRaise;
     public Button buttonLower;
     public int officerIndex = -1;
@@ -24,9 +25,9 @@ public class OfficerButtonScr : MonoBehaviour
 
     public void SetOfficerName(string officerName, Sprite sprite)
     {
-        if (Name != null)
+        if (textName != null)
         {
-            Name.text = officerName;
+            textName.text = officerName;
         }
 
         if(imageOfficer != null)
