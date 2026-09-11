@@ -38,6 +38,35 @@ public class BatalionManagerScr : MonoBehaviour
 
     public Ressurs ressurs = new Ressurs();
 
+
+    // =========================================================
+    // OFFICER DATABASE
+    // =========================================================
+    // Єдине місце, звідки хтось (UI, батальйони, полки) отримує офіцерів.
+    // OfiicerButtonScr і BattalionUIManagerScr НЕ тримають власного посилання
+    // на OfficerDataBaseScr — вони йдуть сюди через GetOfficer()/OfficerCount.
+
+    [Header("База офіцерів (єдине джерело даних)")]
+    public OfficerDataBaseScr officerDataBaseScr;
+
+    public int OfficerCount
+    {
+        get
+        {
+            return officerDataBaseScr != null
+                ? officerDataBaseScr.OfficerCount
+                : 0;
+        }
+    }
+
+    public Officer GetOfficer(int index)
+    {
+        if (officerDataBaseScr == null)
+            return null;
+
+        return officerDataBaseScr.GetOfficer(index);
+    }
+
     [Tooltip("Пункти поповнення боєприпасів.")]
     public List<AmmoDepotScr> ammoDepots =
         new List<AmmoDepotScr>();

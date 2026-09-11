@@ -35,10 +35,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
     public BatalionManagerScr batalionManager;
 
-    [Header("База офіцерів")]
-    public OfficerDataBaseScr officerDataBaseScr;
-
-    [Header("UI-слоти офіцерів")]
+    [Header("UI-слоти офіцерів (фіксовані, прив'язуються в інспекторі)")]
     public OfiicerButtonScr[] officers;
 
     [Tooltip("Кнопка, яка відкриває/закриває панель вибору офіцера.")]
@@ -93,6 +90,22 @@ public class BattalionUIManagerScr : MonoBehaviour
         if (officers == null)
             return;
 
+        // Фіксовані слоти прив'язані вручну в інспекторі — кількість тут МАЄ
+        // збігатись з кількістю офіцерів у OfficerDataBaseScr (єдине джерело
+        // даних, batalionManager.OfficerCount). Якщо ні — попереджаємо одразу,
+        // а не даємо цьому мовчки розʼїхатись у порожні/биті кнопки.
+        if (batalionManager != null &&
+            officers.Length != batalionManager.OfficerCount)
+        {
+            Debug.LogWarning(
+                "BattalionUIManagerScr: кількість UI-слотів офіцерів (" +
+                officers.Length +
+                ") не збігається з кількістю в OfficerDataBaseScr (" +
+                batalionManager.OfficerCount +
+                "). Додай/прибери слоти в інспекторі."
+            );
+        }
+
         for (int i = 0; i < officers.Length; i++)
         {
             OfiicerButtonScr slot = officers[i];
@@ -103,6 +116,15 @@ public class BattalionUIManagerScr : MonoBehaviour
             int index = i;
 
             slot.SetOfficerIndex(index);
+
+            // Слот без відповідного офіцера в базі — ховаємо, а не лишаємо
+            // "живим" з порожнім/некоректним станом.
+            bool hasOfficer = GetOfficer(index) != null;
+
+            slot.gameObject.SetActive(hasOfficer);
+
+            if (!hasOfficer)
+                continue;
 
             if (slot.selectOfficer != null)
             {
@@ -137,13 +159,16 @@ public class BattalionUIManagerScr : MonoBehaviour
     // =========================================================
     // OFFICER DATABASE
     // =========================================================
+    // Єдиний шлях до бази: UI -> BatalionManagerScr -> OfficerDataBaseScr.
+    // Сам BattalionUIManagerScr бази не тримає, щоб не було двох паралельних
+    // посилань на одні й ті самі дані.
 
     public Officer GetOfficer(int index)
     {
-        if (officerDataBaseScr == null)
+        if (batalionManager == null)
             return null;
 
-        return officerDataBaseScr.GetOfficer(index);
+        return batalionManager.GetOfficer(index);
     }
 
 
@@ -298,7 +323,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
             if (officer == null)
             {
-                slot.SetInteractable(false);
+                slot.gameObject.SetActive(false);
                 continue;
             }
 
@@ -347,9 +372,7 @@ public class BattalionUIManagerScr : MonoBehaviour
         if (officer == null)
             return "";
 
-        return officer.name +
-               " " +
-               GetRankLabel(officer.rank);
+        return   GetRankLabel(officer.rank)+ " " + officer.name;
     }
 
 
