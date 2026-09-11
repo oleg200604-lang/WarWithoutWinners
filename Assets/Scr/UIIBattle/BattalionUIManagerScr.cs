@@ -7,7 +7,6 @@ public class BattalionUIManagerScr : MonoBehaviour
 {
     public GameObject commandPanel;
     public GameObject officerPanel;
-
     public GameObject noneButton;
     public GameObject moveButton;
     public GameObject attackButton;
@@ -36,15 +35,12 @@ public class BattalionUIManagerScr : MonoBehaviour
     public BatalionManagerScr batalionManager;
 
     [Header("UI-слоти офіцерів (фіксовані, прив'язуються в інспекторі)")]
-    public OfiicerButtonScr[] officers;
+    public OfficerButtonScr[] officers;
 
     [Tooltip("Кнопка, яка відкриває/закриває панель вибору офіцера.")]
     public Button officerSelect;
+    public Image officerImage;
 
-
-    // =========================================================
-    // UNITY
-    // =========================================================
 
     private void Awake()
     {
@@ -68,9 +64,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
         if (officerSelect != null)
         {
-            officerSelect.onClick.AddListener(
-                SelectOfficerPanel
-            );
+            officerSelect.onClick.AddListener(SelectOfficerPanel);
         }
     }
 
@@ -80,35 +74,20 @@ public class BattalionUIManagerScr : MonoBehaviour
         RefreshResourceHud();
     }
 
-
-    // =========================================================
-    // OFFICER SETUP
-    // =========================================================
-
     private void SetupOfficerSlots()
     {
         if (officers == null)
             return;
 
-        // Фіксовані слоти прив'язані вручну в інспекторі — кількість тут МАЄ
-        // збігатись з кількістю офіцерів у OfficerDataBaseScr (єдине джерело
-        // даних, batalionManager.OfficerCount). Якщо ні — попереджаємо одразу,
-        // а не даємо цьому мовчки розʼїхатись у порожні/биті кнопки.
         if (batalionManager != null &&
             officers.Length != batalionManager.OfficerCount)
         {
-            Debug.LogWarning(
-                "BattalionUIManagerScr: кількість UI-слотів офіцерів (" +
-                officers.Length +
-                ") не збігається з кількістю в OfficerDataBaseScr (" +
-                batalionManager.OfficerCount +
-                "). Додай/прибери слоти в інспекторі."
-            );
+            Debug.LogWarning("BattalionUIManagerScr: кількість UI-слотів офіцерів (" + officers.Length + ") не збігається з кількістю в OfficerDataBaseScr (" + batalionManager.OfficerCount + "). Додай/прибери слоти в інспекторі.");
         }
 
         for (int i = 0; i < officers.Length; i++)
         {
-            OfiicerButtonScr slot = officers[i];
+            OfficerButtonScr slot = officers[i];
 
             if (slot == null)
                 continue;
@@ -117,8 +96,6 @@ public class BattalionUIManagerScr : MonoBehaviour
 
             slot.SetOfficerIndex(index);
 
-            // Слот без відповідного офіцера в базі — ховаємо, а не лишаємо
-            // "живим" з порожнім/некоректним станом.
             bool hasOfficer = GetOfficer(index) != null;
 
             slot.gameObject.SetActive(hasOfficer);
@@ -156,13 +133,6 @@ public class BattalionUIManagerScr : MonoBehaviour
     }
 
 
-    // =========================================================
-    // OFFICER DATABASE
-    // =========================================================
-    // Єдиний шлях до бази: UI -> BatalionManagerScr -> OfficerDataBaseScr.
-    // Сам BattalionUIManagerScr бази не тримає, щоб не було двох паралельних
-    // посилань на одні й ті самі дані.
-
     public Officer GetOfficer(int index)
     {
         if (batalionManager == null)
@@ -170,11 +140,6 @@ public class BattalionUIManagerScr : MonoBehaviour
 
         return batalionManager.GetOfficer(index);
     }
-
-
-    // =========================================================
-    // SELECT OFFICER
-    // =========================================================
 
     public void SelectOfficer(int officerIndex)
     {
@@ -212,11 +177,6 @@ public class BattalionUIManagerScr : MonoBehaviour
         RefreshOfficerButtons();
         CheckButtalion();
     }
-
-
-    // =========================================================
-    // RANK
-    // =========================================================
 
     private void RaiseOfficer(int officerIndex)
     {
@@ -312,7 +272,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
         for (int i = 0; i < officers.Length; i++)
         {
-            OfiicerButtonScr slot =
+            OfficerButtonScr slot =
                 officers[i];
 
             if (slot == null)
@@ -329,11 +289,7 @@ public class BattalionUIManagerScr : MonoBehaviour
 
             slot.SetOfficerIndex(i);
 
-            if (slot.Name != null)
-            {
-                slot.Name.text =
-                    GetOfficerLabel(officer);
-            }
+            slot.SetOfficerName(GetOfficerLabel(officer), officer.photo);
 
             bool matchesType =
                 officer.officetType ==
@@ -366,12 +322,15 @@ public class BattalionUIManagerScr : MonoBehaviour
     // OFFICER LABEL
     // =========================================================
 
-    private string GetOfficerLabel(Officer officer)
+    private string GetOfficerLabel(
+        Officer officer)
     {
         if (officer == null)
             return "";
 
-        return GetRankLabel(officer.rank)+ " " + officer.name;
+        return officer.name +
+               " " +
+               GetRankLabel(officer.rank);
     }
 
 
@@ -397,17 +356,20 @@ public class BattalionUIManagerScr : MonoBehaviour
         }
     }
 
+
+    // =========================================================
+    // RESOURCES
+    // =========================================================
+
     private void RefreshResourceHud()
     {
         if (batalionManager == null)
             return;
 
-        Ressurs r =
-            batalionManager.ressurs;
+        Ressurs r =  batalionManager.ressurs;
 
         if (personnelText != null)
-            personnelText.text =
-                r.personnel.ToString();
+            personnelText.text = r.personnel.ToString();
 
         if (suppliesText != null)
             suppliesText.text =

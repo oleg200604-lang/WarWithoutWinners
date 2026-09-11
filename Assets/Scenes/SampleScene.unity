@@ -11702,6 +11702,7 @@ MonoBehaviour:
   - company: 0
   officer:
     name: 
+    photo: {fileID: 0}
     tacticsLv: 0
     attackLv: 0
     defenseLv: 0
@@ -11712,6 +11713,7 @@ MonoBehaviour:
     officetType: 0
   officerRegiment:
     name: 
+    photo: {fileID: 0}
     tacticsLv: 0
     attackLv: 0
     defenseLv: 0
@@ -12012,6 +12014,7 @@ MonoBehaviour:
   - company: 0
   officer:
     name: 
+    photo: {fileID: 0}
     tacticsLv: 0
     attackLv: 0
     defenseLv: 0
@@ -12022,6 +12025,7 @@ MonoBehaviour:
     officetType: 0
   officerRegiment:
     name: 
+    photo: {fileID: 0}
     tacticsLv: 0
     attackLv: 0
     defenseLv: 0
@@ -13131,6 +13135,7 @@ MonoBehaviour:
   - company: 0
   officer:
     name: 
+    photo: {fileID: 0}
     tacticsLv: 0
     attackLv: 0
     defenseLv: 0
@@ -13141,6 +13146,7 @@ MonoBehaviour:
     officetType: 0
   officerRegiment:
     name: 
+    photo: {fileID: 0}
     tacticsLv: 0
     attackLv: 0
     defenseLv: 0
@@ -17354,6 +17360,7 @@ MonoBehaviour:
   selectRegiment:
     officer:
       name: 
+      photo: {fileID: 0}
       tacticsLv: 0
       attackLv: 0
       defenseLv: 0
@@ -17536,7 +17543,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::OfficerDataBaseScr
   officers:
-  - name: "\u0413\u0435\u0442\u044C\u043C\u0430\u043D"
+  - name: Hetman
+    photo: {fileID: -6641025941212061803, guid: 9a3f36818c3f33b48bf87c05c76f9600, type: 3}
     tacticsLv: 5
     attackLv: 0
     defenseLv: 0
@@ -19336,8 +19344,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -21.8784}
-  m_SizeDelta: {x: 150, y: 186.2431}
+  m_AnchoredPosition: {x: 0, y: -3.7565}
+  m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2051515672
 MonoBehaviour:

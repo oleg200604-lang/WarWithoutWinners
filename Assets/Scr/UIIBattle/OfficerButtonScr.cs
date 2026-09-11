@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class OfiicerButtonScr : MonoBehaviour
+public class OfficerButtonScr : MonoBehaviour
 {
     [Header("UI")]
     public Image imageOfficer;
