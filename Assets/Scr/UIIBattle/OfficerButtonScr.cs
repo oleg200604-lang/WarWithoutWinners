@@ -30,9 +30,22 @@ public class OfficerButtonScr : MonoBehaviour
             textName.text = officerName;
         }
 
-        if(imageOfficer != null)
+        if (imageOfficer != null)
         {
             imageOfficer.sprite = sprite;
+        }
+    }
+
+    // Заповнює рядки статистики цього слота (тактика/атака/захист/організація).
+    // Зайві елементи textOfficerStatic (якщо їх більше, ніж рядків) очищаються.
+    public void SetOfficerStats(Officer officer)
+    {
+        if (officer != null)
+        {
+            textOfficerStatic[0].text = officer.tacticsLv.ToString();
+            textOfficerStatic[1].text = officer.attackLv.ToString();
+            textOfficerStatic[2].text = officer.defenseLv.ToString();
+            textOfficerStatic[3].text = officer.organizationLv.ToString();
         }
     }
 

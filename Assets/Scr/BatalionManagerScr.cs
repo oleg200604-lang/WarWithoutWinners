@@ -583,7 +583,7 @@ public class BatalionManagerScr : MonoBehaviour
         // Підполковник може командувати
         // малим полком до 4 батальйонів.
         if (officer.rank ==
-            Rank.LieutenantColonel)
+            Rank.Lieutenant)
         {
             if (regiment.battalions.Count > 4)
                 return false;
@@ -1807,7 +1807,7 @@ public class Regiment
                 // Тут має перевірятись звання кандидата, якого призначаємо.
                 switch (officers.rank)
                 {
-                    case Rank.LieutenantColonel:
+                    case Rank.Lieutenant:
                         if (battalions.Count <= 4)
                         {
                             officer = officers;

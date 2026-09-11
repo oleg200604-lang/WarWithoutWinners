@@ -291,6 +291,7 @@ public class BattalionUIManagerScr : MonoBehaviour
             slot.SetOfficerIndex(i);
 
             slot.SetOfficerName(GetOfficerLabel(officer), officer.photo);
+            slot.SetOfficerStats(officer);
 
             bool matchesType =
                 officer.officetType ==
@@ -323,15 +324,12 @@ public class BattalionUIManagerScr : MonoBehaviour
     // OFFICER LABEL
     // =========================================================
 
-    private string GetOfficerLabel(
-        Officer officer)
+    private string GetOfficerLabel(Officer officer)
     {
         if (officer == null)
             return "";
 
-        return officer.name +
-               " " +
-               GetRankLabel(officer.rank);
+        return GetRankLabel(officer.rank) + " " +officer.name;
     }
 
 
@@ -341,20 +339,76 @@ public class BattalionUIManagerScr : MonoBehaviour
         switch (rank)
         {
             case Rank.Major:
-                return "Майор";
+                return "Maj.";
 
-            case Rank.LieutenantColonel:
-                return "Підполковник";
+            case Rank.Lieutenant:
+                return "Lt.";
 
             case Rank.Colonel:
-                return "Полковник";
+                return "Col.";
 
             case Rank.General:
-                return "Генерал";
+                return "Gen.";
 
             default:
                 return rank.ToString();
         }
+    }
+
+
+    
+
+    private string FormatPercent(float percent)
+    {
+        return (percent * 100f).ToString("0.#");
+    }
+
+
+    // Картка призначеного офіцера для поточного вибору (батальйон/полк):
+    // ім'я + портрет + статистика в officerImage/textOfficerStatic верхнього
+    // рівня. Якщо нікого не призначено — картка порожня.
+    private void RefreshSelectedOfficerInfo()
+    {
+        if (batalionManager == null)
+            return;
+
+        Officer officer = GetAssignedOfficerForCurrentSelection();
+
+        if (officer.photo != null)
+        {
+            officerImage.sprite = officer.photo;
+        }
+
+
+        if (officer.name != "")
+        {
+            textOfficerStatic[0].text = officer.name;
+            textOfficerStatic[1].text = officer.tacticsLv.ToString();
+            textOfficerStatic[2].text = officer.attackLv.ToString();
+            textOfficerStatic[3].text = officer.defenseLv.ToString();
+            textOfficerStatic[4].text = officer.organizationLv.ToString();
+        }
+
+    }
+
+    // Особистий офіцер (Майор) батальйону має пріоритет над офіцером полку,
+    // яким командує ціла формація.
+    private Officer GetAssignedOfficerForCurrentSelection()
+    {
+        if (batalionManager.selectBattalion != null)
+        {
+            BattalionScr battalion = batalionManager.selectBattalion;
+
+            if (battalion.officer != null)
+                return battalion.officer;
+
+            return battalion.officerRegiment;
+        }
+
+        if (batalionManager.selectRegiment != null)
+            return batalionManager.selectRegiment.officer;
+
+        return null;
     }
 
 
@@ -367,7 +421,7 @@ public class BattalionUIManagerScr : MonoBehaviour
         if (batalionManager == null)
             return;
 
-        Ressurs r =  batalionManager.ressurs;
+        Ressurs r = batalionManager.ressurs;
 
         if (personnelText != null)
             personnelText.text = r.personnel.ToString();
@@ -512,6 +566,8 @@ public class BattalionUIManagerScr : MonoBehaviour
         {
             RefreshOfficerButtons();
         }
+
+        RefreshSelectedOfficerInfo();
 
         RefreshRegimentButtons();
     }

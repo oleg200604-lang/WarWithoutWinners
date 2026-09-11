@@ -34,7 +34,7 @@ public class OfficerDataBaseScr : MonoBehaviour
             case Rank.Major:
                 return 1f;
 
-            case Rank.LieutenantColonel:
+            case Rank.Lieutenant:
                 return 0.75f;
 
             case Rank.Colonel:
@@ -116,10 +116,10 @@ public class Officer
         switch (rank)
         {
             case Rank.Major:
-                rank = Rank.LieutenantColonel;
+                rank = Rank.Lieutenant;
                 break;
 
-            case Rank.LieutenantColonel:
+            case Rank.Lieutenant:
                 rank = Rank.Colonel;
                 break;
 
@@ -139,12 +139,12 @@ public class Officer
             case Rank.Major:
                 break;
 
-            case Rank.LieutenantColonel:
+            case Rank.Lieutenant:
                 rank = Rank.Major;
                 break;
 
             case Rank.Colonel:
-                rank = Rank.LieutenantColonel;
+                rank = Rank.Lieutenant;
                 break;
 
             case Rank.General:
@@ -161,5 +161,5 @@ public enum Features
 
 public enum Rank
 {
-    Major, LieutenantColonel, Colonel, General
+    Major, Lieutenant, Colonel, General
 }
