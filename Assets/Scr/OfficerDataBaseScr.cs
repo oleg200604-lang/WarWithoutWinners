@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 public class OfficerDataBaseScr : MonoBehaviour
 {
@@ -52,7 +53,7 @@ public class OfficerDataBaseScr : MonoBehaviour
 public class Officer
 {
     public string name;
-
+    public Sprite photo;
     [Header("Навички")]
     public int tacticsLv;
     public int attackLv;

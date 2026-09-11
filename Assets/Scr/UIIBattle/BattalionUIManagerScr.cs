@@ -366,13 +366,12 @@ public class BattalionUIManagerScr : MonoBehaviour
     // OFFICER LABEL
     // =========================================================
 
-    private string GetOfficerLabel(
-        Officer officer)
+    private string GetOfficerLabel(Officer officer)
     {
         if (officer == null)
             return "";
 
-        return   GetRankLabel(officer.rank)+ " " + officer.name;
+        return GetRankLabel(officer.rank)+ " " + officer.name;
     }
 
 
@@ -397,11 +396,6 @@ public class BattalionUIManagerScr : MonoBehaviour
                 return rank.ToString();
         }
     }
-
-
-    // =========================================================
-    // RESOURCES
-    // =========================================================
 
     private void RefreshResourceHud()
     {

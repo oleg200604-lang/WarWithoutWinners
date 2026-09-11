@@ -22,10 +22,17 @@ public class OfiicerButtonScr : MonoBehaviour
         officerIndex = index;
     }
 
-    public void SetOfficerName(string officerName)
+    public void SetOfficerName(string officerName, Sprite sprite)
     {
         if (Name != null)
+        {
             Name.text = officerName;
+        }
+
+        if(imageOfficer != null)
+        {
+            imageOfficer.sprite = sprite;
+        }
     }
 
     public void SetInteractable(bool value)
