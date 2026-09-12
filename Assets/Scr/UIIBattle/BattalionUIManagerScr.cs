@@ -329,7 +329,7 @@ public class BattalionUIManagerScr : MonoBehaviour
         if (officer == null)
             return "";
 
-        return GetRankLabel(officer.rank) + " " +officer.name;
+        return GetRankLabel(officer.rank) + " " + officer.name;
     }
 
 
@@ -356,7 +356,7 @@ public class BattalionUIManagerScr : MonoBehaviour
     }
 
 
-    
+
 
     private string FormatPercent(float percent)
     {
@@ -374,21 +374,53 @@ public class BattalionUIManagerScr : MonoBehaviour
 
         Officer officer = GetAssignedOfficerForCurrentSelection();
 
-        if (officer.photo != null)
+        // Офіцера може бути не призначено — це нормальний стан, а не помилка.
+        if (officer == null)
+        {
+            if (officerImage != null)
+            {
+                officerImage.sprite = null;
+                officerImage.enabled = false;
+            }
+
+            SetStaticTextsSafe(null, null, null, null, null);
+            return;
+        }
+
+        if (officerImage != null)
         {
             officerImage.sprite = officer.photo;
+            officerImage.enabled = officer.photo != null;
         }
 
+        SetStaticTextsSafe(
+            officer.name,
+            officer.tacticsLv.ToString(),
+            officer.attackLv.ToString(),
+            officer.defenseLv.ToString(),
+            officer.organizationLv.ToString()
+        );
+    }
 
-        if (officer.name != "")
+    // Безпечно заповнює textOfficerStatic[0..4] (ім'я + 4 навички), не падаючи,
+    // якщо масив коротший, ніж очікується, або якийсь елемент не призначений.
+    private void SetStaticTextsSafe(
+        string name,
+        string tactics,
+        string attack,
+        string defense,
+        string organization)
+    {
+        if (textOfficerStatic == null)
+            return;
+
+        string[] values = { name, tactics, attack, defense, organization };
+
+        for (int i = 0; i < textOfficerStatic.Length && i < values.Length; i++)
         {
-            textOfficerStatic[0].text = officer.name;
-            textOfficerStatic[1].text = officer.tacticsLv.ToString();
-            textOfficerStatic[2].text = officer.attackLv.ToString();
-            textOfficerStatic[3].text = officer.defenseLv.ToString();
-            textOfficerStatic[4].text = officer.organizationLv.ToString();
+            if (textOfficerStatic[i] != null)
+                textOfficerStatic[i].text = values[i] ?? "";
         }
-
     }
 
     // Особистий офіцер (Майор) батальйону має пріоритет над офіцером полку,

@@ -40,12 +40,21 @@ public class OfficerButtonScr : MonoBehaviour
     // Зайві елементи textOfficerStatic (якщо їх більше, ніж рядків) очищаються.
     public void SetOfficerStats(Officer officer)
     {
-        if (officer != null)
+        if (textOfficerStatic == null || officer == null)
+            return;
+
+        string[] values =
         {
-            textOfficerStatic[0].text = officer.tacticsLv.ToString();
-            textOfficerStatic[1].text = officer.attackLv.ToString();
-            textOfficerStatic[2].text = officer.defenseLv.ToString();
-            textOfficerStatic[3].text = officer.organizationLv.ToString();
+            officer.tacticsLv.ToString(),
+            officer.attackLv.ToString(),
+            officer.defenseLv.ToString(),
+            officer.organizationLv.ToString()
+        };
+
+        for (int i = 0; i < textOfficerStatic.Length && i < values.Length; i++)
+        {
+            if (textOfficerStatic[i] != null)
+                textOfficerStatic[i].text = values[i];
         }
     }
 
@@ -63,8 +72,6 @@ public class OfficerButtonScr : MonoBehaviour
         Image image = selectOfficer.image;
 
         if (image != null)
-            image.color = selected
-                ? Color.yellow
-                : Color.white;
+            image.color = selected ? Color.yellow : Color.white;
     }
 }
