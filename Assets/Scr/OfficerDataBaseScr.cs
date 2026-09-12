@@ -73,6 +73,182 @@ public class Officer
     private const float DefensePercentPerLevel = 0.25f;
     private const float OrganizationPercentPerLevel = 0.10f;
 
+    // Для sycophantic/superior (пільгова вартість наказу з дробовим коефіцієнтом,
+    // напр. x0.5) чергуємо "закруглення вгору"/"закруглення вниз", щоб довгий
+    // рахунок був точним: 1, 0, 1, 0, ... замість завжди 0 або завжди 1.
+    [System.NonSerialized] private bool commandCostChargeHighNext = true;
+
+
+    // =========================================================
+    // FEATURES
+    // =========================================================
+
+    public bool HasFeature(Features feature)
+    {
+        if (features == null)
+            return false;
+
+        for (int i = 0; i < features.Length; i++)
+        {
+            if (features[i] == feature)
+                return true;
+        }
+
+        return false;
+    }
+
+    // stubborn (x2) та sycophantic (x0.5) впливають однаково на ВСІ здібності
+    // офіцера (тактика/атака/захист/організація), тому винесено окремо.
+    private float GetAbilityMultiplier()
+    {
+        float multiplier = 1f;
+
+        if (HasFeature(Features.stubborn))
+            multiplier *= 2f;
+
+        if (HasFeature(Features.sycophantic))
+            multiplier *= 0.5f;
+
+        return multiplier;
+    }
+
+    // risky/cautious перекидають ефективність між атакою та захистом.
+    private float GetAttackFeatureMultiplier()
+    {
+        float multiplier = 1f;
+
+        if (HasFeature(Features.risky))
+            multiplier *= 1.5f;
+
+        if (HasFeature(Features.cautious))
+            multiplier /= 1.5f;
+
+        return multiplier;
+    }
+
+    private float GetDefenseFeatureMultiplier()
+    {
+        float multiplier = 1f;
+
+        if (HasFeature(Features.cautious))
+            multiplier *= 1.5f;
+
+        if (HasFeature(Features.risky))
+            multiplier /= 1.5f;
+
+        return multiplier;
+    }
+
+    // ambitious пом'якшує штраф ефективності від звання: 100/75/50/25 -> 100/80/60/40.
+    private float GetEffectiveRankEfficiency()
+    {
+        if (!HasFeature(Features.ambitious))
+            return OfficerDataBaseScr.GetRankEfficiency(rank);
+
+        switch (rank)
+        {
+            case Rank.Major:
+                return 1f;
+
+            case Rank.Lieutenant:
+                return 0.8f;
+
+            case Rank.Colonel:
+                return 0.6f;
+
+            case Rank.General:
+                return 0.4f;
+
+            default:
+                return 0f;
+        }
+    }
+
+    // charismatic (x2) / strict (x0.5) — швидкість регенерації організації.
+    public float GetOrganizationRegenMultiplier()
+    {
+        float multiplier = 1f;
+
+        if (HasFeature(Features.charismatic))
+            multiplier *= 2f;
+
+        if (HasFeature(Features.strict))
+            multiplier *= 0.5f;
+
+        return multiplier;
+    }
+
+    // superior (x0.75) / mutualRespect (x1.25) — пряма зміна максимальної організації,
+    // незалежно від рівня вміння "Організація".
+    public float GetOrganizationMaxMultiplier()
+    {
+        float multiplier = 1f;
+
+        if (HasFeature(Features.superior))
+            multiplier *= 0.75f;
+
+        if (HasFeature(Features.mutualRespect))
+            multiplier *= 1.25f;
+
+        return multiplier;
+    }
+
+    // stubborn (x2) / sycophantic (x0.5) / superior (x0.5) / mutualRespect (x2) —
+    // вартість наказу для батальйону, яким командує цей офіцер.
+    public float GetCommandCostMultiplier()
+    {
+        float multiplier = 1f;
+
+        if (HasFeature(Features.stubborn))
+            multiplier *= 2f;
+
+        if (HasFeature(Features.sycophantic))
+            multiplier *= 0.5f;
+
+        if (HasFeature(Features.superior))
+            multiplier *= 0.5f;
+
+        if (HasFeature(Features.mutualRespect))
+            multiplier *= 2f;
+
+        return multiplier;
+    }
+
+    // Дивиться, скільки коштуватиме НАСТУПНИЙ наказ, не змінюючи чергування округлення.
+    // Використовувати для перевірки "чи вистачає ресурсу".
+    public int PeekCommandCost(int baseCost)
+    {
+        int lower, upper;
+        GetCommandCostBounds(baseCost, out lower, out upper);
+
+        if (lower == upper)
+            return lower;
+
+        return commandCostChargeHighNext ? upper : lower;
+    }
+
+    // Фактично "витрачає" наказ і просуває чергування округлення далі.
+    // Викликати РІВНО ОДИН РАЗ на кожен реально відданий наказ.
+    public int ConsumeCommandCost(int baseCost)
+    {
+        int lower, upper;
+        GetCommandCostBounds(baseCost, out lower, out upper);
+
+        if (lower == upper)
+            return lower;
+
+        int charge = commandCostChargeHighNext ? upper : lower;
+        commandCostChargeHighNext = !commandCostChargeHighNext;
+        return charge;
+    }
+
+    private void GetCommandCostBounds(int baseCost, out int lower, out int upper)
+    {
+        float exact = baseCost * GetCommandCostMultiplier();
+        lower = Mathf.FloorToInt(exact);
+        upper = Mathf.CeilToInt(exact);
+    }
+
 
     // =========================================================
     // BONUSES
@@ -82,28 +258,35 @@ public class Officer
     {
         return tacticsLv *
                TacticsPercentPerLevel *
-               OfficerDataBaseScr.GetRankEfficiency(rank);
+               GetAbilityMultiplier() *
+               GetEffectiveRankEfficiency();
     }
 
     public float GetAttackBonusPercent()
     {
         return attackLv *
                AttackPercentPerLevel *
-               OfficerDataBaseScr.GetRankEfficiency(rank);
+               GetAttackFeatureMultiplier() *
+               GetAbilityMultiplier() *
+               GetEffectiveRankEfficiency();
     }
 
     public float GetDefenseBonusPercent()
     {
         return defenseLv *
                DefensePercentPerLevel *
-               OfficerDataBaseScr.GetRankEfficiency(rank);
+               GetDefenseFeatureMultiplier() *
+               GetAbilityMultiplier() *
+               GetEffectiveRankEfficiency();
     }
 
     public float GetOrganizationBonusPercent()
     {
         return organizationLv *
                OrganizationPercentPerLevel *
-               OfficerDataBaseScr.GetRankEfficiency(rank);
+               (HasFeature(Features.strict) ? 2f : 1f) *
+               GetAbilityMultiplier() *
+               GetEffectiveRankEfficiency();
     }
 
 

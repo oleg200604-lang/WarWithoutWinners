@@ -1064,12 +1064,12 @@ public class BatalionManagerScr : MonoBehaviour
     // COMMAND RESOURCE
     // =========================================================
 
-    private int GetCurrentCommandCost()
+    private BattalionScr GetCommandCostBattalion()
     {
         if (selectRegiment != null)
         {
             if (selectRegiment.battalions == null)
-                return 0;
+                return null;
 
             for (int i = 0;
                  i < selectRegiment.battalions.Count;
@@ -1084,23 +1084,29 @@ public class BatalionManagerScr : MonoBehaviour
                     continue;
                 }
 
-                return battalion
-                    .battalion
-                    .commandCost;
+                return battalion;
             }
 
-            return 0;
+            return null;
         }
 
         if (selectBattalion == null ||
             selectBattalion.battalion == null)
         {
-            return 0;
+            return null;
         }
 
-        return selectBattalion
-            .battalion
-            .commandCost;
+        return selectBattalion;
+    }
+
+    // Тільки перевірка — не змінює чергування округлення дробової вартості наказу.
+    private int GetCurrentCommandCost()
+    {
+        BattalionScr battalion = GetCommandCostBattalion();
+
+        return battalion != null
+            ? battalion.PeekEffectiveCommandCost()
+            : 0;
     }
 
     private bool HasEnoughCommand()
@@ -1112,8 +1118,12 @@ public class BatalionManagerScr : MonoBehaviour
 
     private void CompleteCommand()
     {
-        int cost =
-            GetCurrentCommandCost();
+        BattalionScr battalion =
+            GetCommandCostBattalion();
+
+        int cost = battalion != null
+            ? battalion.ConsumeEffectiveCommandCost()
+            : 0;
 
         ressurs.command -= cost;
 

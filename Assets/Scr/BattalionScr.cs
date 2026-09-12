@@ -1435,6 +1435,51 @@ public class BattalionScr : MonoBehaviour
         return total;
     }
 
+    // Аналог GetOfficerBonusPercent, але для ефектів-множників (superior/mutualRespect тощо),
+    // які комбінуються між собою множенням, а не додаванням.
+    private float GetOfficerMultiplier(System.Func<Officer, float> multiplierSelector)
+    {
+        float total = 1f;
+
+        if (officer != null)
+            total *= multiplierSelector(officer);
+
+        if (officerRegiment != null)
+            total *= multiplierSelector(officerRegiment);
+
+        return total;
+    }
+
+    // Особистий офіцер (Майор) має пріоритет над офіцером полку — саме він
+    // безпосередньо командує цим батальйоном і "дає" накази.
+    private Officer GetCommandingOfficer()
+    {
+        return officer != null ? officer : officerRegiment;
+    }
+
+    // Вартість наступного наказу з урахуванням особливостей командувача
+    // (stubborn/sycophantic/superior/mutualRespect), без витрачання "черги округлення".
+    public int PeekEffectiveCommandCost()
+    {
+        int baseCost = battalion != null ? battalion.commandCost : 0;
+        Officer commanding = GetCommandingOfficer();
+
+        return commanding != null
+            ? commanding.PeekCommandCost(baseCost)
+            : baseCost;
+    }
+
+    // Фактично списує вартість наказу. Викликати РІВНО ОДИН РАЗ на реально відданий наказ.
+    public int ConsumeEffectiveCommandCost()
+    {
+        int baseCost = battalion != null ? battalion.commandCost : 0;
+        Officer commanding = GetCommandingOfficer();
+
+        return commanding != null
+            ? commanding.ConsumeCommandCost(baseCost)
+            : baseCost;
+    }
+
     public void RecalculateStats()
     {
         int personnelMax = basePersonnelMax;
@@ -1465,7 +1510,11 @@ public class BattalionScr : MonoBehaviour
 
         // Вміння "Організація": +10% максимальної організації за рівень (з ефективністю звання).
         float organizationBonusPercent = GetOfficerBonusPercent(o => o.GetOrganizationBonusPercent());
-        personnel.organizationMax = baseOrganizationMax * (1f + organizationBonusPercent);
+
+        // superior (x0.75) / mutualRespect (x1.25) — пряма зміна максимальної організації.
+        float organizationMaxMultiplier = GetOfficerMultiplier(o => o.GetOrganizationMaxMultiplier());
+
+        personnel.organizationMax = baseOrganizationMax * (1f + organizationBonusPercent) * organizationMaxMultiplier;
 
         if (personnel.organization > personnel.organizationMax)
             personnel.organization = personnel.organizationMax;
@@ -1561,7 +1610,13 @@ public class BattalionScr : MonoBehaviour
     {
         if (personnel.organization < personnel.organizationMax)
         {
-            personnel.organization += (int)restoration;
+            // charismatic (x2) / strict (x0.5) — швидкість регенерації організації.
+            float regenMultiplier = GetOfficerMultiplier(o => o.GetOrganizationRegenMultiplier());
+
+            personnel.organization += (int)(restoration * regenMultiplier);
+
+            if (personnel.organization > personnel.organizationMax)
+                personnel.organization = personnel.organizationMax;
         }
     }
 }
