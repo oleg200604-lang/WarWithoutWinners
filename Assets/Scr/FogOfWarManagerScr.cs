@@ -219,7 +219,6 @@ public class FogOfWarManagerScr : MonoBehaviour
                 this
             );
 
-            Destroy(this);
             return;
         }
 

@@ -1672,256 +1672,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 172499800}
   m_CullTransparentMesh: 1
---- !u!1 &178815791
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 178815796}
-  - component: {fileID: 178815795}
-  - component: {fileID: 178815794}
-  - component: {fileID: 178815793}
-  - component: {fileID: 178815792}
-  m_Layer: 0
-  m_Name: Division (1)
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 0
---- !u!114 &178815792
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 178815791}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 62b022fa214127e4a83b0a62120b3fc1, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::OfficerDataBaseScr
-  officers:
-  - name: Hetman
-    photo: {fileID: -6641025941212061803, guid: 9a3f36818c3f33b48bf87c05c76f9600, type: 3}
-    tacticsLv: 5
-    attackLv: 0
-    defenseLv: 0
-    organizationLv: 0
-    isSelect: 0
-    features: 07000000
-    rank: 3
-    officetType: 1
-  - name: Hetman
-    photo: {fileID: -6641025941212061803, guid: 9a3f36818c3f33b48bf87c05c76f9600, type: 3}
-    tacticsLv: 5
-    attackLv: 0
-    defenseLv: 0
-    organizationLv: 0
-    isSelect: 0
-    features: 
-    rank: 3
-    officetType: 1
---- !u!114 &178815793
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 178815791}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 026452608bc5a0b4f93a004d65b86f34, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::CompanyDatabaseScr
-  companyDefinitions:
-  - type: 1
-    personnelMaxBonus: 50
-    condition: 2
-    statBonus:
-      type: 0
-      attackRange: 0.25
-      attackMoveCostMultiplier: 0
-      attackConeAngle: 15
-      damage: 50
-      murder: 1
-      injury: 3
-      speed: -0.25
-      meleeAttack: 0
-      visionRange: 6
-      ammoCostPerAction: 10
-      commandCost: 1
-      defenseMultiplier: 1
-  - type: 2
-    personnelMaxBonus: 50
-    condition: 0
-    statBonus:
-      type: 0
-      attackRange: 0
-      attackMoveCostMultiplier: 0
-      attackConeAngle: 0
-      damage: 0
-      murder: 0
-      injury: 0
-      speed: 0
-      meleeAttack: 0
-      visionRange: 6
-      ammoCostPerAction: 10
-      commandCost: 1
-      defenseMultiplier: 1
-  - type: 3
-    personnelMaxBonus: 25
-    condition: 2
-    statBonus:
-      type: 0
-      attackRange: 0.5
-      attackMoveCostMultiplier: 0
-      attackConeAngle: -15
-      damage: 150
-      murder: 1
-      injury: 3
-      speed: -0.5
-      meleeAttack: 0
-      visionRange: 6
-      ammoCostPerAction: 10
-      commandCost: 1
-      defenseMultiplier: 1
-  - type: 4
-    personnelMaxBonus: 50
-    condition: 1
-    statBonus:
-      type: 0
-      attackRange: -0.5
-      attackMoveCostMultiplier: 0
-      attackConeAngle: 0
-      damage: 100
-      murder: 2
-      injury: 1
-      speed: 0
-      meleeAttack: 0
-      visionRange: 6
-      ammoCostPerAction: 10
-      commandCost: 1
-      defenseMultiplier: 1
---- !u!114 &178815794
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 178815791}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 537b245490fcb094e8871a8e38c0f0aa, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BattalionUIManagerScr
-  commandPanel: {fileID: 1117267824}
-  officerPanel: {fileID: 1114118939}
-  noneButton: {fileID: 911615732}
-  moveButton: {fileID: 755558388}
-  attackButton: {fileID: 1575233364}
-  defendButton: {fileID: 296243567}
-  deployButton: {fileID: 1212145750}
-  undeployButton: {fileID: 1049384128}
-  rotateButton: {fileID: 923782388}
-  bombardButton: {fileID: 974332101}
-  reinforceButton: {fileID: 1922096717}
-  reinforceAmountPerClick: 10
-  personnelText: {fileID: 208047633}
-  suppliesText: {fileID: 285350153}
-  commandText: {fileID: 523210379}
-  regimentButtonGroups:
-  - root: {fileID: 1190233}
-    selectButton: {fileID: 229653253}
-    addButton: {fileID: 1296005173}
-    removeButton: {fileID: 1979316018}
-  - root: {fileID: 1975749697}
-    selectButton: {fileID: 218555639}
-    addButton: {fileID: 1899661246}
-    removeButton: {fileID: 1207445806}
-  - root: {fileID: 1995896871}
-    selectButton: {fileID: 446560051}
-    addButton: {fileID: 2055075486}
-    removeButton: {fileID: 881185910}
-  batalionManager: {fileID: 178815795}
-  officers:
-  - {fileID: 1795635709}
-  - {fileID: 1528628912}
-  officerSelect: {fileID: 1795118071}
-  textOfficerStatic:
-  - {fileID: 289397007}
-  - {fileID: 1321489815}
-  - {fileID: 562689781}
-  - {fileID: 1550292475}
-  - {fileID: 1609872868}
-  officerImage: {fileID: 2051515672}
---- !u!114 &178815795
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 178815791}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f0a0f7c52ef54d54b856f194b95baf6c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BatalionManagerScr
-  teamID: 1
-  enemyID: 00000000
-  allyID: 02000000
-  selectBattalion: {fileID: 0}
-  selectRegiment:
-    officer:
-      name: 
-      photo: {fileID: 0}
-      tacticsLv: 0
-      attackLv: 0
-      defenseLv: 0
-      organizationLv: 0
-      isSelect: 0
-      features: 
-      rank: 0
-      officetType: 0
-    nameRegiment: 
-    battalions: []
-    battalionType: 0
-    chainMaxDistance: 6
-    members: []
-    anchor: {x: 0, y: 0, z: 0}
-  battleManager: {fileID: 1039417165}
-  battalionUIManager: {fileID: 178815794}
-  regiments: []
-  commandType: 0
-  ressurs:
-    personnel: 1000
-    supplies: 1000
-    command: 50
-    commandMax: 50
-    planning: 10
-    discount: 0
-  officerDataBaseScr: {fileID: 178815792}
-  ammoDepots: []
-  isRedy: 0
-  defaultChainMaxDistance: 6
---- !u!4 &178815796
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 178815791}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &187776454
 GameObject:
   m_ObjectHideFlags: 0
@@ -2059,6 +1809,60 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 187776454}
   m_CullTransparentMesh: 1
+--- !u!1 &195973850
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 195973852}
+  - component: {fileID: 195973851}
+  m_Layer: 0
+  m_Name: FodOfWar (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &195973851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 195973850}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77e717edd093e0b4a850c5aa37b09ad3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FogOfWarManagerScr
+  playerManager: {fileID: 476356755}
+  mapCenter: {x: 0, y: 0}
+  mapSize: {x: 40, y: 30}
+  cellSize: 2
+  fogMaterial: {fileID: 10306, guid: 0000000000000000f000000000000000, type: 0}
+  unexploredColor: {r: 0, g: 0, b: 0, a: 0.95}
+  exploredColor: {r: 0, g: 0, b: 0, a: 0.55}
+  sortingLayerName: Terrain
+  sortingOrder: 100
+  updateInterval: 0.2
+--- !u!4 &195973852
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 195973850}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 476356759}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &198038378
 GameObject:
   m_ObjectHideFlags: 0
@@ -5538,6 +5342,257 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
   m_BlendShapeWeights: []
+--- !u!1 &476356754
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 476356759}
+  - component: {fileID: 476356755}
+  - component: {fileID: 476356757}
+  - component: {fileID: 476356758}
+  - component: {fileID: 476356756}
+  m_Layer: 0
+  m_Name: Division (1)
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 0
+--- !u!114 &476356755
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 476356754}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0a0f7c52ef54d54b856f194b95baf6c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BatalionManagerScr
+  teamID: 1
+  enemyID: 00000000
+  allyID: 02000000
+  selectBattalion: {fileID: 0}
+  selectRegiment:
+    officer:
+      name: 
+      photo: {fileID: 0}
+      tacticsLv: 0
+      attackLv: 0
+      defenseLv: 0
+      organizationLv: 0
+      isSelect: 0
+      features: 
+      rank: 0
+      officetType: 0
+    nameRegiment: 
+    battalions: []
+    battalionType: 0
+    chainMaxDistance: 6
+    members: []
+    anchor: {x: 0, y: 0, z: 0}
+  battleManager: {fileID: 1039417165}
+  battalionUIManager: {fileID: 476356757}
+  regiments: []
+  commandType: 0
+  ressurs:
+    personnel: 1000
+    supplies: 1000
+    command: 50
+    commandMax: 50
+    planning: 10
+    discount: 0
+  officerDataBaseScr: {fileID: 476356756}
+  ammoDepots: []
+  isRedy: 0
+  defaultChainMaxDistance: 6
+--- !u!114 &476356756
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 476356754}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62b022fa214127e4a83b0a62120b3fc1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::OfficerDataBaseScr
+  officers:
+  - name: Hetman
+    photo: {fileID: -6641025941212061803, guid: 9a3f36818c3f33b48bf87c05c76f9600, type: 3}
+    tacticsLv: 5
+    attackLv: 0
+    defenseLv: 0
+    organizationLv: 0
+    isSelect: 0
+    features: 07000000
+    rank: 3
+    officetType: 1
+  - name: Hetman
+    photo: {fileID: -6641025941212061803, guid: 9a3f36818c3f33b48bf87c05c76f9600, type: 3}
+    tacticsLv: 5
+    attackLv: 0
+    defenseLv: 0
+    organizationLv: 0
+    isSelect: 0
+    features: 
+    rank: 3
+    officetType: 1
+--- !u!114 &476356757
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 476356754}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 537b245490fcb094e8871a8e38c0f0aa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BattalionUIManagerScr
+  commandPanel: {fileID: 1117267824}
+  officerPanel: {fileID: 1114118939}
+  noneButton: {fileID: 911615732}
+  moveButton: {fileID: 755558388}
+  attackButton: {fileID: 1575233364}
+  defendButton: {fileID: 296243567}
+  deployButton: {fileID: 1212145750}
+  undeployButton: {fileID: 1049384128}
+  rotateButton: {fileID: 923782388}
+  bombardButton: {fileID: 974332101}
+  reinforceButton: {fileID: 1922096717}
+  reinforceAmountPerClick: 10
+  personnelText: {fileID: 208047633}
+  suppliesText: {fileID: 285350153}
+  commandText: {fileID: 523210379}
+  regimentButtonGroups:
+  - root: {fileID: 1190233}
+    selectButton: {fileID: 229653253}
+    addButton: {fileID: 1296005173}
+    removeButton: {fileID: 1979316018}
+  - root: {fileID: 1975749697}
+    selectButton: {fileID: 218555639}
+    addButton: {fileID: 1899661246}
+    removeButton: {fileID: 1207445806}
+  - root: {fileID: 1995896871}
+    selectButton: {fileID: 446560051}
+    addButton: {fileID: 2055075486}
+    removeButton: {fileID: 881185910}
+  batalionManager: {fileID: 476356755}
+  officers:
+  - {fileID: 1795635709}
+  - {fileID: 1528628912}
+  officerSelect: {fileID: 1795118071}
+  textOfficerStatic:
+  - {fileID: 289397007}
+  - {fileID: 1321489815}
+  - {fileID: 562689781}
+  - {fileID: 1550292475}
+  - {fileID: 1609872868}
+  officerImage: {fileID: 2051515672}
+--- !u!114 &476356758
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 476356754}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 026452608bc5a0b4f93a004d65b86f34, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CompanyDatabaseScr
+  companyDefinitions:
+  - type: 1
+    personnelMaxBonus: 50
+    condition: 2
+    statBonus:
+      type: 0
+      attackRange: 0.25
+      attackMoveCostMultiplier: 0
+      attackConeAngle: 15
+      damage: 50
+      murder: 1
+      injury: 3
+      speed: -0.25
+      meleeAttack: 0
+      visionRange: 6
+      ammoCostPerAction: 10
+      commandCost: 1
+      defenseMultiplier: 1
+  - type: 2
+    personnelMaxBonus: 50
+    condition: 0
+    statBonus:
+      type: 0
+      attackRange: 0
+      attackMoveCostMultiplier: 0
+      attackConeAngle: 0
+      damage: 0
+      murder: 0
+      injury: 0
+      speed: 0
+      meleeAttack: 0
+      visionRange: 6
+      ammoCostPerAction: 10
+      commandCost: 1
+      defenseMultiplier: 1
+  - type: 3
+    personnelMaxBonus: 25
+    condition: 2
+    statBonus:
+      type: 0
+      attackRange: 0.5
+      attackMoveCostMultiplier: 0
+      attackConeAngle: -15
+      damage: 150
+      murder: 1
+      injury: 3
+      speed: -0.5
+      meleeAttack: 0
+      visionRange: 6
+      ammoCostPerAction: 10
+      commandCost: 1
+      defenseMultiplier: 1
+  - type: 4
+    personnelMaxBonus: 50
+    condition: 1
+    statBonus:
+      type: 0
+      attackRange: -0.5
+      attackMoveCostMultiplier: 0
+      attackConeAngle: 0
+      damage: 100
+      murder: 2
+      injury: 1
+      speed: 0
+      meleeAttack: 0
+      visionRange: 6
+      ammoCostPerAction: 10
+      commandCost: 1
+      defenseMultiplier: 1
+--- !u!4 &476356759
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 476356754}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 195973852}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &485404410
 GameObject:
   m_ObjectHideFlags: 0
@@ -9064,7 +9119,7 @@ GameObject:
   - component: {fileID: 890207166}
   - component: {fileID: 890207165}
   m_Layer: 0
-  m_Name: GameObject (1)
+  m_Name: FodOfWar
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -9100,12 +9155,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 890207164}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 1916624631}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &892782127
 GameObject:
@@ -11189,7 +11244,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BattleManagerScr
   battalionManagers:
   - {fileID: 1916624630}
-  - {fileID: 178815795}
+  - {fileID: 0}
   turnId: 0
 --- !u!4 &1039417166
 Transform:
@@ -15299,7 +15354,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8612b02ba5db6ef48852c5b000fdca26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattalionScr
-  batalionManager: {fileID: 0}
+  batalionManager: {fileID: 476356755}
   battleManager: {fileID: 1039417165}
   attackSystem: {fileID: 1446731979}
   bar: {fileID: 1196580176}
@@ -20164,7 +20219,8 @@ Transform:
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 890207166}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1916624632
@@ -23142,7 +23198,7 @@ SceneRoots:
   - {fileID: 1325652556}
   - {fileID: 1446731983}
   - {fileID: 1916624631}
-  - {fileID: 178815796}
+  - {fileID: 476356759}
   - {fileID: 1456703855}
   - {fileID: 409897734}
   - {fileID: 2028645278}
@@ -23154,4 +23210,3 @@ SceneRoots:
   - {fileID: 162508498}
   - {fileID: 1690350807}
   - {fileID: 1974153317}
-  - {fileID: 890207166}
