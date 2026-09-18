@@ -13,7 +13,6 @@ public class CompanyDatabaseScr : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(gameObject);
             return;
         }
 

@@ -821,6 +821,13 @@ public class BattalionScr : MonoBehaviour
 
     private void OnMouseDown()
     {
+        // ВИДАЛИ ЦЕЙ БЛОК ПІСЛЯ ДІАГНОСТИКИ.
+        Debug.Log(
+            "[OnMouseDown] " + name +
+            " fogVisible=" + fogVisible +
+            " batalionManager=" + (batalionManager != null ? batalionManager.name : "NULL")
+        );
+
         if (!fogVisible)
             return;
 

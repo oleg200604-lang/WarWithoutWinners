@@ -1185,6 +1185,15 @@ public class BatalionManagerScr : MonoBehaviour
         if (battalion == null)
             return;
 
+        // ВИДАЛИ ЦЕЙ БЛОК ПІСЛЯ ДІАГНОСТИКИ.
+        // Показує, яка саме умова нижче блокує вибір батальйону.
+        Debug.Log(
+            "[SelectBattalion] battalion=" + battalion.name +
+            " CanSee=" + CanSee(battalion) +
+            " myTeam=" + teamID +
+            " battalionTeam=" + battalion.teamID
+        );
+
         if (!CanSee(battalion))
             return;
 
